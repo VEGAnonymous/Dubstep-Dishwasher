@@ -1,0 +1,91 @@
+#ifndef GENERATORS
+#define GENERATORS
+
+#include "Utilities.h"
+#include "Modules.h"
+#include "LUTs.h"
+
+#include <cmath>
+
+/* GENERATORS */
+
+class Wavetable : public Generator {
+    private:
+        float freq;
+        const float* table; // Pointer to wavetable array (eventually stored in PROGMEM)
+        uint32_t phaseAccumulator, phaseIncrement;
+
+        static constexpr uint8_t INDEX_SHIFT = 32 - 9; // 9 = log2(512)
+    public:
+        Wavetable(float freq, wavetable table) : phaseAccumulator(0) { setFreq(freq); setTable(table); }
+
+        void setFreq(float freq) { this->freq = freq; phaseIncrement = freq * (pow(2, 32) / SAMPLE_RATE); }
+        void setTable(wavetable table) {
+            switch (table) {
+                case SINE_TABLE: this->table = SineTable; break;
+                case TRI_TABLE: this->table = TriTable; break;
+                case SAW_TABLE: this->table = SawTable; break;
+                case SQUARE_TABLE: this->table = SquareTable; break;
+                default: this->table = SineTable;
+            }
+        };
+
+        float next() override { // Use fixed-point phase accumulator to index wavetable
+            uint16_t index = phaseAccumulator >> INDEX_SHIFT; // Index with 9 MSBs (512)
+            phaseAccumulator += phaseIncrement;
+            return table[index];
+        }
+};
+
+class Random : public Generator {
+    private:
+        float freq, phase = 0.0f, currentVal = 0.0f, nextVal = 0.0f;
+        randomMode mode;
+        float (Random::*algorithm)() = nullptr;
+
+        float uniform() { return ((float)rand() / RAND_MAX) * 2.0f - 1.0f; } // Random float between [-1, 1]
+
+        // Noise algorithms
+        float perlin() {
+            phase += freq / SAMPLE_RATE;
+            if (phase >= 1.0f) {
+                phase -= 1.0f;
+                currentVal = nextVal;
+                nextVal = uniform();
+            }
+            float smooth = phase * phase * (3.0f - (2.0f * phase)); // smoothstep(x) -> 3x^2 - 2x^3
+            return currentVal + (smooth * (nextVal - currentVal)); // lerp
+        }
+        float sampleHold() {
+            phase += freq / SAMPLE_RATE;
+            if (phase >= 1.0f) {
+                phase -= 1.0f;
+                currentVal = uniform();
+            }
+            return currentVal;
+        }
+        float binary() {
+            phase += freq / SAMPLE_RATE;
+            if (phase >= 1.0f) {
+                phase -= 1.0f;
+                currentVal = (rand() & 1) ? 1.0f : -1.0f;
+            }
+            return currentVal;
+        }
+    public:
+        Random(float freq, randomMode mode) { setFreq(freq); setMode(mode); }
+
+        void setFreq(float freq) { this->freq = freq; }
+        void setMode(randomMode mode) {
+            this->mode = mode;
+            switch (mode) {
+                case PERLIN: algorithm = &Random::perlin; break;
+                case SAMPLE_HOLD: algorithm = &Random::sampleHold; break;
+                case BINARY: algorithm = &Random::binary; break;
+            }
+        }
+
+        float next() override { return (this->*algorithm)(); }
+};
+
+#endif // GENERATORS
