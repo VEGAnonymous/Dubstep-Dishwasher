@@ -26,16 +26,17 @@ class AudioChain {
         AudioChain() {
             // Build effects chain, initial order
             addEffect<Gain>("Gain", dbAmp(0.0f));
-            addEffect<LPF>("LPF", 0.0f, SAMPLE_RATE / 2.0f);
-            addEffect<APF>("APF", 0.0f, SAMPLE_RATE / 2.0f, 0.5f, false, 1000.0f);
             addEffect<FIR_Filter>("FIR", 0.0f, vector<float>(64, 1.0f / 64.0f));
             addEffect<Distortion>("Distortion", 0.0f, HARD_CLIP, 0.0f, false);
             addEffect<Delay>("Delay", 0.0f, 200.0f, 3000.0f, 0.0f);
             addEffect<Flanger>("Flanger", 0.0f, 0.0f, 0.0f, 0.0f);
             addEffect<Phaser>("Phaser", 0.0f, 0.0f, 1000.0f, 1.0f, 0.0f, 0.0f, 8, 0.8f);
             addEffect<Chorus>("Chorus", 0.0f, 0.0f, 0.0f, 100.0f, 0.0f, 4);
-            addEffect<Reverb>("Reverb", 0.0f, 100.0f, 100.0f, 0.0f, 0.0f, 0.0005f);
+            addEffect<Reverb>("Reverb", 0.0f, 100.0f, 100.0f, 0.0f, 0.0f);
             addEffect<SpectralGate>("Spectral Gate", 0.0f, 0.0f, 1024);
+            addEffect<Compressor>("Compressor", 0.0f, 0.0f, 1.0f, 0.0f, 50.0f, 500.0f, 0.0f, true);
+            addEffect<Granulator>("Granulator", 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 5.0f, 0.0f, 0.0f, HANN);
+            addEffect<Freezer>("Freezer", 0.0f, 1.0f, false, 1024, 4, 0.0f, 1.0f);
         }
 
         Effect* getEffect(string key) { return fxMap[key]; }

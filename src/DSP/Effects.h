@@ -107,9 +107,9 @@ class Distortion : public Effect {
         void setAAF(bool enableAAF) { this->enableAAF = enableAAF; }
         inline void setParam(const string& name, float value) override {
             if (name == "Mix") { setMix(value); }
-            if (name == "Mode") { setMode((distortionMode)value); } // HACK: This casting is unsafe but idc lol
-            if (name == "Drive") { setDrive(value); }
-            if (name == "AAF") { setAAF(value); }
+            else if (name == "Mode") { setMode((distortionMode)value); }
+            else if (name == "Drive") { setDrive(value); }
+            else if (name == "AAF") { setAAF(value); }
         }
 
         void process(const float* in, float* out, size_t n) override {
@@ -120,7 +120,7 @@ class Distortion : public Effect {
             for (size_t i = 0; i < n; ++i) {
                 wetSig = (this->*algorithm)(*in_ptr, drive) * dbAmp(-0.3f); // Apply non-linearity
                 if (enableAAF) antiAlias.process(&wetSig, &wetSig, 1); // Optional AAF (~0.8s processing time)
-                *out_ptr++ = ((1.0f - mix) * *in_ptr++) + (mix * wetSig); // Mix
+                *out_ptr++ = lerp(*in_ptr++, wetSig, mix); // Mix
             }
         }
 };
@@ -140,8 +140,8 @@ class Delay : public Effect {
         void setFeedback(float feedback) { this->feedback = clamp(feedback, -0.95f, 0.95f); }
         inline void setParam(const string& name, float value) override {
             if (name == "Mix") { setMix(value); }
-            if (name == "Time") { setDelayTime(value); }
-            if (name == "Feedback") { setFeedback(value); }
+            else if (name == "Time") { setDelayTime(value); }
+            else if (name == "Feedback") { setFeedback(value); }
         }
 
         void process(const float* in, float* out, size_t n) override {
@@ -152,7 +152,7 @@ class Delay : public Effect {
             for (size_t i = 0; i < n; ++i) {
                 delaySig = delayLine.read(); // Read from delay line
                 delayLine.write(*in_ptr + (delaySig * feedback)); // Feedback and write new sample
-                *out_ptr++ = ((1.0f - mix) * *in_ptr++) + (mix * delaySig); // Mix
+                *out_ptr++ = lerp(*in_ptr++, delaySig, mix); // Mix
             }
         }
 };
@@ -173,9 +173,9 @@ class Flanger : public Effect {
         void setFeedback(float feedback) { this->feedback = clamp(feedback, -0.95f, 0.95f); }
         inline void setParam(const string& name, float value) override {
             if (name == "Mix") { setMix(value); }
-            if (name == "Rate") { setRate(value); }
-            if (name == "Depth") { setDepth(value); }
-            if (name == "Feedback") { setFeedback(value); }
+            else if (name == "Rate") { setRate(value); }
+            else if (name == "Depth") { setDepth(value); }
+            else if (name == "Feedback") { setFeedback(value); }
         }
 
         void process(const float* in, float* out, size_t n) override {
@@ -187,7 +187,7 @@ class Flanger : public Effect {
                 delayLine.write(*in_ptr + (feedback * wetSig));
                 
                 wetSig = delayLine.read();
-                *out_ptr++ = ((1.0f - mix) * *in_ptr++) + (mix * wetSig); // Mix
+                *out_ptr++ = lerp(*in_ptr++, wetSig, mix); // Mix
             }
         }
 };
@@ -227,11 +227,11 @@ class Phaser : public Effect {
         void setFeedback(float feedback) { this->feedback = clamp(feedback, -0.95f, 0.95f); }
         inline void setParam(const string& name, float value) override {
             if (name == "Mix") { setMix(value); }
-            if (name == "Rate") { setRate(value); }
-            if (name == "Center") { setCenter(value); }
-            if (name == "Spread") { setSpread(value); }
-            if (name == "Depth") { setDepth(value); }
-            if (name == "Feedback") { setFeedback(value); }
+            else if (name == "Rate") { setRate(value); }
+            else if (name == "Center") { setCenter(value); }
+            else if (name == "Spread") { setSpread(value); }
+            else if (name == "Depth") { setDepth(value); }
+            else if (name == "Feedback") { setFeedback(value); }
         }
 
         void process(const float* in, float* out, size_t n) override {
@@ -249,7 +249,7 @@ class Phaser : public Effect {
                     in_ptr = out_ptr;
                 }
 
-                out[i] = ((1.0f - mix) * in[i]) + (mix * wetSig); // Mix
+                out[i] = lerp(in[i], wetSig, mix); // Mix
             }
         }
 };
@@ -291,10 +291,10 @@ class Chorus : public Effect {
         void setFeedback(float feedback) { this->feedback = clamp(feedback, -0.95f, 0.95f); }
         inline void setParam(const string& name, float value) override {
             if (name == "Mix") { setMix(value); }
-            if (name == "Rate") { setRate(value); }
-            if (name == "Depth") { setDepth(value); }
-            if (name == "Delay") { setDelayTime(value); }
-            if (name == "Feedback") { setFeedback(value); }
+            else if (name == "Rate") { setRate(value); }
+            else if (name == "Depth") { setDepth(value); }
+            else if (name == "Delay") { setDelayTime(value); }
+            else if (name == "Feedback") { setFeedback(value); }
         }
 
         void process(const float* in, float* out, size_t n) override {
@@ -309,22 +309,24 @@ class Chorus : public Effect {
                 delayLine.write(*in_ptr + (feedback * wetSig));
 
                 wetSig *= sqrtf((float)voiceCount) * 1.2f;
-                *out_ptr++ = ((1.0f - mix) * *in_ptr++) + (mix * wetSig); // Mix
+                *out_ptr++ = lerp(*in_ptr++, wetSig, mix); // Mix
             }
         }
 };
 
-class Reverb : public Effect { // Datarro reverb algorithm
+class Reverb : public Effect { 
+    // Datarro reverb algorithm 
+    // https://ccrma.stanford.edu/~dattorro/EffectDesignPart1.pdf
     private:
         float mix, predelayTime, decayTime, decayGainL, decayGainR, modRate, modDepth, damping;
         vector<APF> diffusers; // 8
-        vector<LPF> filters; // 3
+        vector<OnePole> filters; // 3
         vector<DelayLine> delayLines; // 5
         Wavetable LFO;
         float tankInSig, nodeSig, tankSig1 = 0, tankSig2 = 0;
 
     public:
-        Reverb(float mix, float predelayTime, float decayTime, float modRate, float modDepth, float damping) : LFO(modRate, SINE_TABLE) {
+        Reverb(float mix, float predelayTime, float decayTime, float modRate, float modDepth, float damping = 0.0005f) : LFO(modRate, SINE_TABLE) {
             const float inputDiffuse[2] = {0.750f, 0.625f};
             const float decayDiffuse[2] = {0.70f, 0.50f};
             const float apfDelays[8] = {142, 107, 379, 277, 672, 908, 1800, 2656};
@@ -343,9 +345,9 @@ class Reverb : public Effect { // Datarro reverb algorithm
             } diffusers[4].setInvert(true); diffusers[5].setInvert(true);
 
             // Filters
-            filters.push_back(LPF(1.0f, bandwidth * SAMPLE_RATE / 2.0f));
+            filters.push_back(OnePole(1.0f, bandwidth * SAMPLE_RATE / 2.0f));
             for (size_t i = 0; i < 2; ++i) { 
-                filters.push_back(LPF(1.0f, damping * 10000.0f));
+                filters.push_back(OnePole(1.0f, damping * 10000.0f));
             }
 
             // Delays
@@ -364,18 +366,18 @@ class Reverb : public Effect { // Datarro reverb algorithm
         }
         void setModRate(float modRate) { this->modRate = clamp(modRate, 0.05f, 5.0f); LFO.setFreq(this->modRate); }
         void setModDepth(float modDepth) { this->modDepth = clamp(modDepth, 0.0f, 1.0f); }
-        void setDamping(float damping) { 
+        void setDamping(float damping) {
             this->damping = clamp(damping, 0.0f, 1.0f); 
             float cutoffFreq = 2000.0f + (damping * 10000.0f);
             for (size_t i = 1; i < 3; ++i) filters[i].setCutoff(cutoffFreq);
         }
         inline void setParam(const string& name, float value) override {
             if (name == "Mix") { setMix(value); }
-            if (name == "Predelay") { setPredelay(value); }
-            if (name == "Decay") { setDecay(value); }
-            if (name == "Mod Rate") { setModRate(value); }
-            if (name == "Mod Depth") { setModDepth(value); }
-            if (name == "Damping") { setDamping(value); }
+            else if (name == "Predelay") { setPredelay(value); }
+            else if (name == "Decay") { setDecay(value); }
+            else if (name == "Mod Rate") { setModRate(value); }
+            else if (name == "Mod Depth") { setModDepth(value); }
+            else if (name == "Damping") { setDamping(value); } // DO NOT USE IN PRACTICE
         }
 
         void process(const float* in, float* out, size_t n) override {
@@ -437,9 +439,350 @@ class Reverb : public Effect { // Datarro reverb algorithm
                 accumulatorR -= tapGain * delayLines[4].read(121.0f);
 
                 float wetSig = (accumulatorL + accumulatorR) * 0.5f;
-                out[i] = ((1.0f - mix) * in[i]) + (mix * wetSig); // Total mix
+                out[i] = lerp(in[i], wetSig, mix); // Total mix
             }
         }
+};
+
+class Compressor : public Effect {
+    private:
+        float mix, threshold, ratio, knee, makeupGain; bool autoMakeup;
+        const float L = 50.0f, L_samples = L * SAMPLE_RATE / 1000.0f; // RMS window size
+
+        float rms = 0.0f; DelayLine inBuffer;  
+        float gainSmoothed = 0.0f;
+        float attackCoeff, releaseCoeff, makeupCoeff;
+        float reductionSmoothed = 0.0f; float autoMakeupGain = 0.0f;
+
+        float computeReduction(float rmsDB) {
+            // https://www.desmos.com/calculator/wkmkrmn9le
+            float gDB = 0.0f;
+
+            if (rmsDB < (threshold - (knee / 2.0f))) { gDB = rmsDB; } // Below threshold, linear
+            else if (rmsDB > (threshold + (knee / 2.0f))) { gDB = threshold + ((rmsDB - threshold) / ratio); } // Above threshold, attenuate
+            else { gDB = rmsDB + ((((1.0f / ratio) - 1.0f) * pow(rmsDB - threshold + (knee / 2.0f), 2.0f)) / (2.0f * knee)); } // Soft knee
+            
+            return gDB - rmsDB;
+        }
+
+    public:
+        Compressor(float mix, float threshold, float ratio, float knee, float attack, float release, float makeupGain, bool autoMakeup) 
+        : inBuffer(1.0f, L + 1.0f) {
+            setMix(mix); setThreshold(threshold); setRatio(ratio); setKnee(knee); 
+            setAttack(attack); setRelease(release); setMakeup(makeupGain); setAutoMakeup(autoMakeup);
+            inBuffer.setDelayTime(L);
+            makeupCoeff = exp(-2.2f / (100.0f * SAMPLE_RATE / 1000.0f)); // Auto-makeup smoothing factor
+        }
+
+        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); }
+        void setThreshold(float threshold) { this->threshold = clamp(threshold, -200.0f, 0.0f); } // dB
+        void setRatio(float ratio) { this->ratio = clamp(ratio, 1.0f, 100.0f); }
+        void setKnee(float knee) { this->knee = clamp(knee, 0.0f, 40.0f); }
+        void setAttack(float attack) { attackCoeff = exp(-2.2f / (attack * SAMPLE_RATE / 1000.0f)); }
+        void setRelease(float release) { releaseCoeff = exp(-2.2f / (release * SAMPLE_RATE / 1000.0f)); }
+        void setMakeup(float makeupGain) { this->makeupGain = makeupGain; } // dB
+        void setAutoMakeup(bool autoMakeup) { 
+            this->autoMakeup = autoMakeup;
+            if (autoMakeup) { reductionSmoothed = 0.0f; autoMakeupGain = 0.0f; }
+        }
+        inline void setParam(const string& name, float value) override {
+            if (name == "Mix") { setMix(value); }
+            else if (name == "Threshold") { setThreshold(value); }
+            else if (name == "Ratio") { setRatio(value); }
+            else if (name == "Knee") { setKnee(value); }
+            else if (name == "Attack") { setAttack(value); }
+            else if (name == "Release") { setRelease(value); }
+            else if (name == "Makeup") { setMakeup(value); }
+            else if (name == "Auto Makeup") { setAutoMakeup(value > 0.5f); }
+        }
+
+        void process(const float* in, float* out, size_t n) override {
+            for (size_t i = 0; i < n; ++i) {
+                // Compute RMS recursively
+                const float x_i = in[i], x_L = inBuffer.read();
+                inBuffer.write(x_i); 
+                rms = sqrt((rms * rms) + (((x_i * x_i) - (x_L * x_L)) / L_samples));
+                float rmsDB = ampDB(rms);
+
+                // Gain computation
+                float gDB = 0.0f;
+                if (rmsDB < (threshold - (knee / 2.0f))) { gDB = rmsDB; } // Below threshold, linear
+                else if (rmsDB > (threshold + (knee / 2.0f))) { gDB = threshold + ((rmsDB - threshold) / ratio); } // Above threshold, attenuate
+                else { gDB = rmsDB + ((((1.0f / ratio) - 1.0f) * pow(rmsDB - threshold + (knee / 2.0f), 2.0f)) / (2.0f * knee)); } // Soft knee
+
+                gDB -= rmsDB;
+
+                // Gain smoothing (one-pole IIR LPF)
+                if (gDB <= gainSmoothed) { gainSmoothed = (attackCoeff * gainSmoothed) + ((1.0f - attackCoeff) * gDB); } // Attack
+                else { gainSmoothed = (releaseCoeff * gainSmoothed) + ((1.0f - releaseCoeff) * gDB); } // Release
+
+                // Makeup gain
+                if (autoMakeup) { 
+                    reductionSmoothed = (makeupCoeff * reductionSmoothed) + ((1.0f - makeupCoeff) * gDB); // Makeup smoothing
+                    autoMakeupGain = -reductionSmoothed;
+                }
+                float makeupDB = autoMakeup ? autoMakeupGain : makeupGain;
+                float g = dbAmp(clamp(gainSmoothed + makeupDB, -60.0f, 20.0f));
+
+                // Mix
+                float y_i = x_L * g;
+                out[i] = lerp(x_L, y_i, mix);
+            }
+        }
+};
+
+class Granulator : public Effect {
+    // HACK: Works, but produces clicks with larger positionRand since grains may end up reading from indices overwritten by write head
+    // Non-clicking usage: No reversed grains + any positionRand, OR reversed grains + no/small positionRand
+    private:
+        const size_t bufSize = 3 * SAMPLE_RATE; // 3 seconds
+        const int maxGrains = 64;
+        
+        float mix, position, time, length, reverseChance;
+        float positionRand, timeRand, lengthRand;
+        envelopeType envType; vector<float> envelope;
+        
+        vector<float> inBuf; size_t writePos = 0;
+        float grainCounter = 0.0f;
+        
+        struct Grain {
+            bool active = false;
+            int startPos;
+            int playhead;
+            int length;
+            bool reverse;
+        };
+        
+        vector<Grain> grains; // Grain pool
+
+        void spawnGrain() {
+            // Find free grain
+            Grain* freeGrain = nullptr;
+            for (auto& grain : grains) if (!grain.active) { freeGrain = &grain; break; }
+            // If none, steal oldest grain
+            if (freeGrain == nullptr) {
+                for (auto& grain : grains) if (grain.active) { freeGrain = &grain; break; }
+            }
+            
+            // Calculate grain parameters
+            float positionFactor = clamp(position + (uniform() * positionRand), 0.0f, 1.0f);
+            int grainStartPos = (int)writePos - (int)(positionFactor * (bufSize - 1));
+            if (grainStartPos < 0) grainStartPos += bufSize;
+            
+            float grainLength = clamp(length * (1.0f + (uniform() * lengthRand)), 5.0f, 1000.0f);
+            int grainLengthSamples = min((int)(grainLength * SAMPLE_RATE / 1000.0f), (int)bufSize - 1);
+            
+            bool reversed = ((uniform() + 1.0f) / 2.0f) <= reverseChance;
+            
+            // Init
+            freeGrain->active = true;
+            freeGrain->startPos = grainStartPos;
+            freeGrain->playhead = 0;
+            freeGrain->length = grainLengthSamples;
+            freeGrain->reverse = reversed;
+        }
+
+        float processGrain(Grain& grain) {
+            // Calculate read position in input buffer
+            int offset = grain.reverse ? ((grain.length - 1) - grain.playhead) : grain.playhead;
+            int readPos = (grain.startPos + offset) % bufSize;
+            
+            // Apply envelope
+            float envelopeValue = 1.0f;
+            if (!envelope.empty()) {
+                int envIndex = clamp((int)(((float)grain.playhead / (float)grain.length) * envelope.size()), 0, (int)envelope.size() - 1);
+                envelopeValue = envelope[envIndex];
+            }
+            
+            ++grain.playhead;
+            if (grain.playhead >= grain.length) grain.active = false; // Free if done
+            
+            return inBuf[readPos] * envelopeValue;
+        }
+
+    public:
+        Granulator(float mix, float position, float positionRand, float time, float timeRand, 
+            float length, float lengthRand, float reverseChance, envelopeType envType) {
+            setMix(mix); setPosition(position); setPositionRand(positionRand); setTime(time); setTimeRand(timeRand);
+            setLength(length); setLengthRand(lengthRand); setReverseChance(reverseChance); setEnvelopeType(envType);
+            grains.resize(maxGrains);
+            inBuf.resize(bufSize, 0.0f);
+        }
+
+        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); }
+        void setPosition(float position) { this->position = clamp(position, 0.0f, 1.0f); }
+        void setPositionRand(float positionRand) { this->positionRand = clamp(positionRand, 0.0f, 1.0f); }
+        void setTime(float time) { this->time = clamp(time, 1.0f, 3000.0f); }
+        void setTimeRand(float timeRand) { this->timeRand = clamp(timeRand, 0.0f, 1.0f); }
+        void setLength(float length) {
+            this->length = clamp(length, 5.0f, 1000.0f);
+            int lengthSamples = (int)(this->length * SAMPLE_RATE / 1000.0f);
+            makeEnvelope(envelope, lengthSamples, envType);
+        }
+        void setLengthRand(float lengthRand) { this->lengthRand = clamp(lengthRand, 0.0f, 1.0f); }
+        void setReverseChance(float reverseChance) { this->reverseChance = clamp(reverseChance, 0.0f, 1.0f); }
+        void setEnvelopeType(envelopeType envType) { 
+            this->envType = envType; 
+            int lengthSamples = (int)(this->length * SAMPLE_RATE / 1000.0f);
+            makeEnvelope(envelope, lengthSamples, envType);
+        }
+        inline void setParam(const string& name, float value) override {
+            if (name == "Mix") { setMix(value); }
+            else if (name == "Position") { setPosition(value); }
+            else if (name == "Position Random") { setPositionRand(value); }
+            else if (name == "Time") { setTime(value); }
+            else if (name == "Time Random") { setTimeRand(value); }
+            else if (name == "Length") { setLength(value); }
+            else if (name == "Length Random") { setLengthRand(value); }
+            else if (name == "Reverse Chance") { setReverseChance(value); }
+            else if (name == "Envelope Type") { setEnvelopeType((envelopeType)value); }
+        }
+
+    void process(const float* in, float* out, size_t n) override {
+        for (size_t i = 0; i < n; ++i) {
+            inBuf[writePos] = in[i]; // Write input to circular buffer
+            ++grainCounter;
+            
+            float timeSamples = (time + (time * timeRand * uniform())) * SAMPLE_RATE / 1000.0f;
+            if (grainCounter >= timeSamples) { // Time to spawn a grain!
+                spawnGrain();
+                grainCounter = 0.0f;
+            }
+            
+            // Process active grains and accumulate output
+            float wetSig = 0.0f;
+            for (auto& grain : grains) if (grain.active) { wetSig += processGrain(grain); }
+            out[i] = ((1.0f - mix) * in[i]) + (mix * wetSig); // Mix
+
+            ++writePos;
+            if (writePos >= bufSize) writePos = 0;
+        }
+    }
+};
+
+class Freezer : public Effect {
+private:
+    const size_t bufSize = 3 * SAMPLE_RATE; // 3 seconds
+    const float smooth = 0.5f;
+    
+    float mix, rate; bool spectralMode;
+    float loopStart, loopEnd;
+    
+    vector<float> inBuf; size_t writePos = 0; float readPos = 0.0f;
+    
+    vector<float> crossfadeEnv; // Crossfade envelope
+    
+    // Spectral resythesis
+    STFT stft;
+    vector<float> spectBuf, spectFrame;
+    size_t spectPos = 0, spectHopCounter = 0;
+
+public:
+    Freezer(float mix, float rate, bool spectralMode, size_t fftSize, size_t hopFactor = 4, 
+        float loopStart = 0.0f, float loopEnd = 1.0f) : stft(fftSize, 4) {
+        setMix(mix); setRate(rate); setSpectralMode(spectralMode); 
+        setFFTSize(fftSize); setHopSize(hopFactor); setLoopRegion(loopStart, loopEnd); 
+        inBuf.resize(bufSize, 0.0f);
+
+        // Create crossfade envelope
+        float crossfadeFrames = 1.0f + (smooth * smooth * 999.0f);
+        size_t envSize = (size_t)(crossfadeFrames * 2.0f);
+        makeEnvelope(crossfadeEnv, envSize, HANN);
+    }
+    
+    void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); }
+    void setRate(float rate) { this->rate = clamp(rate, -4.0f, 4.0f); }
+    void setSpectralMode(bool spectralMode) { this->spectralMode = spectralMode; }
+    void setFFTSize(size_t N) { 
+        stft.setFFTSize(N); 
+        spectBuf.assign(N, 0.0f); spectFrame.resize(N);
+        spectPos = 0; spectHopCounter = 0;
+    }
+    void setHopSize(size_t hopFactor) { stft.setHopSize(max(hopFactor, (size_t)2)); }
+    void setLoopRegion(float start, float end) {
+        loopStart = clamp(start, 0.0f, 1.0f);
+        loopEnd = clamp(end, 0.0f, 1.0f);
+        if (loopStart >= loopEnd) { // start < end
+            loopEnd = loopStart + 0.01f;
+            if (loopEnd > 1.0f) { loopEnd = 1.0f; loopStart = 0.99f; }
+        }
+        readPos = loopStart * (float)bufSize;
+    }
+    inline void setParam(const string& name, float value) override {
+        if (name == "Mix") { setMix(value); }
+        else if (name == "Rate") { setRate(value); }
+        else if (name == "Spectral Mode") { setSpectralMode(value > 0.5f); }
+        else if (name == "FFT Size") { setFFTSize((size_t)value); }
+        else if (name == "Hop Size") { setHopSize((size_t)value); }
+        else if (name == "Loop Start") { setLoopRegion(value, loopEnd); }
+        else if (name == "Loop End") { setLoopRegion(loopStart, value); }
+    }
+    
+    void process(const float* in, float* out, size_t n) override {
+        const size_t fftN = stft.getFFTSize(), hopN = stft.getHopSize();
+        const auto& window = stft.getWindow();
+
+        // Compute loop boundaries
+        float loopStartSamples = loopStart * (float)bufSize;
+        float loopEndSamples = loopEnd * (float)bufSize;
+        float loopLength = loopEndSamples - loopStartSamples;
+        
+        for (size_t i = 0; i < n; ++i) {
+            inBuf[writePos] = in[i]; // Write input to circular buffer
+            ++writePos; if (writePos >= bufSize) writePos = 0;
+            
+            float wetSig = 0.0f;
+            if (spectralMode) { // Spectral resynthesis mode
+
+                stft.forward(in[i]); // Forward FFT
+
+                // Read from OLA buffer
+                wetSig = spectBuf[spectPos];
+                spectBuf[spectPos] = 0.0f;
+                ++spectHopCounter;
+
+                /* SYNTHESIZE FFT FRAMES */
+                if (spectHopCounter >= hopN) { // Every hopN samples
+                    spectHopCounter = 0;
+                    // Map readPos to FFT frame index
+                    float framePos = fmod(readPos / (float)hopN, (float)stft.getSpectSize());
+                    if (framePos < 0) framePos += stft.getSpectSize();
+                    // Interpolate spectral frame
+                    STFT::FFTFrame interpFrame = stft.interpolateFrame(framePos);
+                    // IFFT
+                    stft.getFFT().inverse(interpFrame.mag.data(), interpFrame.phase.data(), spectFrame.data());
+                    // Window and OLA
+                    overlapAdd(spectBuf, spectFrame, window, spectPos);
+                }
+                
+                ++spectPos; if (spectPos >= fftN) spectPos = 0;
+                
+            } else { wetSig = lerp(inBuf, readPos, bufSize); } // Time-domain mode
+
+            // Advance and wrap read pos
+            readPos += rate;
+            if (readPos < loopStartSamples) { readPos += loopLength; }
+            else if (readPos >= loopEndSamples) { readPos -= loopLength; }
+            
+            float loopPos = (readPos - loopStartSamples) / loopLength; // Map to loop pos
+
+            // Calculate and apply crossfade envelope
+            float crossfade = 1.0f;
+            if (rate != 0.0f) {
+                float fadeSize = (float)crossfadeEnv.size() / (2.0f * loopLength);
+                if (loopPos < fadeSize) { // Fade in
+                    float envIndex = (loopPos / fadeSize) * (crossfadeEnv.size() / 2.0f);
+                    crossfade = lerp(crossfadeEnv, envIndex, crossfadeEnv.size());
+                } else if (loopPos > (1.0f - fadeSize)) { // Fade out
+                    float t = (loopPos - (1.0f - fadeSize)) / fadeSize;
+                    float envIndex = (crossfadeEnv.size() / 2.0f) + (t * (crossfadeEnv.size() / 2.0f));
+                    crossfade = lerp(crossfadeEnv, envIndex, crossfadeEnv.size());
+                }
+            } wetSig *= crossfade;
+        
+            out[i] = lerp(in[i], wetSig, mix); // Mix
+        }
+    }
 };
 
 /* SPECTRAL */
@@ -447,24 +790,21 @@ class Reverb : public Effect { // Datarro reverb algorithm
 class SpectralGate : public Spectral_Effect {
     private:
         float threshold;
-        
     public:
         SpectralGate(float mix, float thresholdDB, int fftSize) : Spectral_Effect(mix, fftSize)
             { setThreshold(thresholdDB); }
         
         void setThreshold(float thresholdDB) { threshold = dbAmp(thresholdDB); }
         inline void setParam(const string& name, float value) override {
-            Spectral_Effect::setParam(name, value);
             if (name == "Threshold") { setThreshold(value); }
+            else { Spectral_Effect::setParam(name, value); }
         }
-        
+    protected:
         void processSpectrum(float* mag, float* phs, size_t numBins) override {
             for (size_t k = 0; k < numBins; ++k) {
                 if (mag[k] < threshold) mag[k] = 0.0f; 
             }
         }
 };
-
-// TODO: Add a few more?
 
 #endif // EFFECTS

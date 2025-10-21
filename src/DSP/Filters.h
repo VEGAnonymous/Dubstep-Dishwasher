@@ -25,7 +25,6 @@ class FIR_Filter : public Effect {
 
         void process(const float* in, float* out, size_t n) override { // Filter via convolution
             // Stolen from https://ccrma.stanford.edu/~jatin/Notebooks/FIRBenchmarks.html
-            // OPTI: Consider adding FFT-based filtering?
             const float* in_ptr = in;
             float* out_ptr = out;
 
@@ -43,23 +42,27 @@ class FIR_Filter : public Effect {
         }
 };
 
-class LPF : public IIR_Filter { // One pole
-    // TODO: Add higher orders (selectable), Q parameterization
+class OnePole : public IIR_Filter { // One pole
     private:
         float b0, a1, y = 0.0f;
         float cutoff;
     public:
-        LPF(float mix, float cutoff) { IIR_Filter::mix = mix; setCutoff(cutoff); }
+        OnePole(float mix, float cutoff) { IIR_Filter::mix = mix; setCutoff(cutoff); }
 
+        void setCoeff(float a) {
+            b0 = 1.0f - a; a1 = a;
+            cutoff = -((float)SAMPLE_RATE * log(a)) / (2 * M_PI);
+        }
         void setCutoff(float cutoff) {
             this->cutoff = cutoff;
-            float x = expf((-2.0f * M_PI * cutoff) / SAMPLE_RATE);
+            float x = exp((-2.0f * M_PI * cutoff) / SAMPLE_RATE);
             b0 = 1.0f - x;
             a1 = x;
         }
         void setParam(const string& name, float value) override { 
-            IIR_Filter::setParam(name, value);
-            if (name == "Cutoff") { setCutoff(value); } 
+            if (name == "Cutoff") { setCutoff(value); }
+            else if (name == "Coefficient") { setCoeff(value); } 
+            else { IIR_Filter::setParam(name, value); }
         }
 
         float LCCDE(float x) override { 
@@ -99,9 +102,9 @@ class APF : public IIR_Filter { // 1st order
         }
         void setQ(float q) { g = clamp(1.0f - (1.0f / q), -0.999f, 0.999f); } // Q translates to coefficient g
         inline void setParam(const string& name, float value) override { 
-            IIR_Filter::setParam(name, value);
             if (name == "Cutoff") { setCutoff(value); }
-            if (name == "Q") { setQ(value); }
+            else if (name == "Q") { setQ(value); }
+            else { IIR_Filter::setParam(name, value); }
         }
 
         float LCCDE(float x) override {

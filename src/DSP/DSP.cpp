@@ -4,19 +4,27 @@
 - Initial commit
 
 10-10-25:
-- Implemented Chorus, FIR_Filter effects
-- Implemented Random generator with three modes: perlin (smooth) noise, sample and hold, binary
-- Refactored Flanger to use DelayLine instead of Delay
-- Added (optional) anti-aliasing FIR filter to Distortion
-- New Distortion algorithms: Tube, diode, rectifier
+- Implement Chorus, FIR_Filter effects
+- Implement Random generator with three modes: perlin (smooth) noise, sample and hold, binary
+- Refactor Flanger to use DelayLine instead of Delay
+- Add (optional) anti-aliasing FIR filter to Distortion
+- Add new Distortion algorithms: Tube, diode, rectifier
 
 10-13-25:
 - Split DSP codebase into modular files
-- "Implemented" FFT via kissfft lib
-- Implemented Spectral_Effect base class
-- Implemented Spectral Gate effect
-- Rescaled Distortion drive ranges
-- New Distortion algorithm: Saturate (probably the last)
+- Implement FFT utility class using kissfft library
+- Implement Spectral_Effect base class
+- Implement SpectralGate effect
+- Rescale Distortion drive ranges
+- Add new Distortion algorithm: Saturate
+
+10-20-25
+- Implement Compressor, Granulator, Freezer effects
+- Implement STFT utility class based on Spectral_Effect + pertinent refactors
+- Expand envelope / window functionality, now selectable
+- Move lerp function to global scope
+- Fix if-else logic for setParam()
+- LPF is now specialized OnePole class with new setCoeff() method
 
 */
 
@@ -42,15 +50,6 @@ using namespace std;
 void setTestParams(AudioChain& chain) { // Set DSP testing parameters
     chain.getEffect("Gain")->setBypass(true);
     chain.getEffect("Gain")->setParam("Gain", dbAmp(3.0f));
-
-    chain.getEffect("LPF")->setBypass(true);
-    chain.getEffect("LPF")->setParam("Mix", 1.0f);
-    chain.getEffect("LPF")->setParam("Cutoff", 300.0f);
-
-    chain.getEffect("APF")->setBypass(true);
-    chain.getEffect("APF")->setParam("Mix", 1.0f);
-    chain.getEffect("APF")->setParam("Cutoff", 1000.0f);
-    chain.getEffect("APF")->setParam("Q", 0.5f);
 
     chain.getEffect("FIR")->setBypass(true);
     chain.getEffect("FIR")->setParam("Mix", 1.0f);
@@ -95,13 +94,41 @@ void setTestParams(AudioChain& chain) { // Set DSP testing parameters
     chain.getEffect("Reverb")->setParam("Mod Depth", 0.5f);
     chain.getEffect("Reverb")->setParam("Damping", 0.0005f);
 
-    chain.getEffect("Spectral Gate")->setBypass(false);
+    chain.getEffect("Spectral Gate")->setBypass(true);
     chain.getEffect("Spectral Gate")->setParam("Mix", 1.0f);
     chain.getEffect("Spectral Gate")->setParam("Threshold", -10.0f);
     chain.getEffect("Spectral Gate")->setParam("FFT Size", 1024);
+
+    chain.getEffect("Compressor")->setBypass(true);
+    chain.getEffect("Compressor")->setParam("Mix", 1.0f);
+    chain.getEffect("Compressor")->setParam("Threshold", -200.0f);
+    chain.getEffect("Compressor")->setParam("Ratio", 20.0f);
+    chain.getEffect("Compressor")->setParam("Knee", 10.0f);
+    chain.getEffect("Compressor")->setParam("Attack", 50.0f);
+    chain.getEffect("Compressor")->setParam("Release", 500.0f);
+    chain.getEffect("Compressor")->setParam("Makeup", 0.0f);
+    chain.getEffect("Compressor")->setParam("Auto Makeup", true);
+
+    chain.getEffect("Granulator")->setBypass(true);
+    chain.getEffect("Granulator")->setParam("Mix", 1.0f);
+    chain.getEffect("Granulator")->setParam("Position", 0.5f);
+    chain.getEffect("Granulator")->setParam("Position Random", 1.0f);
+    chain.getEffect("Granulator")->setParam("Time", 50.0f);
+    chain.getEffect("Granulator")->setParam("Time Random", 0.5f);
+    chain.getEffect("Granulator")->setParam("Length", 500.0f);
+    chain.getEffect("Granulator")->setParam("Length Random", 0.5f);
+    chain.getEffect("Granulator")->setParam("Reverse Chance", 0.0f);
+    chain.getEffect("Granulator")->setParam("Envelope Type", PERC);
+
+    chain.getEffect("Freezer")->setBypass(false);
+    chain.getEffect("Freezer")->setParam("Mix", 1.0f);
+    chain.getEffect("Freezer")->setParam("Rate", 2.0f);
+    chain.getEffect("Freezer")->setParam("Spectral Mode", true);
+    chain.getEffect("Freezer")->setParam("FFT Size", 1024);
 };
 
-int main() {
+/* TESTBENCH */
+int main() { 
     SF_INFO sfInfo;
     memset(&sfInfo, 0.0f, sizeof(sfInfo));
 

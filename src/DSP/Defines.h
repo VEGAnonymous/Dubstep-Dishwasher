@@ -13,8 +13,9 @@
 
 /* ENUMS */
 
+enum envelopeType { HANN, HAMMING, SINE, TRI, PERC, SMOOTH_RECT };
+enum wavetable { SINE_TABLE, TRI_TABLE, SAW_TABLE, SQUARE_TABLE };
 enum randomMode { PERLIN, SAMPLE_HOLD, BINARY };
 enum distortionMode { TUBE, SOFT_CLIP, HARD_CLIP, DIODE, BITCRUSH, RECTIFY, SATURATE };
-enum wavetable { SINE_TABLE, TRI_TABLE, SAW_TABLE, SQUARE_TABLE };
 
 #endif // DEFINES

@@ -11,15 +11,17 @@
 
 class Wavetable : public Generator {
     private:
-        float freq;
-        const float* table; // Pointer to wavetable array (eventually stored in PROGMEM)
-        uint32_t phaseAccumulator, phaseIncrement;
+        float freq = 0.0f;
+        const float* table = nullptr; // Pointer to wavetable array (eventually stored in PROGMEM)
+        uint32_t phaseAccumulator = 0ULL;
+        int32_t phaseIncrement = 0;
 
-        static constexpr uint8_t INDEX_SHIFT = 32 - 9; // 9 = log2(512)
+        static constexpr uint8_t TABLE_BITS = 9; // 512
+        static constexpr uint8_t INDEX_SHIFT = 32 - TABLE_BITS;
     public:
         Wavetable(float freq, wavetable table) : phaseAccumulator(0) { setFreq(freq); setTable(table); }
 
-        void setFreq(float freq) { this->freq = freq; phaseIncrement = freq * (pow(2, 32) / SAMPLE_RATE); }
+        void setFreq(float freq) { this->freq = freq; phaseIncrement = freq * ((1ULL << 32) / SAMPLE_RATE); }
         void setTable(wavetable table) {
             switch (table) {
                 case SINE_TABLE: this->table = SineTable; break;
@@ -31,7 +33,7 @@ class Wavetable : public Generator {
         };
 
         float next() override { // Use fixed-point phase accumulator to index wavetable
-            uint16_t index = phaseAccumulator >> INDEX_SHIFT; // Index with 9 MSBs (512)
+            uint16_t index = phaseAccumulator >> INDEX_SHIFT; // Index with MSBs
             phaseAccumulator += phaseIncrement;
             return table[index];
         }
@@ -42,8 +44,6 @@ class Random : public Generator {
         float freq, phase = 0.0f, currentVal = 0.0f, nextVal = 0.0f;
         randomMode mode;
         float (Random::*algorithm)() = nullptr;
-
-        float uniform() { return ((float)rand() / RAND_MAX) * 2.0f - 1.0f; } // Random float between [-1, 1]
 
         // Noise algorithms
         float perlin() {
