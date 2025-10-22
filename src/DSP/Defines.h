@@ -4,8 +4,7 @@
 /* DEFINES */
 
 #define SAMPLE_RATE 44100
-#define BUFFER_SIZE 256
-#define CONTROL_RATE 64 // # of samples between control (e.g., LFO) updates; unused at the moment
+#define BUFFER_SIZE AUDIO_BLOCK_SAMPLES
 
 #ifndef M_PI
     #define M_PI 3.14159265358979323846

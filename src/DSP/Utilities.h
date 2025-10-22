@@ -2,8 +2,8 @@
 #define UTILITIES
 
 #include "Defines.h"
-#include <kissfft/kiss_fft.h>
-#include <kissfft/kiss_fftr.h>
+#include <kiss_fft.h>
+#include <kiss_fftr.h>
 
 #include <algorithm>
 #include <cmath>
@@ -64,7 +64,7 @@ void makeEnvelope(vector<float>& env, size_t N, envelopeType type) {
                 else if (n >= (N - edge)) { return 0.5f * (1.0f - cosf(static_cast<float>(M_PI) * (N - n) / edge)); } // Fade out
                 else { return 1.0f; }
             }; break;
-        default: func = [](size_t n){ return 1.0f; };
+        default: func = [](size_t /*n*/){ return 1.0f; };
     }
 
     env.resize(N);
@@ -96,11 +96,11 @@ inline void overlapAdd(vector<float>& target, const vector<float>& frame, const 
 class DelayLine { // Implements z^-N
     private:
         float delaySamples; 
-        int writeIndex;
+        size_t writeIndex;
         vector<float> buffer;
 
     public:
-        DelayLine(float delayTime, float maxDelayTime) : writeIndex(0) {
+        DelayLine(float delayTime, float maxDelayTime) : writeIndex((size_t)0) {
             int maxDelaySamples = (int)((maxDelayTime * SAMPLE_RATE) / 1000.0f);
             buffer.assign(maxDelaySamples + 1, 0.0f);
             setDelayTime(delayTime);
@@ -120,7 +120,7 @@ class DelayLine { // Implements z^-N
 
         inline void write(float in) { 
             buffer[writeIndex] = in;
-            if (++writeIndex >= buffer.size()) writeIndex = 0;
+            if (++writeIndex >= (size_t)buffer.size()) writeIndex = 0;
         }
 };
 
@@ -131,7 +131,7 @@ class FFT {
         vector<kiss_fft_cpx> fftOut; // Complex output buffer
 
         void allocateFFT() {
-            if(cfgF) kiss_fft_free(cfgF); if(cfgI) kiss_fft_free(cfgI);
+            if(cfgF) { kiss_fft_free(cfgF); } if(cfgI) { kiss_fft_free(cfgI); }
             cfgF = kiss_fftr_alloc(static_cast<int>(fftSize), 0, nullptr, nullptr); // Forward
             cfgI = kiss_fftr_alloc(static_cast<int>(fftSize), 1, nullptr, nullptr); // Inverse
             
@@ -230,7 +230,7 @@ class STFT {
             ++hopCounter;
             
             /* GENERATE FFT FRAMES */
-            if (hopCounter >= hopSize) { // Every hopN samples
+            if (hopCounter >= hopN) { // Every hopN samples
                 hopCounter = 0;
                 
                 // Extract full FFT frame from circular buffer

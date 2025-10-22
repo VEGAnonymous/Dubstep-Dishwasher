@@ -1,34 +1,5 @@
-/* CHANGELOG
-
-10-9-25:
-- Initial commit
-
-10-10-25:
-- Implement Chorus, FIR_Filter effects
-- Implement Random generator with three modes: perlin (smooth) noise, sample and hold, binary
-- Refactor Flanger to use DelayLine instead of Delay
-- Add (optional) anti-aliasing FIR filter to Distortion
-- Add new Distortion algorithms: Tube, diode, rectifier
-
-10-13-25:
-- Split DSP codebase into modular files
-- Implement FFT utility class using kissfft library
-- Implement Spectral_Effect base class
-- Implement SpectralGate effect
-- Rescale Distortion drive ranges
-- Add new Distortion algorithm: Saturate
-
-10-20-25
-- Implement Compressor, Granulator, Freezer effects
-- Implement STFT utility class based on Spectral_Effect + pertinent refactors
-- Expand envelope / window functionality, now selectable
-- Move lerp function to global scope
-- Fix if-else logic for setParam()
-- LPF is now specialized OnePole class with new setCoeff() method
-
-*/
-
-/* TESTBENCH */
+#include <Arduino.h>
+#include <Audio.h>
 
 #include "Defines.h"
 #include "Utilities.h"
@@ -39,13 +10,14 @@
 #include "Control.h"
 #include "LUTs.h"
 
-// For testing; irrelevant to embedded implementation
-#include <iostream>
-#include <cstring>
-#include <chrono>
-#include <sndfile.h>
-
 using namespace std;
+
+AudioInputI2S i2sInput; // ADC input
+AudioOutputI2S i2sOutput; // DAC output
+AudioConnection* patch1 = nullptr; AudioConnection* patch2 = nullptr; // Connections
+
+AudioChain chain; // FX chain
+AudioChainStream *stream = nullptr; // DSP stream
 
 void setTestParams(AudioChain& chain) { // Set DSP testing parameters
     chain.getEffect("Gain")->setBypass(true);
@@ -92,11 +64,11 @@ void setTestParams(AudioChain& chain) { // Set DSP testing parameters
     chain.getEffect("Reverb")->setParam("Decay", 5000.0f);
     chain.getEffect("Reverb")->setParam("Mod Rate", 0.2f);
     chain.getEffect("Reverb")->setParam("Mod Depth", 0.5f);
-    chain.getEffect("Reverb")->setParam("Damping", 0.0005f);
 
     chain.getEffect("Spectral Gate")->setBypass(true);
     chain.getEffect("Spectral Gate")->setParam("Mix", 1.0f);
     chain.getEffect("Spectral Gate")->setParam("Threshold", -10.0f);
+    chain.getEffect("Spectral Gate")->setParam("Tilt", 1.0f);
     chain.getEffect("Spectral Gate")->setParam("FFT Size", 1024);
 
     chain.getEffect("Compressor")->setBypass(true);
@@ -117,47 +89,33 @@ void setTestParams(AudioChain& chain) { // Set DSP testing parameters
     chain.getEffect("Granulator")->setParam("Time Random", 0.5f);
     chain.getEffect("Granulator")->setParam("Length", 500.0f);
     chain.getEffect("Granulator")->setParam("Length Random", 0.5f);
+    chain.getEffect("Granulator")->setParam("Level", 0.8f);
+    chain.getEffect("Granulator")->setParam("Level Random", 1.0f);
     chain.getEffect("Granulator")->setParam("Reverse Chance", 0.0f);
     chain.getEffect("Granulator")->setParam("Envelope Type", PERC);
 
     chain.getEffect("Freezer")->setBypass(false);
     chain.getEffect("Freezer")->setParam("Mix", 1.0f);
-    chain.getEffect("Freezer")->setParam("Rate", 2.0f);
-    chain.getEffect("Freezer")->setParam("Spectral Mode", true);
+    chain.getEffect("Freezer")->setParam("Rate", -2.0f);
+    chain.getEffect("Freezer")->setParam("Spectral Mode", false);
     chain.getEffect("Freezer")->setParam("FFT Size", 1024);
+    chain.getEffect("Freezer")->setParam("Hop Size", 4);
 };
 
-/* TESTBENCH */
-int main() { 
-    SF_INFO sfInfo;
-    memset(&sfInfo, 0.0f, sizeof(sfInfo));
+void setup() {
+    /* Allocate memory */
+    AudioMemory(12);
 
-    // Open audio in/out files
-    SNDFILE* inFile = sf_open("test.wav", SFM_READ, &sfInfo);
-    SNDFILE* outFile = sf_open("result.wav", SFM_WRITE, &sfInfo);
-    printf("Input: %d Hz, %d channels\n", sfInfo.samplerate, sfInfo.channels);
+    /* Setup DSP stream connections */
+    // Input -> DSP -> Output
+    stream = new AudioChainStream(chain);
+    patch1 = new AudioConnection(i2sInput, 0, *stream, 0);
+    patch2 = new AudioConnection(*stream, 0, i2sOutput, 0);
 
-    // Init effects chain
-    AudioChain chain;
-    float input[BUFFER_SIZE], output[BUFFER_SIZE];
-    sf_count_t readCount;
+    setTestParams(chain); // Set DSP params
 
-    setTestParams(chain);
-
-    auto start = chrono::high_resolution_clock::now();
-    // Process buffers sequentially and write to output
-    while ((readCount = sf_read_float(inFile, input, BUFFER_SIZE)) > 0) {
-        if (readCount < BUFFER_SIZE) { memset(input + readCount, 0, (BUFFER_SIZE - readCount) * sizeof(float)); } // Zero-pad ending
-        chain.processChain(input, output, BUFFER_SIZE);
-        // cout << *input << endl;
-        // cout << *output << endl;
-        sf_write_float(outFile, output, readCount);
-    }
-
-    auto end = chrono::high_resolution_clock::now();
-    chrono::duration<double> elapsed = end - start;
-
-    sf_close(inFile); sf_close(outFile);
-    printf("Successfully processed chain in %fs\n", elapsed.count());
-    return 0;
+    /* Other stuff */
+    delay(500);
 }
+
+void loop() { }

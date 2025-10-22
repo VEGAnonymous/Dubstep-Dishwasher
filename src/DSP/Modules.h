@@ -16,7 +16,7 @@ class Effect {
         void setBypass(bool state) { bypass = state; }
         bool isBypassed() const { return bypass; }
 
-        inline virtual void setParam(const string& name, float value) {} // Allows setting subclass parameters from an Effect pointer
+        inline virtual void setParam(const string& name, float value) = 0; // Allows setting subclass parameters from an Effect pointer
 
         virtual void process(const float* in, float* out, size_t n) = 0; // Process sample block, implemented per effect
 };

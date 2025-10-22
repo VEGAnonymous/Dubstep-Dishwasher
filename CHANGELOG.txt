@@ -1,0 +1,35 @@
+--- DSP ---
+
+10-9-25:
+- Initial commit
+
+10-10-25:
+- Implement Chorus, FIR_Filter effects
+- Implement Random generator with three modes: perlin (smooth) noise, sample and hold, binary
+- Refactor Flanger to use DelayLine instead of Delay
+- Add (optional) anti-aliasing FIR filter to Distortion
+- Add new Distortion algorithms: Tube, diode, rectifier
+
+10-13-25:
+- Split DSP codebase into modular files
+- Implement FFT utility class using kissfft library
+- Implement Spectral_Effect base class
+- Implement SpectralGate effect
+- Rescale Distortion drive ranges
+- Add new Distortion algorithm: Saturate
+
+10-20-25
+- Implement Compressor, Granulator, Freezer effects
+- Implement STFT utility class based on Spectral_Effect + pertinent refactors
+- Expand envelope / window functionality, now selectable
+- Move lerp function to global scope
+- Fix if-else logic for setParam()
+- LPF is now specialized OnePole class with new setCoeff() method
+
+10-21-25
+- Implement AudioChainStream control class and DSP stream connections with Teensy Audio library (UNTESTED)
+- Add gate tilt parameter to SpectralGate
+- Fix Granulator gain scaling with new level and levelRand parameters
+- Fix Freezer bug where output was silent for time-domain rate >= 1
+- Add Limiter to effect chain
+- Fix a bunch of pedantic compiler warnings

@@ -116,7 +116,7 @@ class Distortion : public Effect {
             const float* in_ptr = in;
             float* out_ptr = out;
 
-            float distortSig, wetSig;
+            float wetSig;
             for (size_t i = 0; i < n; ++i) {
                 wetSig = (this->*algorithm)(*in_ptr, drive) * dbAmp(-0.3f); // Apply non-linearity
                 if (enableAAF) antiAlias.process(&wetSig, &wetSig, 1); // Optional AAF (~0.8s processing time)
@@ -266,8 +266,8 @@ class Chorus : public Effect {
         vector<voice> voices;
         DelayLine delayLine;
     public:
-        Chorus(float mix, float rate, float depth, float delayTime, float feedback, uint8_t voiceCount) : delayLine(delayTime, 50.0f * SAMPLE_RATE / 1000.0f), 
-        voiceCount(voiceCount) {
+        Chorus(float mix, float rate, float depth, float delayTime, float feedback, uint8_t voiceCount) : voiceCount(voiceCount), 
+        delayLine(delayTime, 50.0f * SAMPLE_RATE / 1000.0f) {
             for (size_t i = 0; i < voiceCount; ++i) voices.push_back({1.0f / (float)voiceCount, depth, delayTime, Random(rate, PERLIN)});
             setMix(mix); setRate(rate); setDepth(depth); setDelayTime(delayTime); setFeedback(feedback);
         }
@@ -353,7 +353,7 @@ class Reverb : public Effect {
             // Delays
             for (float delay : delays) { delayLines.push_back(DelayLine(delay, delay + 150.0f)); }
 
-            setMix(mix); setPredelay(predelayTime); setDecay(decayTime); setDamping(damping);
+            setMix(mix); setPredelay(predelayTime); setDecay(decayTime); setModRate(modRate); setModDepth(modDepth); setDamping(damping);
         }
 
         void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); }
@@ -478,8 +478,8 @@ class Compressor : public Effect {
         void setThreshold(float threshold) { this->threshold = clamp(threshold, -200.0f, 0.0f); } // dB
         void setRatio(float ratio) { this->ratio = clamp(ratio, 1.0f, 100.0f); }
         void setKnee(float knee) { this->knee = clamp(knee, 0.0f, 40.0f); }
-        void setAttack(float attack) { attackCoeff = exp(-2.2f / (attack * SAMPLE_RATE / 1000.0f)); }
-        void setRelease(float release) { releaseCoeff = exp(-2.2f / (release * SAMPLE_RATE / 1000.0f)); }
+        void setAttack(float attack) { attackCoeff = exp(-2.2f / (attack * SAMPLE_RATE / 1000.0f)); } // ms
+        void setRelease(float release) { releaseCoeff = exp(-2.2f / (release * SAMPLE_RATE / 1000.0f)); } // ms
         void setMakeup(float makeupGain) { this->makeupGain = makeupGain; } // dB
         void setAutoMakeup(bool autoMakeup) { 
             this->autoMakeup = autoMakeup;
@@ -523,10 +523,14 @@ class Compressor : public Effect {
                 }
                 float makeupDB = autoMakeup ? autoMakeupGain : makeupGain;
                 float g = dbAmp(clamp(gainSmoothed + makeupDB, -60.0f, 20.0f));
-
-                // Mix
                 float y_i = x_L * g;
-                out[i] = lerp(x_L, y_i, mix);
+
+                // Hard clip just in case (e.g., limiter use case)
+                if (y_i > 1.0f) { y_i = 1.0f; }
+                else if (y_i < -1.0f) { y_i = -1.0f; }
+                y_i *= dbAmp(-0.3f);
+
+                out[i] = lerp(x_L, y_i, mix); // Mix
             }
         }
 };
@@ -538,8 +542,8 @@ class Granulator : public Effect {
         const size_t bufSize = 3 * SAMPLE_RATE; // 3 seconds
         const int maxGrains = 64;
         
-        float mix, position, time, length, reverseChance;
-        float positionRand, timeRand, lengthRand;
+        float mix, position, time, length, level, reverseChance;
+        float positionRand, timeRand, lengthRand, levelRand;
         envelopeType envType; vector<float> envelope;
         
         vector<float> inBuf; size_t writePos = 0;
@@ -550,6 +554,7 @@ class Granulator : public Effect {
             int startPos;
             int playhead;
             int length;
+            float level;
             bool reverse;
         };
         
@@ -571,6 +576,8 @@ class Granulator : public Effect {
             
             float grainLength = clamp(length * (1.0f + (uniform() * lengthRand)), 5.0f, 1000.0f);
             int grainLengthSamples = min((int)(grainLength * SAMPLE_RATE / 1000.0f), (int)bufSize - 1);
+
+            float grainLevel = clamp(level + (uniform() * 0.25f * levelRand), 0.0f, 1.0f) * 0.5f;
             
             bool reversed = ((uniform() + 1.0f) / 2.0f) <= reverseChance;
             
@@ -579,6 +586,7 @@ class Granulator : public Effect {
             freeGrain->startPos = grainStartPos;
             freeGrain->playhead = 0;
             freeGrain->length = grainLengthSamples;
+            freeGrain->level = grainLevel;
             freeGrain->reverse = reversed;
         }
 
@@ -597,14 +605,15 @@ class Granulator : public Effect {
             ++grain.playhead;
             if (grain.playhead >= grain.length) grain.active = false; // Free if done
             
-            return inBuf[readPos] * envelopeValue;
+            return inBuf[readPos] * envelopeValue * grain.level;
         }
 
     public:
         Granulator(float mix, float position, float positionRand, float time, float timeRand, 
-            float length, float lengthRand, float reverseChance, envelopeType envType) {
+            float length, float lengthRand, float level, float levelRand, float reverseChance, envelopeType envType) {
             setMix(mix); setPosition(position); setPositionRand(positionRand); setTime(time); setTimeRand(timeRand);
-            setLength(length); setLengthRand(lengthRand); setReverseChance(reverseChance); setEnvelopeType(envType);
+            setLength(length); setLengthRand(lengthRand); setLevel(level); setLevelRand(levelRand);
+            setReverseChance(reverseChance); setEnvelopeType(envType);
             grains.resize(maxGrains);
             inBuf.resize(bufSize, 0.0f);
         }
@@ -621,6 +630,8 @@ class Granulator : public Effect {
         }
         void setLengthRand(float lengthRand) { this->lengthRand = clamp(lengthRand, 0.0f, 1.0f); }
         void setReverseChance(float reverseChance) { this->reverseChance = clamp(reverseChance, 0.0f, 1.0f); }
+        void setLevel(float level) { this->level = clamp(level, 0.0f, 1.0f); }
+        void setLevelRand(float levelRand) { this->levelRand = clamp(levelRand, 0.0f, 1.0f); }
         void setEnvelopeType(envelopeType envType) { 
             this->envType = envType; 
             int lengthSamples = (int)(this->length * SAMPLE_RATE / 1000.0f);
@@ -634,6 +645,8 @@ class Granulator : public Effect {
             else if (name == "Time Random") { setTimeRand(value); }
             else if (name == "Length") { setLength(value); }
             else if (name == "Length Random") { setLengthRand(value); }
+            else if (name == "Level") { setLevel(value); }
+            else if (name == "Level Random") { setLevelRand(value); }
             else if (name == "Reverse Chance") { setReverseChance(value); }
             else if (name == "Envelope Type") { setEnvelopeType((envelopeType)value); }
         }
@@ -652,7 +665,7 @@ class Granulator : public Effect {
             // Process active grains and accumulate output
             float wetSig = 0.0f;
             for (auto& grain : grains) if (grain.active) { wetSig += processGrain(grain); }
-            out[i] = ((1.0f - mix) * in[i]) + (mix * wetSig); // Mix
+            out[i] = lerp(in[i], wetSig, mix); // Mix
 
             ++writePos;
             if (writePos >= bufSize) writePos = 0;
@@ -661,148 +674,155 @@ class Granulator : public Effect {
 };
 
 class Freezer : public Effect {
-private:
-    const size_t bufSize = 3 * SAMPLE_RATE; // 3 seconds
-    const float smooth = 0.5f;
-    
-    float mix, rate; bool spectralMode;
-    float loopStart, loopEnd;
-    
-    vector<float> inBuf; size_t writePos = 0; float readPos = 0.0f;
-    
-    vector<float> crossfadeEnv; // Crossfade envelope
-    
-    // Spectral resythesis
-    STFT stft;
-    vector<float> spectBuf, spectFrame;
-    size_t spectPos = 0, spectHopCounter = 0;
-
-public:
-    Freezer(float mix, float rate, bool spectralMode, size_t fftSize, size_t hopFactor = 4, 
-        float loopStart = 0.0f, float loopEnd = 1.0f) : stft(fftSize, 4) {
-        setMix(mix); setRate(rate); setSpectralMode(spectralMode); 
-        setFFTSize(fftSize); setHopSize(hopFactor); setLoopRegion(loopStart, loopEnd); 
-        inBuf.resize(bufSize, 0.0f);
-
-        // Create crossfade envelope
-        float crossfadeFrames = 1.0f + (smooth * smooth * 999.0f);
-        size_t envSize = (size_t)(crossfadeFrames * 2.0f);
-        makeEnvelope(crossfadeEnv, envSize, HANN);
-    }
-    
-    void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); }
-    void setRate(float rate) { this->rate = clamp(rate, -4.0f, 4.0f); }
-    void setSpectralMode(bool spectralMode) { this->spectralMode = spectralMode; }
-    void setFFTSize(size_t N) { 
-        stft.setFFTSize(N); 
-        spectBuf.assign(N, 0.0f); spectFrame.resize(N);
-        spectPos = 0; spectHopCounter = 0;
-    }
-    void setHopSize(size_t hopFactor) { stft.setHopSize(max(hopFactor, (size_t)2)); }
-    void setLoopRegion(float start, float end) {
-        loopStart = clamp(start, 0.0f, 1.0f);
-        loopEnd = clamp(end, 0.0f, 1.0f);
-        if (loopStart >= loopEnd) { // start < end
-            loopEnd = loopStart + 0.01f;
-            if (loopEnd > 1.0f) { loopEnd = 1.0f; loopStart = 0.99f; }
-        }
-        readPos = loopStart * (float)bufSize;
-    }
-    inline void setParam(const string& name, float value) override {
-        if (name == "Mix") { setMix(value); }
-        else if (name == "Rate") { setRate(value); }
-        else if (name == "Spectral Mode") { setSpectralMode(value > 0.5f); }
-        else if (name == "FFT Size") { setFFTSize((size_t)value); }
-        else if (name == "Hop Size") { setHopSize((size_t)value); }
-        else if (name == "Loop Start") { setLoopRegion(value, loopEnd); }
-        else if (name == "Loop End") { setLoopRegion(loopStart, value); }
-    }
-    
-    void process(const float* in, float* out, size_t n) override {
-        const size_t fftN = stft.getFFTSize(), hopN = stft.getHopSize();
-        const auto& window = stft.getWindow();
-
-        // Compute loop boundaries
-        float loopStartSamples = loopStart * (float)bufSize;
-        float loopEndSamples = loopEnd * (float)bufSize;
-        float loopLength = loopEndSamples - loopStartSamples;
+    // HACK: Works, except for negative rates for time-domain mode which produce silence
+    private:
+        const size_t bufSize = 3 * SAMPLE_RATE; // 3 seconds
+        const float smooth = 0.5f;
         
-        for (size_t i = 0; i < n; ++i) {
-            inBuf[writePos] = in[i]; // Write input to circular buffer
-            ++writePos; if (writePos >= bufSize) writePos = 0;
-            
-            float wetSig = 0.0f;
-            if (spectralMode) { // Spectral resynthesis mode
-
-                stft.forward(in[i]); // Forward FFT
-
-                // Read from OLA buffer
-                wetSig = spectBuf[spectPos];
-                spectBuf[spectPos] = 0.0f;
-                ++spectHopCounter;
-
-                /* SYNTHESIZE FFT FRAMES */
-                if (spectHopCounter >= hopN) { // Every hopN samples
-                    spectHopCounter = 0;
-                    // Map readPos to FFT frame index
-                    float framePos = fmod(readPos / (float)hopN, (float)stft.getSpectSize());
-                    if (framePos < 0) framePos += stft.getSpectSize();
-                    // Interpolate spectral frame
-                    STFT::FFTFrame interpFrame = stft.interpolateFrame(framePos);
-                    // IFFT
-                    stft.getFFT().inverse(interpFrame.mag.data(), interpFrame.phase.data(), spectFrame.data());
-                    // Window and OLA
-                    overlapAdd(spectBuf, spectFrame, window, spectPos);
-                }
-                
-                ++spectPos; if (spectPos >= fftN) spectPos = 0;
-                
-            } else { wetSig = lerp(inBuf, readPos, bufSize); } // Time-domain mode
-
-            // Advance and wrap read pos
-            readPos += rate;
-            if (readPos < loopStartSamples) { readPos += loopLength; }
-            else if (readPos >= loopEndSamples) { readPos -= loopLength; }
-            
-            float loopPos = (readPos - loopStartSamples) / loopLength; // Map to loop pos
-
-            // Calculate and apply crossfade envelope
-            float crossfade = 1.0f;
-            if (rate != 0.0f) {
-                float fadeSize = (float)crossfadeEnv.size() / (2.0f * loopLength);
-                if (loopPos < fadeSize) { // Fade in
-                    float envIndex = (loopPos / fadeSize) * (crossfadeEnv.size() / 2.0f);
-                    crossfade = lerp(crossfadeEnv, envIndex, crossfadeEnv.size());
-                } else if (loopPos > (1.0f - fadeSize)) { // Fade out
-                    float t = (loopPos - (1.0f - fadeSize)) / fadeSize;
-                    float envIndex = (crossfadeEnv.size() / 2.0f) + (t * (crossfadeEnv.size() / 2.0f));
-                    crossfade = lerp(crossfadeEnv, envIndex, crossfadeEnv.size());
-                }
-            } wetSig *= crossfade;
+        float mix, rate; bool spectralMode;
+        float loopStart, loopEnd;
         
-            out[i] = lerp(in[i], wetSig, mix); // Mix
+        vector<float> inBuf; size_t writePos = 0; float readPos = 0.0f;
+        
+        vector<float> crossfadeEnv; // Crossfade envelope
+        
+        // Spectral resythesis
+        STFT stft;
+        vector<float> spectBuf, spectFrame;
+        size_t spectPos = 0, spectHopCounter = 0;
+
+    public:
+        Freezer(float mix, float rate, bool spectralMode, size_t fftSize, size_t hopFactor = 4, 
+            float loopStart = 0.0f, float loopEnd = 1.0f) : stft(fftSize, 4) {
+            setMix(mix); setRate(rate); setSpectralMode(spectralMode); 
+            setFFTSize(fftSize); setHopSize(hopFactor); setLoopRegion(loopStart, loopEnd); 
+            inBuf.resize(bufSize, 0.0f);
+
+            // Create crossfade envelope
+            float crossfadeFrames = 1.0f + (smooth * smooth * 999.0f);
+            size_t envSize = (size_t)(crossfadeFrames * 2.0f);
+            makeEnvelope(crossfadeEnv, envSize, HANN);
         }
-    }
+        
+        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); }
+        void setRate(float rate) { this->rate = clamp(rate, -4.0f, 4.0f); }
+        void setSpectralMode(bool spectralMode) { this->spectralMode = spectralMode; }
+        void setFFTSize(size_t N) { 
+            stft.setFFTSize(N); 
+            spectBuf.assign(N, 0.0f); spectFrame.resize(N);
+            spectPos = 0; spectHopCounter = 0;
+        }
+        void setHopSize(size_t hopFactor) { stft.setHopSize(max(hopFactor, (size_t)2)); }
+        void setLoopRegion(float start, float end) {
+            loopStart = clamp(start, 0.0f, 1.0f);
+            loopEnd = clamp(end, 0.0f, 1.0f);
+            if (loopStart >= loopEnd) { // start < end
+                loopEnd = loopStart + 0.01f;
+                if (loopEnd > 1.0f) { loopEnd = 1.0f; loopStart = 0.99f; }
+            }
+            readPos = loopStart * (float)bufSize;
+        }
+        inline void setParam(const string& name, float value) override {
+            if (name == "Mix") { setMix(value); }
+            else if (name == "Rate") { setRate(value); }
+            else if (name == "Spectral Mode") { setSpectralMode(value > 0.5f); }
+            else if (name == "FFT Size") { setFFTSize((size_t)value); }
+            else if (name == "Hop Size") { setHopSize((size_t)value); }
+            else if (name == "Loop Start") { setLoopRegion(value, loopEnd); }
+            else if (name == "Loop End") { setLoopRegion(loopStart, value); }
+        }
+        
+        void process(const float* in, float* out, size_t n) override {
+            const size_t fftN = stft.getFFTSize(), hopN = stft.getHopSize();
+            const auto& window = stft.getWindow();
+
+            // Compute loop boundaries
+            float loopStartSamples = loopStart * (float)bufSize;
+            float loopEndSamples = loopEnd * (float)bufSize;
+            float loopLength = loopEndSamples - loopStartSamples;
+            
+            for (size_t i = 0; i < n; ++i) {
+                inBuf[writePos] = in[i]; // Write input to circular buffer
+                ++writePos; if (writePos >= bufSize) writePos = 0;
+                
+                float wetSig = 0.0f;
+                if (spectralMode) { // Spectral resynthesis mode
+
+                    stft.forward(in[i]); // Forward FFT
+
+                    // Read from OLA buffer
+                    wetSig = spectBuf[spectPos];
+                    spectBuf[spectPos] = 0.0f;
+                    ++spectHopCounter;
+
+                    /* SYNTHESIZE FFT FRAMES */
+                    if (spectHopCounter >= hopN) { // Every hopN samples
+                        spectHopCounter = 0;
+                        // Map readPos to FFT frame index
+                        float framePos = fmod(readPos / (float)hopN, (float)stft.getSpectSize());
+                        if (framePos < 0) framePos += stft.getSpectSize();
+                        // Interpolate spectral frame
+                        STFT::FFTFrame interpFrame = stft.interpolateFrame(framePos);
+                        // IFFT
+                        stft.getFFT().inverse(interpFrame.mag.data(), interpFrame.phase.data(), spectFrame.data());
+                        // Window and OLA
+                        overlapAdd(spectBuf, spectFrame, window, spectPos);
+                    }
+                    
+                    ++spectPos; if (spectPos >= fftN) spectPos = 0;
+                }
+
+                // Advance and wrap read pos
+                readPos += rate;
+                if (readPos < loopStartSamples) { readPos += loopLength; }
+                else if (readPos >= loopEndSamples) { readPos -= loopLength; }
+                float loopPos = (readPos - loopStartSamples) / loopLength; // Map to loop pos
+
+                if (!spectralMode) wetSig = lerp(inBuf, readPos, bufSize); // Time domain mode
+
+                // Calculate and apply crossfade envelope
+                float crossfade = 1.0f;
+                if (rate != 0.0f) {
+                    float fadeSize = (float)crossfadeEnv.size() / (2.0f * loopLength);
+                    if (loopPos < fadeSize) { // Fade in
+                        float envIndex = (loopPos / fadeSize) * (crossfadeEnv.size() / 2.0f);
+                        crossfade = lerp(crossfadeEnv, envIndex, crossfadeEnv.size());
+                    } else if (loopPos > (1.0f - fadeSize)) { // Fade out
+                        float t = (loopPos - (1.0f - fadeSize)) / fadeSize;
+                        float envIndex = (crossfadeEnv.size() / 2.0f) + (t * (crossfadeEnv.size() / 2.0f));
+                        crossfade = lerp(crossfadeEnv, envIndex, crossfadeEnv.size());
+                    }
+                } wetSig *= crossfade;
+            
+                out[i] = lerp(in[i], wetSig, mix); // Mix
+            }
+        }
 };
 
 /* SPECTRAL */
 
 class SpectralGate : public Spectral_Effect {
     private:
-        float threshold;
+        float threshold, tilt;
     public:
-        SpectralGate(float mix, float thresholdDB, int fftSize) : Spectral_Effect(mix, fftSize)
-            { setThreshold(thresholdDB); }
+        SpectralGate(float mix, float thresholdDB, float tilt, int fftSize) : Spectral_Effect(mix, fftSize)
+            { setThreshold(thresholdDB); setTilt(tilt); }
         
         void setThreshold(float thresholdDB) { threshold = dbAmp(thresholdDB); }
+        void setTilt(float tilt) { this->tilt = clamp(tilt, -1.0f, 1.0f) * 2.0f; } // + gates lows more, - gates highs more
         inline void setParam(const string& name, float value) override {
             if (name == "Threshold") { setThreshold(value); }
+            else if (name == "Tilt") { setTilt(value); }
             else { Spectral_Effect::setParam(name, value); }
         }
     protected:
-        void processSpectrum(float* mag, float* phs, size_t numBins) override {
+        void processSpectrum(float* mag, float* /*phs*/, size_t numBins) override {
+            const float binTilt = tilt / (float)(numBins - 1);
             for (size_t k = 0; k < numBins; ++k) {
-                if (mag[k] < threshold) mag[k] = 0.0f; 
+                float weight = 1.0f + ((k * binTilt) - (tilt * 0.5f));
+                if (weight < 0.0f) weight = 0.0f;
+
+                if ((mag[k] * weight) < threshold) mag[k] = 0.0f;
             }
         }
 };
