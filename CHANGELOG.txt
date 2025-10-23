@@ -39,3 +39,10 @@
 - Deprecate setTestParams(), moved to AudioChain constructor
 - Fix Chorus depth range issue
 - Add unit and range clamping, hints to Effect setters
+
+10-23-25
+- Move wavetable arrays and access to PROGMEM
+- Add critical section when calling setParam() or setBypass() via Serial command
+- Minor fixes - Serial.begin() called, Limiter no longer bypassed
+
+TODO: Make wavetable arrays larger - 2056 elements or more!

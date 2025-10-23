@@ -35,7 +35,7 @@ class Wavetable : public Generator {
         float next() override { // Use fixed-point phase accumulator to index wavetable
             uint16_t index = phaseAccumulator >> INDEX_SHIFT; // Index with MSBs
             phaseAccumulator += phaseIncrement;
-            return table[index];
+            return pgm_read_float(&table[index]);
         }
 };
 

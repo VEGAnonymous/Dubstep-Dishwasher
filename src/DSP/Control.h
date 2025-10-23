@@ -43,7 +43,10 @@ class AudioChain {
             addEffect<Compressor>("Limiter", 1.0f, dbAmp(-0.6f), 100.0f, 0.0f, 1.0f, 50.0f, dbAmp(-0.3f), false); // DO NOT TOUCH
 
             // Bypass all
-            for (auto &effect : effects) effect->setBypass(true);
+            for (size_t i = 0; i < effects.size(); ++i) {
+                if (i == (effects.size() - 1)) continue; // Except Limiter
+                effects[i]->setBypass(true);
+            }
         }
 
         void reorder(uint8_t fxA, uint8_t fxB) { swap(effects[fxA], effects[fxB]); } // TODO: Make this actually useful lol (and RT safe)

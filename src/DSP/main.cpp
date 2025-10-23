@@ -39,15 +39,16 @@ void processCommand(const String& s) { // TEMPORARY - vibecoded slop for testing
     if (t.startsWith("SET")) {
         int a=t.indexOf(' ')+1, b=t.indexOf(' ',a), c=t.indexOf(' ',b+1);
         if (a<0||b<0||c<0) return;
-        chain.getEffect(t.substring(a,b).c_str())
-            ->setParam(t.substring(b+1,c).c_str(),
-                        t.substring(c+1).toFloat());
+        AudioNoInterrupts();
+        chain.getEffect(t.substring(a,b).c_str())->setParam(t.substring(b+1,c).c_str(), t.substring(c+1).toFloat());
+        AudioInterrupts();
         Serial.println("OK");
     } else if (t.startsWith("BYPASS")) {
         int a=t.indexOf(' ')+1, b=t.indexOf(' ',a);
         if (a<0||b<0) return;
-        chain.getEffect(t.substring(a,b).c_str())
-            ->setBypass(t.substring(b+1).toInt());
+        AudioNoInterrupts();
+        chain.getEffect(t.substring(a,b).c_str())->setBypass(t.substring(b+1).toInt());
+        AudioInterrupts();
         Serial.println("OK");
     }
 }
@@ -73,6 +74,8 @@ void setup() {
 
     /* BEGIN */
     delay(500);
+
+    Serial.begin(115200);
     AudioInterrupts();
 }
 
