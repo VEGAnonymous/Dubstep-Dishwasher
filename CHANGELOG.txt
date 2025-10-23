@@ -33,3 +33,9 @@
 - Fix Freezer bug where output was silent for time-domain rate >= 1
 - Add Limiter to effect chain
 - Fix a bunch of pedantic compiler warnings
+
+10-22-25
+- Extend embedded integration to allow USB I/O and changing parameters via Serial commands (UNTESTED)
+- Deprecate setTestParams(), moved to AudioChain constructor
+- Fix Chorus depth range issue
+- Add unit and range clamping, hints to Effect setters

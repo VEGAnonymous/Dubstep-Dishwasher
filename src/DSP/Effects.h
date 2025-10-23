@@ -89,8 +89,8 @@ class Distortion : public Effect {
         Distortion(float mix, distortionMode mode, float drive, bool enableAAF) : antiAlias(1.0f, vector<float>(begin(AAF), end(AAF))) 
         { setMix(mix); setMode(mode); setDrive(drive); setAAF(enableAAF); }
 
-        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); }
-        void setMode(distortionMode mode) { 
+        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setMode(distortionMode mode) {
             this->mode = mode;
             switch (mode) {
                 case TUBE: algorithm = &Distortion::tube; break;
@@ -103,8 +103,8 @@ class Distortion : public Effect {
                 default: algorithm = &Distortion::hardClip;
             }
         }
-        void setDrive(float drive) { this->drive = clamp(drive, 0.0f, 1.0f); }
-        void setAAF(bool enableAAF) { this->enableAAF = enableAAF; }
+        void setDrive(float drive) { this->drive = clamp(drive, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setAAF(bool enableAAF) { this->enableAAF = enableAAF; } 
         inline void setParam(const string& name, float value) override {
             if (name == "Mix") { setMix(value); }
             else if (name == "Mode") { setMode((distortionMode)value); }
@@ -127,17 +127,19 @@ class Distortion : public Effect {
 
 class Delay : public Effect {
     private:
+        const float maxDelayTime;
         float mix, feedback;
         DelayLine delayLine;
 
         float delayBuffer[BUFFER_SIZE], feedbackBuffer[BUFFER_SIZE];
     public:
-        Delay(float mix, float delayTime, float maxDelayTime, float feedback) : delayLine(delayTime, maxDelayTime) { 
+        Delay(float mix, float delayTime, float maxDelayTime, float feedback) : maxDelayTime(maxDelayTime), 
+        delayLine(delayTime, maxDelayTime) { 
             setMix(mix); setFeedback(feedback); }
 
-        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); }
-        void setDelayTime(float delayTime) { delayLine.setDelayTime(delayTime); }
-        void setFeedback(float feedback) { this->feedback = clamp(feedback, -0.95f, 0.95f); }
+        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setDelayTime(float delayTime) { delayLine.setDelayTime(clamp(delayTime, 1.0f, maxDelayTime)); } // ms, [1.0, 500.0]
+        void setFeedback(float feedback) { this->feedback = clamp(feedback, -0.95f, 0.95f); } // [-0.95, 0.95]
         inline void setParam(const string& name, float value) override {
             if (name == "Mix") { setMix(value); }
             else if (name == "Time") { setDelayTime(value); }
@@ -167,10 +169,10 @@ class Flanger : public Effect {
         Flanger(float mix, float rate, float depth, float feedback) : delayLine(15, 30), LFO(rate, SINE_TABLE) 
         { setMix(mix); setRate(rate); setDepth(depth); setFeedback(feedback); }
 
-        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); }
-        void setRate(float rate) { this->rate = clamp(rate, 0.0f, 20.0f); LFO.setFreq(rate); }
-        void setDepth(float depth) { this->depth = clamp(depth, 0.0f, 1.0f); }
-        void setFeedback(float feedback) { this->feedback = clamp(feedback, -0.95f, 0.95f); }
+        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setRate(float rate) { this->rate = clamp(rate, 0.0f, 20.0f); LFO.setFreq(rate); } // Hz, [0.0, 20.0]
+        void setDepth(float depth) { this->depth = clamp(depth, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setFeedback(float feedback) { this->feedback = clamp(feedback, -0.95f, 0.95f); } // [-0.95, 0.95]
         inline void setParam(const string& name, float value) override {
             if (name == "Mix") { setMix(value); }
             else if (name == "Rate") { setRate(value); }
@@ -219,13 +221,13 @@ class Phaser : public Effect {
             setMix(mix); setRate(rate); setCenter(centerFreq); setSpread(spread), setDepth(depth); setFeedback(feedback);
         }
 
-        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); }
-        void setRate(float rate) { this->rate = clamp(rate, 0.0f, 20.0f); LFO.setFreq(rate); }
-        void setCenter(float centerFreq) { this->centerFreq = clamp(centerFreq, 50.0f, 8000.0f); setupStages(); }
-        void setSpread(float spread) { this->spread = clamp(spread, 0.1f, 1.0f); setupStages(); }
-        void setDepth(float depth) { this->depth = clamp(depth, 0.0f, 1.0f); }
-        void setFeedback(float feedback) { this->feedback = clamp(feedback, -0.95f, 0.95f); }
-        inline void setParam(const string& name, float value) override {
+        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setRate(float rate) { this->rate = clamp(rate, 0.0f, 20.0f); LFO.setFreq(rate); } // Hz, [0.0, 20.0]
+        void setCenter(float centerFreq) { this->centerFreq = clamp(centerFreq, 50.0f, 8000.0f); setupStages(); } // Hz, // [50.0, 8000.0]
+        void setSpread(float spread) { this->spread = clamp(spread, 0.1f, 1.0f); setupStages(); } // [0.1, 1.0]
+        void setDepth(float depth) { this->depth = clamp(depth, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setFeedback(float feedback) { this->feedback = clamp(feedback, -0.95f, 0.95f); } // [-0.95, 0.95]
+        inline void setParam(const string& name, float value) override { // [0.0, 1.0]
             if (name == "Mix") { setMix(value); }
             else if (name == "Rate") { setRate(value); }
             else if (name == "Center") { setCenter(value); }
@@ -272,23 +274,23 @@ class Chorus : public Effect {
             setMix(mix); setRate(rate); setDepth(depth); setDelayTime(delayTime); setFeedback(feedback);
         }
 
-        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); }
-        void setRate(float rate) { 
+        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setRate(float rate) { // Hz, [0.0, 20.0]
             this->rate = clamp(rate, 0.0f, 20.0f); 
             for (voice& vc : voices) vc.mod.setFreq(rate);
         }
-        void setDepth(float depth) { 
-            this->depth = clamp(depth, 0.0f, 1.0f);
+        void setDepth(float depth) { // ms, [0.0, 25.0]
+            this->depth = clamp(depth, 0.0f, 25.0f);
             for (voice& vc : voices) vc.depth = depth; 
         }
-        void setDelayTime(float delayTime) { 
-            this->delayTime = delayTime; 
+        void setDelayTime(float delayTime) { // ms, [0.0, 20.0]
+            this->delayTime = clamp(delayTime, 0.0f, 20.0f); 
             for (size_t i = 0; i < voiceCount; ++i) { 
-                float detune = ((float)i / voiceCount - 0.5f) * 2.0f; // [-1,1]
+                float detune = ((float)i / voiceCount - 0.5f) * 2.0f;
                 voices[i].baseDelay = delayTime * (1.0f + 0.3f * detune);
             };
         }
-        void setFeedback(float feedback) { this->feedback = clamp(feedback, -0.95f, 0.95f); }
+        void setFeedback(float feedback) { this->feedback = clamp(feedback, -0.95f, 0.95f); } // [-0.95, 0.95]
         inline void setParam(const string& name, float value) override {
             if (name == "Mix") { setMix(value); }
             else if (name == "Rate") { setRate(value); }
@@ -356,17 +358,20 @@ class Reverb : public Effect {
             setMix(mix); setPredelay(predelayTime); setDecay(decayTime); setModRate(modRate); setModDepth(modDepth); setDamping(damping);
         }
 
-        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); }
-        void setPredelay(float predelayTime) { this->predelayTime = predelayTime; delayLines.front().setDelayTime(predelayTime); }
-        void setDecay(float decayTime) {
+        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setPredelay(float predelayTime) { // ms, [0.0, 500.0]
+            this->predelayTime = clamp(predelayTime, 0.0f, 500.0f); 
+            delayLines.front().setDelayTime(this->predelayTime); 
+        } 
+        void setDecay(float decayTime) { // ms, [100.0, 10000.0]
             this->decayTime = clamp(decayTime, 100.0f, 10000.0f);
             float RT60 = this->decayTime / 1000.0f;
             decayGainL = powf(0.001f, 4648.0f / (RT60 * SAMPLE_RATE));
             decayGainR = powf(0.001f, 4924.0f / (RT60 * SAMPLE_RATE));
         }
-        void setModRate(float modRate) { this->modRate = clamp(modRate, 0.05f, 5.0f); LFO.setFreq(this->modRate); }
-        void setModDepth(float modDepth) { this->modDepth = clamp(modDepth, 0.0f, 1.0f); }
-        void setDamping(float damping) {
+        void setModRate(float modRate) { this->modRate = clamp(modRate, 0.05f, 5.0f); LFO.setFreq(this->modRate); } // Hz, [0.05, 5.0]
+        void setModDepth(float modDepth) { this->modDepth = clamp(modDepth, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setDamping(float damping) { // DO NOT EXPOSE / USE!
             this->damping = clamp(damping, 0.0f, 1.0f); 
             float cutoffFreq = 2000.0f + (damping * 10000.0f);
             for (size_t i = 1; i < 3; ++i) filters[i].setCutoff(cutoffFreq);
@@ -474,13 +479,13 @@ class Compressor : public Effect {
             makeupCoeff = exp(-2.2f / (100.0f * SAMPLE_RATE / 1000.0f)); // Auto-makeup smoothing factor
         }
 
-        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); }
-        void setThreshold(float threshold) { this->threshold = clamp(threshold, -200.0f, 0.0f); } // dB
-        void setRatio(float ratio) { this->ratio = clamp(ratio, 1.0f, 100.0f); }
-        void setKnee(float knee) { this->knee = clamp(knee, 0.0f, 40.0f); }
-        void setAttack(float attack) { attackCoeff = exp(-2.2f / (attack * SAMPLE_RATE / 1000.0f)); } // ms
-        void setRelease(float release) { releaseCoeff = exp(-2.2f / (release * SAMPLE_RATE / 1000.0f)); } // ms
-        void setMakeup(float makeupGain) { this->makeupGain = makeupGain; } // dB
+        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setThreshold(float threshold) { this->threshold = clamp(threshold, -200.0f, 0.0f); } // dB, [-200.0, 0.0]
+        void setRatio(float ratio) { this->ratio = clamp(ratio, 1.0f, 100.0f); } // [1.0, 100.0]
+        void setKnee(float knee) { this->knee = clamp(knee, 0.0f, 40.0f); }// [0.0, 40.0]
+        void setAttack(float attack) { attackCoeff = exp(-2.2f / (clamp(attack, 0.005f, 250.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [0.005, 250.0]
+        void setRelease(float release) { releaseCoeff = exp(-2.2f / (clamp(release, 10.0f, 2500.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [10.0, 2500.0]
+        void setMakeup(float makeupGain) { this->makeupGain = clamp(makeupGain, -72.0f, 36.0f); } // dB, [-72.0, 36.0]
         void setAutoMakeup(bool autoMakeup) { 
             this->autoMakeup = autoMakeup;
             if (autoMakeup) { reductionSmoothed = 0.0f; autoMakeupGain = 0.0f; }
@@ -618,20 +623,20 @@ class Granulator : public Effect {
             inBuf.resize(bufSize, 0.0f);
         }
 
-        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); }
-        void setPosition(float position) { this->position = clamp(position, 0.0f, 1.0f); }
-        void setPositionRand(float positionRand) { this->positionRand = clamp(positionRand, 0.0f, 1.0f); }
-        void setTime(float time) { this->time = clamp(time, 1.0f, 3000.0f); }
-        void setTimeRand(float timeRand) { this->timeRand = clamp(timeRand, 0.0f, 1.0f); }
-        void setLength(float length) {
+        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setPosition(float position) { this->position = clamp(position, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setPositionRand(float positionRand) { this->positionRand = clamp(positionRand, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setTime(float time) { this->time = clamp(time, 1.0f, 3000.0f); } // ms, [1.0, 3000.0]
+        void setTimeRand(float timeRand) { this->timeRand = clamp(timeRand, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setLength(float length) { // ms, [5.0, 1000.0]
             this->length = clamp(length, 5.0f, 1000.0f);
             int lengthSamples = (int)(this->length * SAMPLE_RATE / 1000.0f);
             makeEnvelope(envelope, lengthSamples, envType);
         }
-        void setLengthRand(float lengthRand) { this->lengthRand = clamp(lengthRand, 0.0f, 1.0f); }
-        void setReverseChance(float reverseChance) { this->reverseChance = clamp(reverseChance, 0.0f, 1.0f); }
-        void setLevel(float level) { this->level = clamp(level, 0.0f, 1.0f); }
-        void setLevelRand(float levelRand) { this->levelRand = clamp(levelRand, 0.0f, 1.0f); }
+        void setLengthRand(float lengthRand) { this->lengthRand = clamp(lengthRand, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setReverseChance(float reverseChance) { this->reverseChance = clamp(reverseChance, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setLevel(float level) { this->level = clamp(level, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setLevelRand(float levelRand) { this->levelRand = clamp(levelRand, 0.0f, 1.0f); } // [0.0, 1.0]
         void setEnvelopeType(envelopeType envType) { 
             this->envType = envType; 
             int lengthSamples = (int)(this->length * SAMPLE_RATE / 1000.0f);
@@ -704,16 +709,17 @@ class Freezer : public Effect {
             makeEnvelope(crossfadeEnv, envSize, HANN);
         }
         
-        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); }
-        void setRate(float rate) { this->rate = clamp(rate, -4.0f, 4.0f); }
+        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setRate(float rate) { this->rate = clamp(rate, -4.0f, 4.0f); } // [-4.0, 4.0]
         void setSpectralMode(bool spectralMode) { this->spectralMode = spectralMode; }
-        void setFFTSize(size_t N) { 
-            stft.setFFTSize(N); 
-            spectBuf.assign(N, 0.0f); spectFrame.resize(N);
+        void setFFTSize(size_t N) { // [256, 8192], MUST BE POWER OF 2
+            const size_t fftN = clamp(N, (size_t)256, (size_t)8192);
+            stft.setFFTSize(fftN); 
+            spectBuf.assign(fftN, 0.0f); spectFrame.resize(fftN);
             spectPos = 0; spectHopCounter = 0;
         }
-        void setHopSize(size_t hopFactor) { stft.setHopSize(max(hopFactor, (size_t)2)); }
-        void setLoopRegion(float start, float end) {
+        void setHopSize(size_t hopFactor) { stft.setHopSize(clamp(hopFactor, (size_t)2, (size_t)8)); } // [2, 8]
+        void setLoopRegion(float start, float end) { // [0.0, 1.0] for both
             loopStart = clamp(start, 0.0f, 1.0f);
             loopEnd = clamp(end, 0.0f, 1.0f);
             if (loopStart >= loopEnd) { // start < end
@@ -808,8 +814,8 @@ class SpectralGate : public Spectral_Effect {
         SpectralGate(float mix, float thresholdDB, float tilt, int fftSize) : Spectral_Effect(mix, fftSize)
             { setThreshold(thresholdDB); setTilt(tilt); }
         
-        void setThreshold(float thresholdDB) { threshold = dbAmp(thresholdDB); }
-        void setTilt(float tilt) { this->tilt = clamp(tilt, -1.0f, 1.0f) * 2.0f; } // + gates lows more, - gates highs more
+        void setThreshold(float thresholdDB) { threshold = dbAmp(clamp(thresholdDB, -100.0f, 0.0f)); } // dB, [-100.0, 0.0]
+        void setTilt(float tilt) { this->tilt = clamp(tilt, -1.0f, 1.0f) * 2.0f; } // [-1.0, 1.0], + gates lows more, - gates highs more
         inline void setParam(const string& name, float value) override {
             if (name == "Threshold") { setThreshold(value); }
             else if (name == "Tilt") { setTilt(value); }

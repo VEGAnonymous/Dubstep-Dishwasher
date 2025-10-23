@@ -12,9 +12,6 @@
 
 #include <Audio.h>
 
-extern AudioInputI2S i2sInput;
-extern AudioOutputI2S i2sOutput;
-
 /* CONTROL */
 
 class AudioChain {
@@ -28,25 +25,26 @@ class AudioChain {
             fxMap[name] = effects.back().get();
         }
 
+        Effect* getEffect(string key) { return fxMap[key]; }
+
         AudioChain() {
             // Build effects chain, initial order
-            addEffect<Gain>("Gain", dbAmp(0.0f));
-            addEffect<FIR_Filter>("FIR", 0.0f, vector<float>(64, 1.0f / 64.0f));
-            addEffect<Distortion>("Distortion", 0.0f, HARD_CLIP, 0.0f, false);
-            addEffect<Delay>("Delay", 0.0f, 200.0f, 3000.0f, 0.0f);
-            addEffect<Flanger>("Flanger", 0.0f, 0.0f, 0.0f, 0.0f);
-            addEffect<Phaser>("Phaser", 0.0f, 0.0f, 1000.0f, 1.0f, 0.0f, 0.0f, 8, 0.8f);
-            addEffect<Chorus>("Chorus", 0.0f, 0.0f, 0.0f, 100.0f, 0.0f, 4);
-            addEffect<Reverb>("Reverb", 0.0f, 100.0f, 100.0f, 0.0f, 0.0f);
-            addEffect<SpectralGate>("Spectral Gate", 0.0f, 0.0f, 0.0f, 1024);
-            addEffect<Compressor>("Compressor", 0.0f, 0.0f, 1.0f, 0.0f, 50.0f, 500.0f, 0.0f, true);
-            addEffect<Granulator>("Granulator", 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 5.0f, 0.0f, 0.0f, 0.0f, 0.0f, HANN);
-            addEffect<Freezer>("Freezer", 0.0f, 1.0f, false, 1024, 4, 0.0f, 1.0f);
+            addEffect<Distortion>("Distortion", 1.0f, TUBE, 0.25f, false);
+            addEffect<Delay>("Delay", 0.3f, 200.0f, 500.0f, 0.4f);
+            addEffect<Flanger>("Flanger", 1.0f, 0.08f, 1.0f, 0.5f);
+            addEffect<Phaser>("Phaser", 1.0f, 0.08f, 600.0f, 1.0f, 0.5f, 0.8f, 8, 0.8f);
+            addEffect<Chorus>("Chorus", 0.5f, 0.08f, 25.0f, 5.0f, 0.1f, 4);
+            addEffect<Reverb>("Reverb", 0.2f, 0.0f, 3000.0f, 0.5f, 0.2f);
+            addEffect<Compressor>("Compressor", 1.0f, -18.0f, 4.0f, 10.0f, 100.0f, 100.0f, 0.0f, true);
+            addEffect<Granulator>("Granulator", 1.0f, 0.5f, 0.0f, 50.0f, 0.0f, 200.0f, 0.0f, 0.8f, 0.0f, 0.0f, HANN);
+            addEffect<Freezer>("Freezer", 1.0f, 1.0f, false, 1024, 4, 0.0f, 1.0f);
+            addEffect<SpectralGate>("Spectral Gate", 1.0f, -10.0f, 1.0f, 1024);
 
-            addEffect<Compressor>("Limiter", 1.0f, dbAmp(-0.6f), 100.0f, 0.0f, 1.0f, 50.0f, -0.3f, false); // DO NOT TOUCH
+            addEffect<Compressor>("Limiter", 1.0f, dbAmp(-0.6f), 100.0f, 0.0f, 1.0f, 50.0f, dbAmp(-0.3f), false); // DO NOT TOUCH
+
+            // Bypass all
+            for (auto &effect : effects) effect->setBypass(true);
         }
-
-        Effect* getEffect(string key) { return fxMap[key]; }
 
         void reorder(uint8_t fxA, uint8_t fxB) { swap(effects[fxA], effects[fxB]); } // TODO: Make this actually useful lol (and RT safe)
 

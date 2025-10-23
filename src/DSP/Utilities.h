@@ -12,6 +12,8 @@
 
 using namespace std;
 
+/* UTILITIES */
+
 /* FUNCTIONS */
 
 float dbAmp(float dB) { return pow(10.0f, dB / 20.0f); }
@@ -106,7 +108,7 @@ class DelayLine { // Implements z^-N
             setDelayTime(delayTime);
         }
 
-        void setDelayTime(float delayTime) { delaySamples = (delayTime * SAMPLE_RATE) / 1000.0f; }
+        void setDelayTime(float delayTime) { delaySamples = (delayTime * SAMPLE_RATE) / 1000.0f; } // ms
         void setDelaySamples(float delaySamples) { this->delaySamples = delaySamples; }
         int getSize() const { return buffer.size(); }
 
@@ -207,7 +209,7 @@ class STFT {
         }
 
         void setHopSize(size_t hopFactor) { hopSize = fftSize / hopFactor; }
-        void setFFTSize(size_t N) { 
+        void setFFTSize(size_t N) { // !!! Must be a power of 2 !!!
             fftSize = N; numBins = (fftSize / 2) + 1; hopSize = fftSize / hopFactor;
             inPos = 0; outPos = 0; hopCounter = 0; frameReady = false;
             inBuf.resize(fftSize, 0.0f); outBuf.assign(fftSize, 0.0f);

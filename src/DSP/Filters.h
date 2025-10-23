@@ -18,7 +18,7 @@ class FIR_Filter : public Effect {
     public:
         FIR_Filter(float mix, vector<float> h) : h(move(h)), z(this->h.size() * 2, 0.0f), z_i(0) { setMix(mix); }
 
-        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); };
+        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
         inline void setParam(const string& name, float value) override { 
             if (name == "Mix") { setMix(value); }
         }
@@ -53,7 +53,7 @@ class OnePole : public IIR_Filter { // One pole
             b0 = 1.0f - a; a1 = a;
             cutoff = -((float)SAMPLE_RATE * log(a)) / (2 * M_PI);
         }
-        void setCutoff(float cutoff) {
+        void setCutoff(float cutoff) { // Hz
             this->cutoff = cutoff;
             float x = exp((-2.0f * M_PI * cutoff) / SAMPLE_RATE);
             b0 = 1.0f - x;
@@ -95,7 +95,7 @@ class APF : public IIR_Filter { // 1st order
             cutoff = SAMPLE_RATE / (2.0f * (float)N);
             bufferX.setDelaySamples(N); bufferY.setDelaySamples(N);
         }
-        void setCutoff(float cutoff) {
+        void setCutoff(float cutoff) { // Hz
             N = clamp(SAMPLE_RATE / (2.0f * cutoff), 1.0f, (float)maxDelaySamples); // Cutoff translates to delay N
             this->cutoff = cutoff;
             bufferX.setDelaySamples(N); bufferY.setDelaySamples(N);

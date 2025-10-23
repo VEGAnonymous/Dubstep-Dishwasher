@@ -21,7 +21,7 @@ class Wavetable : public Generator {
     public:
         Wavetable(float freq, wavetable table) : phaseAccumulator(0) { setFreq(freq); setTable(table); }
 
-        void setFreq(float freq) { this->freq = freq; phaseIncrement = freq * ((1ULL << 32) / SAMPLE_RATE); }
+        void setFreq(float freq) { this->freq = freq; phaseIncrement = freq * ((1ULL << 32) / SAMPLE_RATE); } // Hz
         void setTable(wavetable table) {
             switch (table) {
                 case SINE_TABLE: this->table = SineTable; break;
@@ -75,7 +75,7 @@ class Random : public Generator {
     public:
         Random(float freq, randomMode mode) { setFreq(freq); setMode(mode); }
 
-        void setFreq(float freq) { this->freq = freq; }
+        void setFreq(float freq) { this->freq = freq; } // Hz
         void setMode(randomMode mode) {
             this->mode = mode;
             switch (mode) {
