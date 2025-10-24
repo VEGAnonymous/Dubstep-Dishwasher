@@ -75,6 +75,33 @@ void makeEnvelope(vector<float>& env, size_t N, envelopeType type) {
     }
 }
 
+float getEnvelopeValue(float t, size_t N, envelopeType type) {
+    switch (type) {
+        case HANN: return 0.5f * (1.0f - cosf(2.0f * static_cast<float>(M_PI) * t));
+        case HAMMING: return 0.54f - (0.46f * cosf(2.0f * static_cast<float>(M_PI) * t));
+        case SINE: return sinf(static_cast<float>(M_PI) * t);
+        case TRI: return 1.0f - fabsf(2.0f * t - 1.0f);
+        case PERC: {
+            const float attack = 0.03f;
+            const float decay = 6.0f;
+            if (t < attack) { return t / attack; // Linear attack
+            } else { // Exponential decay
+                float t_decay = (t - attack) / (1.0f - attack); 
+                return expf(-decay * t_decay);
+            }
+        }
+        case SMOOTH_RECT: {
+            const float smooth = 0.05f;
+            if (t < smooth) { // Fade in
+                return 0.5f * (1.0f - cosf(static_cast<float>(M_PI) * t / smooth)); 
+            } else if (t >= (1.0f - smooth)) { // Fade out
+                return 0.5f * (1.0f - cosf(static_cast<float>(M_PI) * (1.0f - t) / smooth)); 
+            } else { return 1.0f; }
+        }
+        default: return 1.0f;
+    }
+}
+
 template <typename T>
 inline float lerp(const T& buffer, float index, size_t size) { // Linearly interpolate buffer indices
     if (index < 0) index += size;
@@ -99,30 +126,33 @@ class DelayLine { // Implements z^-N
     private:
         float delaySamples; 
         size_t writeIndex;
-        vector<float> buffer;
-
+        // vector<float> buffer;
+        float* buffer; size_t size;
     public:
         DelayLine(float delayTime, float maxDelayTime) : writeIndex((size_t)0) {
-            int maxDelaySamples = (int)((maxDelayTime * SAMPLE_RATE) / 1000.0f);
-            buffer.assign(maxDelaySamples + 1, 0.0f);
+            size = (size_t)((maxDelayTime * SAMPLE_RATE) / 1000.0f) + 1;
+            buffer = (float *)extmem_malloc(size * sizeof(float));
+            if (!buffer) while (1) { /* Allocation failed */ }
+            memset(buffer, 0, size * sizeof(float));
+
             setDelayTime(delayTime);
         }
 
         void setDelayTime(float delayTime) { delaySamples = (delayTime * SAMPLE_RATE) / 1000.0f; } // ms
         void setDelaySamples(float delaySamples) { this->delaySamples = delaySamples; }
-        int getSize() const { return buffer.size(); }
+        int getSize() const { return size; }
 
         inline float read(float offset = -1.0f) {
             float readOffset = (offset >= 0.0f) ? offset : delaySamples;
             float readIndex = (float)writeIndex - readOffset;
-            if (readIndex < 0) readIndex += buffer.size();
-            if (readOffset == floor(readOffset)) return buffer[(int)readIndex % buffer.size()];
-            return lerp(buffer, readIndex, buffer.size());
+            if (readIndex < 0) readIndex += size;
+            if (readOffset == floor(readOffset)) return buffer[(int)readIndex % size];
+            return lerp(buffer, readIndex, size);
         }
 
         inline void write(float in) { 
             buffer[writeIndex] = in;
-            if (++writeIndex >= (size_t)buffer.size()) writeIndex = 0;
+            if (++writeIndex >= size) writeIndex = 0;
         }
 };
 

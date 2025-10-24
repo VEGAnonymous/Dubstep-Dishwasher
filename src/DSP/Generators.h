@@ -16,7 +16,7 @@ class Wavetable : public Generator {
         uint32_t phaseAccumulator = 0ULL;
         int32_t phaseIncrement = 0;
 
-        static constexpr uint8_t TABLE_BITS = 9; // 512
+        static constexpr uint8_t TABLE_BITS = 11; // 2048
         static constexpr uint8_t INDEX_SHIFT = 32 - TABLE_BITS;
     public:
         Wavetable(float freq, wavetable table) : phaseAccumulator(0) { setFreq(freq); setTable(table); }

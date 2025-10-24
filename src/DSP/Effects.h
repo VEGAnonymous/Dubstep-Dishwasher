@@ -47,7 +47,7 @@ class Distortion : public Effect {
         // Distortion algorithms
         // https://www.desmos.com/calculator/qrqipgp7r4
         float tube(float in, float drive) {
-            float x = in * (4.0f + (drive * 36.0f)); // d -> [4, 40]
+            float x = in * (4.0f + (drive * 6.0f)); // d -> [4, 10]
             return atan(x) * (2.0f / M_PI);
         }
         float softClip(float in, float drive) { 
@@ -216,7 +216,7 @@ class Phaser : public Effect {
         }
         Phaser(float mix, float rate, float centerFreq, float spread, float depth, float feedback, const uint8_t order = 4, const float q = 0.8f) 
         : order(order), LFO(rate, SINE_TABLE) {
-            for (size_t i = 0; i < order; ++i) { apfSections.push_back(APF(1.0f, centerFreq, q, false, 1000)); }
+            for (size_t i = 0; i < order; ++i) { apfSections.push_back(APF(1.0f, centerFreq, q, false, 20)); }
             setupStages();
             setMix(mix); setRate(rate); setCenter(centerFreq); setSpread(spread), setDepth(depth); setFeedback(feedback);
         }
@@ -269,7 +269,7 @@ class Chorus : public Effect {
         DelayLine delayLine;
     public:
         Chorus(float mix, float rate, float depth, float delayTime, float feedback, uint8_t voiceCount) : voiceCount(voiceCount), 
-        delayLine(delayTime, 50.0f * SAMPLE_RATE / 1000.0f) {
+        delayLine(delayTime, 51.0f) {
             for (size_t i = 0; i < voiceCount; ++i) voices.push_back({1.0f / (float)voiceCount, depth, delayTime, Random(rate, PERLIN)});
             setMix(mix); setRate(rate); setDepth(depth); setDelayTime(delayTime); setFeedback(feedback);
         }
@@ -338,11 +338,11 @@ class Reverb : public Effect {
             // Diffusers
             size_t apf_i = 0;
             for (float diff : inputDiffuse) {
-                for (size_t i = 0; i < 2; ++i) { diffusers.push_back(APF(1.0f, 0.0f, 0.0f, false, 100.0f)); 
+                for (size_t i = 0; i < 2; ++i) { diffusers.push_back(APF(1.0f, 0.0f, 0.0f, false, 10.0f)); 
                 diffusers.back().setDelay(apfDelays[apf_i++]); diffusers.back().setQ(1.0f / (1.0f - diff)); };
             }
             for (float diff : decayDiffuse) {
-                for (size_t i = 0; i < 2; ++i) { diffusers.push_back(APF(1.0f, 0.0f, 0.0f, false, 100.0f));
+                for (size_t i = 0; i < 2; ++i) { diffusers.push_back(APF(1.0f, 0.0f, 0.0f, false, 61.0f));
                 diffusers.back().setDelay(apfDelays[apf_i++]); diffusers.back().setQ(1.0f / (1.0f - diff)); };
             } diffusers[4].setInvert(true); diffusers[5].setInvert(true);
 
@@ -353,7 +353,7 @@ class Reverb : public Effect {
             }
 
             // Delays
-            for (float delay : delays) { delayLines.push_back(DelayLine(delay, delay + 150.0f)); }
+            for (float delay : delays) { delayLines.push_back(DelayLine(delay, 100.0f)); }
 
             setMix(mix); setPredelay(predelayTime); setDecay(decayTime); setModRate(modRate); setModDepth(modDepth); setDamping(damping);
         }
@@ -544,21 +544,21 @@ class Granulator : public Effect {
     // HACK: Works, but produces clicks with larger positionRand since grains may end up reading from indices overwritten by write head
     // Non-clicking usage: No reversed grains + any positionRand, OR reversed grains + no/small positionRand
     private:
-        const size_t bufSize = 3 * SAMPLE_RATE; // 3 seconds
-        const int maxGrains = 64;
+        const size_t bufSize = 1 * SAMPLE_RATE;
+        const int maxGrains = 32;
         
         float mix, position, time, length, level, reverseChance;
         float positionRand, timeRand, lengthRand, levelRand;
-        envelopeType envType; vector<float> envelope;
+        envelopeType envType;
         
         vector<float> inBuf; size_t writePos = 0;
         float grainCounter = 0.0f;
         
         struct Grain {
             bool active = false;
-            int startPos;
-            int playhead;
-            int length;
+            uint32_t startPos;
+            uint32_t playhead;
+            uint32_t length;
             float level;
             bool reverse;
         };
@@ -602,10 +602,7 @@ class Granulator : public Effect {
             
             // Apply envelope
             float envelopeValue = 1.0f;
-            if (!envelope.empty()) {
-                int envIndex = clamp((int)(((float)grain.playhead / (float)grain.length) * envelope.size()), 0, (int)envelope.size() - 1);
-                envelopeValue = envelope[envIndex];
-            }
+            envelopeValue = getEnvelopeValue((float)grain.playhead / (float)grain.length, grain.length, envType);
             
             ++grain.playhead;
             if (grain.playhead >= grain.length) grain.active = false; // Free if done
@@ -626,22 +623,14 @@ class Granulator : public Effect {
         void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
         void setPosition(float position) { this->position = clamp(position, 0.0f, 1.0f); } // [0.0, 1.0]
         void setPositionRand(float positionRand) { this->positionRand = clamp(positionRand, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setTime(float time) { this->time = clamp(time, 1.0f, 3000.0f); } // ms, [1.0, 3000.0]
+        void setTime(float time) { this->time = clamp(time, 1.0f, 500.0f); } // ms, [1.0, 500.0]
         void setTimeRand(float timeRand) { this->timeRand = clamp(timeRand, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setLength(float length) { // ms, [5.0, 1000.0]
-            this->length = clamp(length, 5.0f, 1000.0f);
-            int lengthSamples = (int)(this->length * SAMPLE_RATE / 1000.0f);
-            makeEnvelope(envelope, lengthSamples, envType);
-        }
+        void setLength(float length) { this->length = clamp(length, 5.0f, 500.0f); } // ms, [5.0, 500.0]
         void setLengthRand(float lengthRand) { this->lengthRand = clamp(lengthRand, 0.0f, 1.0f); } // [0.0, 1.0]
         void setReverseChance(float reverseChance) { this->reverseChance = clamp(reverseChance, 0.0f, 1.0f); } // [0.0, 1.0]
         void setLevel(float level) { this->level = clamp(level, 0.0f, 1.0f); } // [0.0, 1.0]
         void setLevelRand(float levelRand) { this->levelRand = clamp(levelRand, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setEnvelopeType(envelopeType envType) { 
-            this->envType = envType; 
-            int lengthSamples = (int)(this->length * SAMPLE_RATE / 1000.0f);
-            makeEnvelope(envelope, lengthSamples, envType);
-        }
+        void setEnvelopeType(envelopeType envType) { this->envType = envType; }
         inline void setParam(const string& name, float value) override {
             if (name == "Mix") { setMix(value); }
             else if (name == "Position") { setPosition(value); }

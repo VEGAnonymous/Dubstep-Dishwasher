@@ -2,5 +2,4 @@
 .pio/
 build/
 CMakeLists.txt
-platformio.ini
 *.wav

@@ -45,4 +45,10 @@
 - Add critical section when calling setParam() or setBypass() via Serial command
 - Minor fixes - Serial.begin() called, Limiter no longer bypassed
 
-TODO: Make wavetable arrays larger - 2056 elements or more!
+10-24-25
+- Refactor Phaser, Chorus, Reverb, Granulator to use significantly less memory
+- Add temporary debug tools and flags to main
+- Tentative DelayLine refactor for PSRAM
+- Implement getEnvelopeValue() utility
+- Increase wavetable size to 2048
+- Remove critical section for setParam() and setBypass()

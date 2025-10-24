@@ -26,30 +26,29 @@ class AudioChain {
         }
 
         Effect* getEffect(string key) { return fxMap[key]; }
+        // TODO: Overload with id getter
 
         AudioChain() {
             // Build effects chain, initial order
+            // BUG: Extreme DTCM memory issues - offending effects disabled until PSRAM arrives
             addEffect<Distortion>("Distortion", 1.0f, TUBE, 0.25f, false);
             addEffect<Delay>("Delay", 0.3f, 200.0f, 500.0f, 0.4f);
             addEffect<Flanger>("Flanger", 1.0f, 0.08f, 1.0f, 0.5f);
             addEffect<Phaser>("Phaser", 1.0f, 0.08f, 600.0f, 1.0f, 0.5f, 0.8f, 8, 0.8f);
-            addEffect<Chorus>("Chorus", 0.5f, 0.08f, 25.0f, 5.0f, 0.1f, 4);
+            addEffect<Chorus>("Chorus", 1.0f, 0.08f, 25.0f, 5.0f, 0.1f, 4);
             addEffect<Reverb>("Reverb", 0.2f, 0.0f, 3000.0f, 0.5f, 0.2f);
             addEffect<Compressor>("Compressor", 1.0f, -18.0f, 4.0f, 10.0f, 100.0f, 100.0f, 0.0f, true);
-            addEffect<Granulator>("Granulator", 1.0f, 0.5f, 0.0f, 50.0f, 0.0f, 200.0f, 0.0f, 0.8f, 0.0f, 0.0f, HANN);
-            addEffect<Freezer>("Freezer", 1.0f, 1.0f, false, 1024, 4, 0.0f, 1.0f);
-            addEffect<SpectralGate>("Spectral Gate", 1.0f, -10.0f, 1.0f, 1024);
+            // addEffect<Granulator>("Granulator", 1.0f, 0.5f, 0.5f, 50.0f, 0.0f, 200.0f, 0.0f, 0.8f, 0.0f, 0.0f, HANN);
+            // addEffect<Freezer>("Freezer", 1.0f, 2.0f, false, 1024, 4, 0.0f, 1.0f);
+            // addEffect<SpectralGate>("Spectral Gate", 1.0f, -10.0f, 1.0f, 1024);
 
             addEffect<Compressor>("Limiter", 1.0f, dbAmp(-0.6f), 100.0f, 0.0f, 1.0f, 50.0f, dbAmp(-0.3f), false); // DO NOT TOUCH
 
-            // Bypass all
-            for (size_t i = 0; i < effects.size(); ++i) {
-                if (i == (effects.size() - 1)) continue; // Except Limiter
-                effects[i]->setBypass(true);
-            }
+            // Bypass all except Limiter
+            for (size_t i = 0; i < effects.size() - 1; ++i) effects[i]->setBypass(true);
         }
 
-        void reorder(uint8_t fxA, uint8_t fxB) { swap(effects[fxA], effects[fxB]); } // TODO: Make this actually useful lol (and RT safe)
+        void reorder(uint8_t fxA, uint8_t fxB) { swap(effects[fxA], effects[fxB]); } // TODO: Maybe expand to either swap OR shift
 
         void processChain(float* input, float* output, size_t n = BUFFER_SIZE) {
             // Mark last active effect
