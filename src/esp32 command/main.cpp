@@ -6,7 +6,7 @@
 
 // Command structure (8 bytes total)
 struct Command {
-    uint8_t cmd;        // Command type (A=Add, P=Param, R=Reorder)
+    uint8_t cmd;        // Command type (0 = Add, 1 = Update, 2 = Reorder)
     uint8_t id1;        // Effect to add, parameter id, or first effect id for reorder
     uint8_t id2;        // Second effect id for reorder
     uint8_t reserved;   // Reserved/padding
@@ -46,7 +46,7 @@ void loop() {
         // Debug: Print nicely formatted command echo
         Serial.print("\n=== Command Echo ===\n");
         Serial.printf("cmd: %c | ", cmdBuffer.cmd);
-        Serial.printf("id1: %d | ", cmdBuffer.id1);
+        Serial.printf("id1: %c | ", cmdBuffer.id1);
         Serial.printf("id2: %c | ", cmdBuffer.id2);
         Serial.printf("value: %.3f\n", cmdBuffer.value);
         Serial.println("==================");
@@ -69,8 +69,8 @@ void loop() {
     //     if (rcvBytes == sizeof(Command)) {
     //         Serial.print("\n=== Received Echo ===\n");
     //         Serial.printf("cmd: %c | ", rcvCmd.cmd);
-    //         Serial.printf("id1: %d | ", rcvCmd.id1);
-    //         Serial.printf("id2: %d | ", rcvCmd.id2);
+    //         Serial.printf("id1: %c | ", rcvCmd.id1);
+    //         Serial.printf("id2: %c | ", rcvCmd.id2);
     //         Serial.printf("value: %.3f\n", rcvCmd.value);
     //         Serial.println("===================");
     //     }
