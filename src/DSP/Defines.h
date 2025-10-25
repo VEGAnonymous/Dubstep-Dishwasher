@@ -3,12 +3,18 @@
 
 /* DEFINES */
 
+#include <Audio.h>
+
 #define SAMPLE_RATE AUDIO_SAMPLE_RATE_EXACT
 #define BUFFER_SIZE AUDIO_BLOCK_SAMPLES
 
 #ifndef M_PI
     #define M_PI 3.14159265358979323846
 #endif
+
+// Datatypes
+using EffectID = uint8_t;
+using ParamID = uint8_t;
 
 /* ENUMS */
 

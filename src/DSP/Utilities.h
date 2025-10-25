@@ -21,61 +21,8 @@ float ampDB(float amp) { return 20.0f * log10(amp + 1e-12); }
 
 float uniform() { return ((float)rand() / RAND_MAX) * 2.0f - 1.0f; } // Random float between [-1, 1]
 
-void makeEnvelope(vector<float>& env, size_t N, envelopeType type) {
-    // https://www.desmos.com/calculator/j7vhnwaylq
-    function<float(size_t)> func;
-
-    switch (type) {
-        case HANN:
-            func = [N](size_t n) {
-                return 0.5f * (1.0f - cosf((2.0f * static_cast<float>(M_PI) * n) / (N - 1)));
-            }; break;
-        case HAMMING:
-            func = [N](size_t n) {
-                return 0.54f - (0.46f * cosf((2.0f * static_cast<float>(M_PI) * n) / (N - 1)));
-            }; break;
-        case SINE:
-            func = [N](size_t n) {
-                return sinf((static_cast<float>(M_PI) * n) / N);
-            }; break;
-        case TRI:
-            func = [N](size_t n) {
-                return 1.0f - abs((n - (N / 2.0f)) / (N / 2.0f));
-            }; break;
-        case PERC:
-            func = [N](size_t n) {
-                const float attack = 0.03f;
-                const float decay = 6.0f;
-
-                float attackSamples = N * attack;
-                if (attackSamples < 1) attackSamples = 1;
-
-                if (n < attackSamples) { return n / (float)attackSamples; } // Linear attack
-                else { // Exponential decay  
-                    float t = (n - attackSamples) / (float)(N - attackSamples);
-                    return expf(-decay * t);
-                }
-            }; break;
-        case SMOOTH_RECT:
-            func = [N](size_t n) {
-                const float smooth = 0.05f;
-                float edge = N * smooth;
-                if (edge < 1) edge = 1;
-
-                if (n < edge) { return 0.5f * (1.0f - cosf(static_cast<float>(M_PI) * n / edge)); } // Fade in
-                else if (n >= (N - edge)) { return 0.5f * (1.0f - cosf(static_cast<float>(M_PI) * (N - n) / edge)); } // Fade out
-                else { return 1.0f; }
-            }; break;
-        default: func = [](size_t /*n*/){ return 1.0f; };
-    }
-
-    env.resize(N);
-    for (size_t n = 0; n < N; ++n) {
-        env[n] = func(n); // Hann window
-    }
-}
-
 float getEnvelopeValue(float t, size_t N, envelopeType type) {
+    // https://www.desmos.com/calculator/j7vhnwaylq
     switch (type) {
         case HANN: return 0.5f * (1.0f - cosf(2.0f * static_cast<float>(M_PI) * t));
         case HAMMING: return 0.54f - (0.46f * cosf(2.0f * static_cast<float>(M_PI) * t));
@@ -113,10 +60,13 @@ inline float lerp(const T& buffer, float index, size_t size) { // Linearly inter
 
 inline float lerp(float a, float b, float t) { return a + (t * (b - a)); } // Linearly interpolate scalars
 
-inline void overlapAdd(vector<float>& target, const vector<float>& frame, const vector<float>& window, size_t startPos = 0) {
-    for (size_t j = 0; j < target.size(); ++j) {
-        size_t pos = (startPos + j) % target.size();
-        target[pos] += frame[j] * window[j];
+inline float dryWetMix(float dry, float wet, float mix) { return (dry * cosf(mix * M_PI_2)) + (wet * sinf(mix * M_PI_2)); } // Equal power crossfade
+
+inline void overlapAdd(vector<float>& target, const vector<float>& frame, envelopeType type, size_t startPos = 0) {
+    const size_t N = frame.size();
+    for (size_t i = 0; i < N; ++i) {
+        size_t pos = (startPos + i) % target.size();
+        target[pos] += frame[i] * getEnvelopeValue((float)i / N, N, type);
     }
 }
 
@@ -132,7 +82,7 @@ class DelayLine { // Implements z^-N
         DelayLine(float delayTime, float maxDelayTime) : writeIndex((size_t)0) {
             size = (size_t)((maxDelayTime * SAMPLE_RATE) / 1000.0f) + 1;
             buffer = (float *)extmem_malloc(size * sizeof(float));
-            if (!buffer) while (1) { /* Allocation failed */ }
+            if (!buffer) while (1) { }
             memset(buffer, 0, size * sizeof(float));
 
             setDelayTime(delayTime);
@@ -155,6 +105,36 @@ class DelayLine { // Implements z^-N
             if (++writeIndex >= size) writeIndex = 0;
         }
 };
+
+/* Vector version placeholder for testing
+class DelayLine { // Implements z^-N
+    private:
+        float delaySamples; 
+        size_t writeIndex;
+        vector<float> buffer;
+    public:
+        DelayLine(float delayTime, float maxDelayTime) : writeIndex((size_t)0) {
+            buffer.resize(((maxDelayTime * SAMPLE_RATE) / 1000.0f) + 1, 0.0f);
+            setDelayTime(delayTime);
+        }
+
+        void setDelayTime(float delayTime) { delaySamples = (delayTime * SAMPLE_RATE) / 1000.0f; } // ms
+        void setDelaySamples(float delaySamples) { this->delaySamples = delaySamples; }
+        int getSize() const { return buffer.size(); }
+
+        inline float read(float offset = -1.0f) {
+            float readOffset = (offset >= 0.0f) ? offset : delaySamples;
+            float readIndex = (float)writeIndex - readOffset;
+            if (readIndex < 0) readIndex += buffer.size();
+            if (readOffset == floor(readOffset)) return buffer[(int)readIndex % buffer.size()];
+            return lerp(buffer, readIndex, buffer.size());
+        }
+
+        inline void write(float in) { 
+            buffer[writeIndex] = in;
+            if (++writeIndex >= buffer.size()) writeIndex = 0;
+        }
+}; */
 
 class FFT {
     private:
@@ -216,7 +196,7 @@ class STFT {
         size_t fftSize, numBins, hopSize, hopFactor = 4;
         
         // Time-domain
-        vector<float> inBuf, outBuf, window;
+        vector<float> inBuf, outBuf;
         size_t inPos = 0, outPos = 0, hopCounter = 0;
         bool frameReady = false;
 
@@ -232,7 +212,6 @@ class STFT {
         size_t getFFTSize() const { return fftSize; }
         size_t getNumBins() const { return numBins; }
         FFT& getFFT() { return fft; }
-        const vector<float>& getWindow() const { return window; }
         FFTFrame& getFrame() { // Get most recent FFT frame
             size_t index = (spectPos == 0) ? (spectSize - 1) : (spectPos - 1);
             return spectrogram[index];
@@ -244,8 +223,6 @@ class STFT {
             inPos = 0; outPos = 0; hopCounter = 0; frameReady = false;
             inBuf.resize(fftSize, 0.0f); outBuf.assign(fftSize, 0.0f);
 
-            // Init analysis window / FFT
-            makeEnvelope(window, fftSize, HANN);
             fft.setFFTSize(fftSize);
 
             // Init spectrogram
@@ -269,7 +246,7 @@ class STFT {
                 vector<float> frame(fftN);
                 size_t readPos = inPos; // Start from oldest sample
                 for (size_t j = 0; j < fftN; ++j) {
-                    frame[j] = inBuf[readPos] * window[j];
+                    frame[j] = inBuf[readPos] * getEnvelopeValue((float)j / fftN, fftN, HANN);
                     ++readPos; if (readPos >= fftN) readPos = 0;
                 }
                 
@@ -300,7 +277,7 @@ class STFT {
                 vector<float> frame(fftSize);
                 fft.inverse(frameSpec.mag.data(), frameSpec.phase.data(), frame.data());
                 // Window and OLA
-                overlapAdd(outBuf, frame, window, outPos);        
+                overlapAdd(outBuf, frame, HANN, outPos);        
                 frameReady = false;
             }
 

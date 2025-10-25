@@ -15,13 +15,18 @@
 
 class Gain : public Effect { // Example, not for practical use
     private:
+        enum Params : ParamID { GAIN };
+
         float gainFactor;
+
     public:
-        Gain(float gainFactor) : gainFactor(gainFactor) {}
+        Gain(float gainFactor = 1.0f) { setGain(gainFactor); }
 
         void setGain(float gainFactor) { this->gainFactor = gainFactor; }
-        inline void setParam(const string& name, float value) override {
-            if (name == "Gain") { setGain(value); }
+        inline void setParam(ParamID param, float value) override {
+            switch (param) {
+                case GAIN: setGain(value); break;
+            }
         }
 
         void process(const float* in, float* out, size_t n) override {
@@ -37,6 +42,8 @@ class Gain : public Effect { // Example, not for practical use
 
 class Distortion : public Effect {
     private:
+        enum Params : ParamID { MIX, MODE, DRIVE, ENABLE_AAF };
+
         distortionMode mode;
         float mix, drive;
         bool enableAAF;
@@ -85,9 +92,10 @@ class Distortion : public Effect {
             float x = in * (2.0f + (drive * 8.0f)); // d -> [2, 10]
             return tanh(x);
         }
+
     public:
-        Distortion(float mix, distortionMode mode, float drive, bool enableAAF) : antiAlias(1.0f, vector<float>(begin(AAF), end(AAF))) 
-        { setMix(mix); setMode(mode); setDrive(drive); setAAF(enableAAF); }
+        Distortion(float mix = 1.0f, distortionMode mode = TUBE, float drive = 0.25f, bool enableAAF = false) 
+        : antiAlias(1.0f, vector<float>(begin(AAF), end(AAF))) { setMix(mix); setMode(mode); setDrive(drive); setAAF(enableAAF); }
 
         void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
         void setMode(distortionMode mode) {
@@ -105,11 +113,13 @@ class Distortion : public Effect {
         }
         void setDrive(float drive) { this->drive = clamp(drive, 0.0f, 1.0f); } // [0.0, 1.0]
         void setAAF(bool enableAAF) { this->enableAAF = enableAAF; } 
-        inline void setParam(const string& name, float value) override {
-            if (name == "Mix") { setMix(value); }
-            else if (name == "Mode") { setMode((distortionMode)value); }
-            else if (name == "Drive") { setDrive(value); }
-            else if (name == "AAF") { setAAF(value); }
+        inline void setParam(ParamID param, float value) override {
+            switch (param) {
+                case MIX: setMix(value); break;
+                case MODE: setMode(static_cast<distortionMode>(value)); break;
+                case DRIVE: setDrive(value); break;
+                case ENABLE_AAF: setAAF(value > 0.5f); break;
+            }
         }
 
         void process(const float* in, float* out, size_t n) override {
@@ -120,30 +130,32 @@ class Distortion : public Effect {
             for (size_t i = 0; i < n; ++i) {
                 wetSig = (this->*algorithm)(*in_ptr, drive) * dbAmp(-0.3f); // Apply non-linearity
                 if (enableAAF) antiAlias.process(&wetSig, &wetSig, 1); // Optional AAF (~0.8s processing time)
-                *out_ptr++ = lerp(*in_ptr++, wetSig, mix); // Mix
+                *out_ptr++ = dryWetMix(*in_ptr++, wetSig, mix); // Mix
             }
         }
 };
 
 class Delay : public Effect {
     private:
-        const float maxDelayTime;
+        enum Params : ParamID { MIX, DELAY_TIME, FEEDBACK };
+
+        const float maxDelayTime = 500.0f; // ms
         float mix, feedback;
         DelayLine delayLine;
 
-        float delayBuffer[BUFFER_SIZE], feedbackBuffer[BUFFER_SIZE];
     public:
-        Delay(float mix, float delayTime, float maxDelayTime, float feedback) : maxDelayTime(maxDelayTime), 
-        delayLine(delayTime, maxDelayTime) { 
-            setMix(mix); setFeedback(feedback); }
+        Delay(float mix = 0.3f, float delayTime = 200.0f, float feedback = 0.4f) :
+        delayLine(delayTime, maxDelayTime) { setMix(mix); setFeedback(feedback); }
 
         void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
         void setDelayTime(float delayTime) { delayLine.setDelayTime(clamp(delayTime, 1.0f, maxDelayTime)); } // ms, [1.0, 500.0]
         void setFeedback(float feedback) { this->feedback = clamp(feedback, -0.95f, 0.95f); } // [-0.95, 0.95]
-        inline void setParam(const string& name, float value) override {
-            if (name == "Mix") { setMix(value); }
-            else if (name == "Time") { setDelayTime(value); }
-            else if (name == "Feedback") { setFeedback(value); }
+        inline void setParam(ParamID param, float value) override {
+            switch (param) {
+                case MIX: setMix(value); break;
+                case DELAY_TIME: setDelayTime(value); break;
+                case FEEDBACK: setFeedback(value); break;
+            }
         }
 
         void process(const float* in, float* out, size_t n) override {
@@ -154,30 +166,35 @@ class Delay : public Effect {
             for (size_t i = 0; i < n; ++i) {
                 delaySig = delayLine.read(); // Read from delay line
                 delayLine.write(*in_ptr + (delaySig * feedback)); // Feedback and write new sample
-                *out_ptr++ = lerp(*in_ptr++, delaySig, mix); // Mix
+                *out_ptr++ = dryWetMix(*in_ptr++, delaySig, mix); // Mix
             }
         }
 };
 
 class Flanger : public Effect {
     private:
+        enum Params : ParamID { MIX, RATE, DEPTH, FEEDBACK };
+
         DelayLine delayLine;
         Wavetable LFO;
         float mix, rate, depth, feedback;
         float wetSig = 0;
+
     public:
-        Flanger(float mix, float rate, float depth, float feedback) : delayLine(15, 30), LFO(rate, SINE_TABLE) 
-        { setMix(mix); setRate(rate); setDepth(depth); setFeedback(feedback); }
+        Flanger(float mix = 1.0f, float rate = 0.08f, float depth = 1.0f, float feedback = 0.5f) 
+        : delayLine(15, 30), LFO(rate, SINE_TABLE) { setMix(mix); setRate(rate); setDepth(depth); setFeedback(feedback); }
 
         void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
         void setRate(float rate) { this->rate = clamp(rate, 0.0f, 20.0f); LFO.setFreq(rate); } // Hz, [0.0, 20.0]
         void setDepth(float depth) { this->depth = clamp(depth, 0.0f, 1.0f); } // [0.0, 1.0]
         void setFeedback(float feedback) { this->feedback = clamp(feedback, -0.95f, 0.95f); } // [-0.95, 0.95]
-        inline void setParam(const string& name, float value) override {
-            if (name == "Mix") { setMix(value); }
-            else if (name == "Rate") { setRate(value); }
-            else if (name == "Depth") { setDepth(value); }
-            else if (name == "Feedback") { setFeedback(value); }
+        inline void setParam(ParamID param, float value) override {
+            switch (param) {
+                case MIX: setMix(value); break;
+                case RATE: setRate(value); break;
+                case DEPTH: setDepth(value); break;
+                case FEEDBACK: setFeedback(value); break;
+            }
         }
 
         void process(const float* in, float* out, size_t n) override {
@@ -189,20 +206,25 @@ class Flanger : public Effect {
                 delayLine.write(*in_ptr + (feedback * wetSig));
                 
                 wetSig = delayLine.read();
-                *out_ptr++ = lerp(*in_ptr++, wetSig, mix); // Mix
+                *out_ptr++ = dryWetMix(*in_ptr++, wetSig, mix); // Mix
             }
         }
 };
 
 class Phaser : public Effect {
     private:
+        enum Params : ParamID { MIX, RATE, CENTER_FREQ, SPREAD, DEPTH, FEEDBACK };
+
+        const uint8_t order = 8;
+        const float q = 0.8f;
+
         float mix, rate, centerFreq, spread, depth, feedback;
-        const uint8_t order;
 
         vector<APF> apfSections; // APF bank
         vector<float> baseFreqs; // Store APF base freqs
-        float wetSig = 0.0f, stageSig = 0.0f;
         Wavetable LFO;
+        float wetSig = 0.0f, stageSig = 0.0f;
+
     public:
         void setupStages() { // Geometrically separate APF base freqs
             const float R = 1.0f + (spread * 16.0f); // Ratio from max/min base freqs, [1.6, 16.0]
@@ -214,26 +236,28 @@ class Phaser : public Effect {
                 apfSections[i].setCutoff(freq_i);
             }
         }
-        Phaser(float mix, float rate, float centerFreq, float spread, float depth, float feedback, const uint8_t order = 4, const float q = 0.8f) 
-        : order(order), LFO(rate, SINE_TABLE) {
-            for (size_t i = 0; i < order; ++i) { apfSections.push_back(APF(1.0f, centerFreq, q, false, 20)); }
+        Phaser(float mix = 1.0f, float rate = 0.08f, float centerFreq = 600.0f, float spread = 1.0f, float depth = 0.5f, float feedback = 0.8f)
+        : LFO(rate, SINE_TABLE) {
+            for (size_t i = 0; i < order; ++i) { apfSections.push_back(APF(1.0f, centerFreq, q, false, 20.0f, true)); }
             setupStages();
-            setMix(mix); setRate(rate); setCenter(centerFreq); setSpread(spread), setDepth(depth); setFeedback(feedback);
+            setMix(mix); setRate(rate); setCenterFreq(centerFreq); setSpread(spread), setDepth(depth); setFeedback(feedback);
         }
 
         void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
         void setRate(float rate) { this->rate = clamp(rate, 0.0f, 20.0f); LFO.setFreq(rate); } // Hz, [0.0, 20.0]
-        void setCenter(float centerFreq) { this->centerFreq = clamp(centerFreq, 50.0f, 8000.0f); setupStages(); } // Hz, // [50.0, 8000.0]
+        void setCenterFreq(float centerFreq) { this->centerFreq = clamp(centerFreq, 50.0f, 8000.0f); setupStages(); } // Hz, // [50.0, 8000.0]
         void setSpread(float spread) { this->spread = clamp(spread, 0.1f, 1.0f); setupStages(); } // [0.1, 1.0]
         void setDepth(float depth) { this->depth = clamp(depth, 0.0f, 1.0f); } // [0.0, 1.0]
         void setFeedback(float feedback) { this->feedback = clamp(feedback, -0.95f, 0.95f); } // [-0.95, 0.95]
-        inline void setParam(const string& name, float value) override { // [0.0, 1.0]
-            if (name == "Mix") { setMix(value); }
-            else if (name == "Rate") { setRate(value); }
-            else if (name == "Center") { setCenter(value); }
-            else if (name == "Spread") { setSpread(value); }
-            else if (name == "Depth") { setDepth(value); }
-            else if (name == "Feedback") { setFeedback(value); }
+        inline void setParam(ParamID param, float value) override { // [0.0, 1.0]
+            switch (param) {
+                case MIX: setMix(value); break;
+                case RATE: setRate(value); break;
+                case CENTER_FREQ: setCenterFreq(value); break;
+                case SPREAD: setSpread(value); break;
+                case DEPTH: setDepth(value); break;
+                case FEEDBACK: setFeedback(value); break;
+            }
         }
 
         void process(const float* in, float* out, size_t n) override {
@@ -251,15 +275,17 @@ class Phaser : public Effect {
                     in_ptr = out_ptr;
                 }
 
-                out[i] = lerp(in[i], wetSig, mix); // Mix
+                out[i] = dryWetMix(in[i], wetSig, mix); // Mix
             }
         }
 };
 
 class Chorus : public Effect {
     private:
+        enum Params : ParamID { MIX, RATE, DEPTH, DELAY_TIME, FEEDBACK };
+
         float mix, rate, depth, delayTime, feedback;
-        const uint8_t voiceCount; // 1-5
+        const uint8_t voiceCount = 4; // 1-5
         struct voice {
             float mix, depth, baseDelay;
             Random mod;
@@ -268,8 +294,8 @@ class Chorus : public Effect {
         vector<voice> voices;
         DelayLine delayLine;
     public:
-        Chorus(float mix, float rate, float depth, float delayTime, float feedback, uint8_t voiceCount) : voiceCount(voiceCount), 
-        delayLine(delayTime, 51.0f) {
+        Chorus(float mix = 1.0f, float rate = 0.08f, float depth = 25.0f, float delayTime = 5.0f, float feedback = 0.1f)
+        : delayLine(delayTime, 51.0f) {
             for (size_t i = 0; i < voiceCount; ++i) voices.push_back({1.0f / (float)voiceCount, depth, delayTime, Random(rate, PERLIN)});
             setMix(mix); setRate(rate); setDepth(depth); setDelayTime(delayTime); setFeedback(feedback);
         }
@@ -291,12 +317,14 @@ class Chorus : public Effect {
             };
         }
         void setFeedback(float feedback) { this->feedback = clamp(feedback, -0.95f, 0.95f); } // [-0.95, 0.95]
-        inline void setParam(const string& name, float value) override {
-            if (name == "Mix") { setMix(value); }
-            else if (name == "Rate") { setRate(value); }
-            else if (name == "Depth") { setDepth(value); }
-            else if (name == "Delay") { setDelayTime(value); }
-            else if (name == "Feedback") { setFeedback(value); }
+        inline void setParam(ParamID param, float value) override {
+            switch (param) {
+                case MIX: setMix(value); break;
+                case RATE: setRate(value); break;
+                case DEPTH: setDepth(value); break;
+                case DELAY_TIME: setDelayTime(value); break;
+                case FEEDBACK: setFeedback(value); break;
+            }
         }
 
         void process(const float* in, float* out, size_t n) override {
@@ -311,7 +339,7 @@ class Chorus : public Effect {
                 delayLine.write(*in_ptr + (feedback * wetSig));
 
                 wetSig *= sqrtf((float)voiceCount) * 1.2f;
-                *out_ptr++ = lerp(*in_ptr++, wetSig, mix); // Mix
+                *out_ptr++ = dryWetMix(*in_ptr++, wetSig, mix); // Mix
             }
         }
 };
@@ -320,7 +348,9 @@ class Reverb : public Effect {
     // Datarro reverb algorithm 
     // https://ccrma.stanford.edu/~dattorro/EffectDesignPart1.pdf
     private:
-        float mix, predelayTime, decayTime, decayGainL, decayGainR, modRate, modDepth, damping;
+        enum Params : ParamID { MIX, PREDELAY_TIME, DECAY_TIME, MOD_RATE, MOD_DEPTH };
+
+        float mix, predelayTime, decayTime, decayGainL, decayGainR, modRate, modDepth;
         vector<APF> diffusers; // 8
         vector<OnePole> filters; // 3
         vector<DelayLine> delayLines; // 5
@@ -328,21 +358,22 @@ class Reverb : public Effect {
         float tankInSig, nodeSig, tankSig1 = 0, tankSig2 = 0;
 
     public:
-        Reverb(float mix, float predelayTime, float decayTime, float modRate, float modDepth, float damping = 0.0005f) : LFO(modRate, SINE_TABLE) {
+        Reverb(float mix = 0.2f, float predelayTime = 0.0f, float decayTime = 3000.0f, float modRate = 0.5f, float modDepth = 0.2f) 
+        : LFO(modRate, SINE_TABLE) {
             const float inputDiffuse[2] = {0.750f, 0.625f};
             const float decayDiffuse[2] = {0.70f, 0.50f};
             const float apfDelays[8] = {142, 107, 379, 277, 672, 908, 1800, 2656};
             const float delays[5] = {predelayTime, 100.97f, 84.35f, 95.62f, 71.72f};
-            const float bandwidth = 0.9995f;
+            const float bandwidth = 0.9995f, damping = 0.0005f;
 
             // Diffusers
             size_t apf_i = 0;
             for (float diff : inputDiffuse) {
-                for (size_t i = 0; i < 2; ++i) { diffusers.push_back(APF(1.0f, 0.0f, 0.0f, false, 10.0f)); 
+                for (size_t i = 0; i < 2; ++i) { diffusers.push_back(APF(1.0f, 0.0f, 0.0f, false, 10.0f, false)); 
                 diffusers.back().setDelay(apfDelays[apf_i++]); diffusers.back().setQ(1.0f / (1.0f - diff)); };
             }
             for (float diff : decayDiffuse) {
-                for (size_t i = 0; i < 2; ++i) { diffusers.push_back(APF(1.0f, 0.0f, 0.0f, false, 61.0f));
+                for (size_t i = 0; i < 2; ++i) { diffusers.push_back(APF(1.0f, 0.0f, 0.0f, false, 61.0f, false));
                 diffusers.back().setDelay(apfDelays[apf_i++]); diffusers.back().setQ(1.0f / (1.0f - diff)); };
             } diffusers[4].setInvert(true); diffusers[5].setInvert(true);
 
@@ -355,15 +386,15 @@ class Reverb : public Effect {
             // Delays
             for (float delay : delays) { delayLines.push_back(DelayLine(delay, 100.0f)); }
 
-            setMix(mix); setPredelay(predelayTime); setDecay(decayTime); setModRate(modRate); setModDepth(modDepth); setDamping(damping);
+            setMix(mix); setPredelayTime(predelayTime); setDecayTime(decayTime); setModRate(modRate); setModDepth(modDepth);
         }
 
         void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setPredelay(float predelayTime) { // ms, [0.0, 500.0]
+        void setPredelayTime(float predelayTime) { // ms, [0.0, 500.0]
             this->predelayTime = clamp(predelayTime, 0.0f, 500.0f); 
             delayLines.front().setDelayTime(this->predelayTime); 
         } 
-        void setDecay(float decayTime) { // ms, [100.0, 10000.0]
+        void setDecayTime(float decayTime) { // ms, [100.0, 10000.0]
             this->decayTime = clamp(decayTime, 100.0f, 10000.0f);
             float RT60 = this->decayTime / 1000.0f;
             decayGainL = powf(0.001f, 4648.0f / (RT60 * SAMPLE_RATE));
@@ -371,18 +402,14 @@ class Reverb : public Effect {
         }
         void setModRate(float modRate) { this->modRate = clamp(modRate, 0.05f, 5.0f); LFO.setFreq(this->modRate); } // Hz, [0.05, 5.0]
         void setModDepth(float modDepth) { this->modDepth = clamp(modDepth, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setDamping(float damping) { // DO NOT EXPOSE / USE!
-            this->damping = clamp(damping, 0.0f, 1.0f); 
-            float cutoffFreq = 2000.0f + (damping * 10000.0f);
-            for (size_t i = 1; i < 3; ++i) filters[i].setCutoff(cutoffFreq);
-        }
-        inline void setParam(const string& name, float value) override {
-            if (name == "Mix") { setMix(value); }
-            else if (name == "Predelay") { setPredelay(value); }
-            else if (name == "Decay") { setDecay(value); }
-            else if (name == "Mod Rate") { setModRate(value); }
-            else if (name == "Mod Depth") { setModDepth(value); }
-            else if (name == "Damping") { setDamping(value); } // DO NOT USE IN PRACTICE
+        inline void setParam(ParamID param, float value) override {
+            switch (param) {
+                case MIX: setMix(value); break;
+                case PREDELAY_TIME: setPredelayTime(value); break;
+                case DECAY_TIME: setDecayTime(value); break;
+                case MOD_RATE: setModRate(value); break;
+                case MOD_DEPTH: setModDepth(value); break;
+            }
         }
 
         void process(const float* in, float* out, size_t n) override {
@@ -444,17 +471,19 @@ class Reverb : public Effect {
                 accumulatorR -= tapGain * delayLines[4].read(121.0f);
 
                 float wetSig = (accumulatorL + accumulatorR) * 0.5f;
-                out[i] = lerp(in[i], wetSig, mix); // Total mix
+                out[i] = dryWetMix(in[i], wetSig, mix); // Total mix
             }
         }
 };
 
 class Compressor : public Effect {
     private:
+        enum Params : ParamID { MIX, THRESHOLD, RATIO, KNEE, ATTACK_TIME, RELEASE_TIME, MAKEUP_GAIN, AUTO_MAKEUP };
+
         float mix, threshold, ratio, knee, makeupGain; bool autoMakeup;
         const float L = 50.0f, L_samples = L * SAMPLE_RATE / 1000.0f; // RMS window size
 
-        float rms = 0.0f; DelayLine inBuffer;  
+        float rms = 1e-6f; DelayLine inBuffer;  
         float gainSmoothed = 0.0f;
         float attackCoeff, releaseCoeff, makeupCoeff;
         float reductionSmoothed = 0.0f; float autoMakeupGain = 0.0f;
@@ -462,7 +491,6 @@ class Compressor : public Effect {
         float computeReduction(float rmsDB) {
             // https://www.desmos.com/calculator/wkmkrmn9le
             float gDB = 0.0f;
-
             if (rmsDB < (threshold - (knee / 2.0f))) { gDB = rmsDB; } // Below threshold, linear
             else if (rmsDB > (threshold + (knee / 2.0f))) { gDB = threshold + ((rmsDB - threshold) / ratio); } // Above threshold, attenuate
             else { gDB = rmsDB + ((((1.0f / ratio) - 1.0f) * pow(rmsDB - threshold + (knee / 2.0f), 2.0f)) / (2.0f * knee)); } // Soft knee
@@ -471,10 +499,10 @@ class Compressor : public Effect {
         }
 
     public:
-        Compressor(float mix, float threshold, float ratio, float knee, float attack, float release, float makeupGain, bool autoMakeup) 
-        : inBuffer(1.0f, L + 1.0f) {
+        Compressor(float mix = 1.0f, float threshold = -18.0f, float ratio = 4.0f, float knee = 10.0f, 
+            float attack = 100.0f, float release = 100.0f, float makeupGain = 0.0f, bool autoMakeup = false) : inBuffer(1.0f, L + 1.0f) {
             setMix(mix); setThreshold(threshold); setRatio(ratio); setKnee(knee); 
-            setAttack(attack); setRelease(release); setMakeup(makeupGain); setAutoMakeup(autoMakeup);
+            setAttackTime(attack); setReleaseTime(release); setMakeupGain(makeupGain); setAutoMakeup(autoMakeup);
             inBuffer.setDelayTime(L);
             makeupCoeff = exp(-2.2f / (100.0f * SAMPLE_RATE / 1000.0f)); // Auto-makeup smoothing factor
         }
@@ -483,22 +511,24 @@ class Compressor : public Effect {
         void setThreshold(float threshold) { this->threshold = clamp(threshold, -200.0f, 0.0f); } // dB, [-200.0, 0.0]
         void setRatio(float ratio) { this->ratio = clamp(ratio, 1.0f, 100.0f); } // [1.0, 100.0]
         void setKnee(float knee) { this->knee = clamp(knee, 0.0f, 40.0f); }// [0.0, 40.0]
-        void setAttack(float attack) { attackCoeff = exp(-2.2f / (clamp(attack, 0.005f, 250.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [0.005, 250.0]
-        void setRelease(float release) { releaseCoeff = exp(-2.2f / (clamp(release, 10.0f, 2500.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [10.0, 2500.0]
-        void setMakeup(float makeupGain) { this->makeupGain = clamp(makeupGain, -72.0f, 36.0f); } // dB, [-72.0, 36.0]
+        void setAttackTime(float attackTime) { attackCoeff = exp(-2.2f / (clamp(attackTime, 0.005f, 250.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [0.005, 250.0]
+        void setReleaseTime(float releaseTime) { releaseCoeff = exp(-2.2f / (clamp(releaseTime, 10.0f, 2500.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [10.0, 2500.0]
+        void setMakeupGain(float makeupGain) { this->makeupGain = clamp(makeupGain, -72.0f, 36.0f); } // dB, [-72.0, 36.0]
         void setAutoMakeup(bool autoMakeup) { 
             this->autoMakeup = autoMakeup;
             if (autoMakeup) { reductionSmoothed = 0.0f; autoMakeupGain = 0.0f; }
         }
-        inline void setParam(const string& name, float value) override {
-            if (name == "Mix") { setMix(value); }
-            else if (name == "Threshold") { setThreshold(value); }
-            else if (name == "Ratio") { setRatio(value); }
-            else if (name == "Knee") { setKnee(value); }
-            else if (name == "Attack") { setAttack(value); }
-            else if (name == "Release") { setRelease(value); }
-            else if (name == "Makeup") { setMakeup(value); }
-            else if (name == "Auto Makeup") { setAutoMakeup(value > 0.5f); }
+        inline void setParam(ParamID param, float value) override {
+            switch (param) {
+                case MIX: setMix(value); break;
+                case THRESHOLD: setThreshold(value); break;
+                case RATIO: setRatio(value); break;
+                case KNEE: setKnee(value); break;
+                case ATTACK_TIME: setAttackTime(value); break;
+                case RELEASE_TIME: setReleaseTime(value); break;
+                case MAKEUP_GAIN: setMakeupGain(value); break;
+                case AUTO_MAKEUP: setAutoMakeup(value > 0.5f); break;
+            }
         }
 
         void process(const float* in, float* out, size_t n) override {
@@ -507,15 +537,10 @@ class Compressor : public Effect {
                 const float x_i = in[i], x_L = inBuffer.read();
                 inBuffer.write(x_i); 
                 rms = sqrt((rms * rms) + (((x_i * x_i) - (x_L * x_L)) / L_samples));
-                float rmsDB = ampDB(rms);
+                float rmsDB = ampDB(max(rms, 1e-6f));
 
                 // Gain computation
-                float gDB = 0.0f;
-                if (rmsDB < (threshold - (knee / 2.0f))) { gDB = rmsDB; } // Below threshold, linear
-                else if (rmsDB > (threshold + (knee / 2.0f))) { gDB = threshold + ((rmsDB - threshold) / ratio); } // Above threshold, attenuate
-                else { gDB = rmsDB + ((((1.0f / ratio) - 1.0f) * pow(rmsDB - threshold + (knee / 2.0f), 2.0f)) / (2.0f * knee)); } // Soft knee
-
-                gDB -= rmsDB;
+                float gDB = computeReduction(rmsDB);
 
                 // Gain smoothing (one-pole IIR LPF)
                 if (gDB <= gainSmoothed) { gainSmoothed = (attackCoeff * gainSmoothed) + ((1.0f - attackCoeff) * gDB); } // Attack
@@ -528,14 +553,13 @@ class Compressor : public Effect {
                 }
                 float makeupDB = autoMakeup ? autoMakeupGain : makeupGain;
                 float g = dbAmp(clamp(gainSmoothed + makeupDB, -60.0f, 20.0f));
-                float y_i = x_L * g;
+                float y_i = x_i * g;
 
                 // Hard clip just in case (e.g., limiter use case)
                 if (y_i > 1.0f) { y_i = 1.0f; }
                 else if (y_i < -1.0f) { y_i = -1.0f; }
-                y_i *= dbAmp(-0.3f);
 
-                out[i] = lerp(x_L, y_i, mix); // Mix
+                out[i] = dryWetMix(x_L, y_i, mix); // Mix
             }
         }
 };
@@ -544,11 +568,14 @@ class Granulator : public Effect {
     // HACK: Works, but produces clicks with larger positionRand since grains may end up reading from indices overwritten by write head
     // Non-clicking usage: No reversed grains + any positionRand, OR reversed grains + no/small positionRand
     private:
-        const size_t bufSize = 1 * SAMPLE_RATE;
+        enum Params : ParamID { MIX, POSITION, POSITION_RAND, RATE, RATE_RAND, LENGTH, LENGTH_RAND, 
+                                LEVEL, LEVEL_RAND, REVERSE_CHANCE, ENVELOPE_TYPE };
+
+        const size_t bufSize = 1 * (size_t)SAMPLE_RATE;
         const int maxGrains = 32;
         
-        float mix, position, time, length, level, reverseChance;
-        float positionRand, timeRand, lengthRand, levelRand;
+        float mix, position, rate, length, level, reverseChance;
+        float positionRand, rateRand, lengthRand, levelRand;
         envelopeType envType;
         
         vector<float> inBuf; size_t writePos = 0;
@@ -600,9 +627,7 @@ class Granulator : public Effect {
             int offset = grain.reverse ? ((grain.length - 1) - grain.playhead) : grain.playhead;
             int readPos = (grain.startPos + offset) % bufSize;
             
-            // Apply envelope
-            float envelopeValue = 1.0f;
-            envelopeValue = getEnvelopeValue((float)grain.playhead / (float)grain.length, grain.length, envType);
+            float envelopeValue = getEnvelopeValue((float)grain.playhead / (float)grain.length, grain.length, envType);
             
             ++grain.playhead;
             if (grain.playhead >= grain.length) grain.active = false; // Free if done
@@ -611,11 +636,11 @@ class Granulator : public Effect {
         }
 
     public:
-        Granulator(float mix, float position, float positionRand, float time, float timeRand, 
-            float length, float lengthRand, float level, float levelRand, float reverseChance, envelopeType envType) {
-            setMix(mix); setPosition(position); setPositionRand(positionRand); setTime(time); setTimeRand(timeRand);
-            setLength(length); setLengthRand(lengthRand); setLevel(level); setLevelRand(levelRand);
-            setReverseChance(reverseChance); setEnvelopeType(envType);
+        Granulator(float mix = 1.0f, float position = 0.5f, float positionRand = 0.5f, float time = 50.0f, float timeRand = 0.0f, 
+            float length = 200.0f, float lengthRand = 0.0f, float level = 0.8f, float levelRand = 0.0f, 
+            float reverseChance = 0.0f, envelopeType envType = HANN) {
+            setMix(mix); setPosition(position); setPositionRand(positionRand); setRate(time); setRateRand(timeRand); setLength(length); 
+            setLengthRand(lengthRand); setLevel(level); setLevelRand(levelRand); setReverseChance(reverseChance); setEnvelopeType(envType);
             grains.resize(maxGrains);
             inBuf.resize(bufSize, 0.0f);
         }
@@ -623,26 +648,28 @@ class Granulator : public Effect {
         void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
         void setPosition(float position) { this->position = clamp(position, 0.0f, 1.0f); } // [0.0, 1.0]
         void setPositionRand(float positionRand) { this->positionRand = clamp(positionRand, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setTime(float time) { this->time = clamp(time, 1.0f, 500.0f); } // ms, [1.0, 500.0]
-        void setTimeRand(float timeRand) { this->timeRand = clamp(timeRand, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setRate(float rate) { this->rate = clamp(rate, 1.0f, 500.0f); } // ms, [1.0, 500.0]
+        void setRateRand(float rateRand) { this->rateRand = clamp(rateRand, 0.0f, 1.0f); } // [0.0, 1.0]
         void setLength(float length) { this->length = clamp(length, 5.0f, 500.0f); } // ms, [5.0, 500.0]
         void setLengthRand(float lengthRand) { this->lengthRand = clamp(lengthRand, 0.0f, 1.0f); } // [0.0, 1.0]
         void setReverseChance(float reverseChance) { this->reverseChance = clamp(reverseChance, 0.0f, 1.0f); } // [0.0, 1.0]
         void setLevel(float level) { this->level = clamp(level, 0.0f, 1.0f); } // [0.0, 1.0]
         void setLevelRand(float levelRand) { this->levelRand = clamp(levelRand, 0.0f, 1.0f); } // [0.0, 1.0]
         void setEnvelopeType(envelopeType envType) { this->envType = envType; }
-        inline void setParam(const string& name, float value) override {
-            if (name == "Mix") { setMix(value); }
-            else if (name == "Position") { setPosition(value); }
-            else if (name == "Position Random") { setPositionRand(value); }
-            else if (name == "Time") { setTime(value); }
-            else if (name == "Time Random") { setTimeRand(value); }
-            else if (name == "Length") { setLength(value); }
-            else if (name == "Length Random") { setLengthRand(value); }
-            else if (name == "Level") { setLevel(value); }
-            else if (name == "Level Random") { setLevelRand(value); }
-            else if (name == "Reverse Chance") { setReverseChance(value); }
-            else if (name == "Envelope Type") { setEnvelopeType((envelopeType)value); }
+        inline void setParam(ParamID param, float value) override {
+            switch (param) {
+                case MIX: setMix(value); break;
+                case POSITION: setPosition(value); break;
+                case POSITION_RAND: setPositionRand(value); break;
+                case RATE: setRate(value); break;
+                case RATE_RAND: setRateRand(value); break;
+                case LENGTH: setLength(value); break;
+                case LENGTH_RAND: setLengthRand(value); break;
+                case LEVEL: setLevel(value); break;
+                case LEVEL_RAND: setLevelRand(value); break;
+                case REVERSE_CHANCE: setReverseChance(value); break;
+                case ENVELOPE_TYPE: setEnvelopeType(static_cast<envelopeType>(value)); break;
+            }
         }
 
     void process(const float* in, float* out, size_t n) override {
@@ -650,7 +677,7 @@ class Granulator : public Effect {
             inBuf[writePos] = in[i]; // Write input to circular buffer
             ++grainCounter;
             
-            float timeSamples = (time + (time * timeRand * uniform())) * SAMPLE_RATE / 1000.0f;
+            float timeSamples = (rate + (rate * rateRand * uniform())) * SAMPLE_RATE / 1000.0f;
             if (grainCounter >= timeSamples) { // Time to spawn a grain!
                 spawnGrain();
                 grainCounter = 0.0f;
@@ -659,7 +686,7 @@ class Granulator : public Effect {
             // Process active grains and accumulate output
             float wetSig = 0.0f;
             for (auto& grain : grains) if (grain.active) { wetSig += processGrain(grain); }
-            out[i] = lerp(in[i], wetSig, mix); // Mix
+            out[i] = dryWetMix(in[i], wetSig, mix); // Mix
 
             ++writePos;
             if (writePos >= bufSize) writePos = 0;
@@ -670,7 +697,9 @@ class Granulator : public Effect {
 class Freezer : public Effect {
     // HACK: Works, except for negative rates for time-domain mode which produce silence
     private:
-        const size_t bufSize = 3 * SAMPLE_RATE; // 3 seconds
+        enum Params : ParamID { MIX, RATE, SPECTRAL_MODE, FFT_SIZE, HOP_SIZE, LOOP_START, LOOP_END };
+
+        const size_t bufSize = 3 * (size_t)SAMPLE_RATE; // 3 seconds
         const float smooth = 0.5f;
         
         float mix, rate; bool spectralMode;
@@ -678,24 +707,17 @@ class Freezer : public Effect {
         
         vector<float> inBuf; size_t writePos = 0; float readPos = 0.0f;
         
-        vector<float> crossfadeEnv; // Crossfade envelope
-        
         // Spectral resythesis
         STFT stft;
         vector<float> spectBuf, spectFrame;
         size_t spectPos = 0, spectHopCounter = 0;
 
     public:
-        Freezer(float mix, float rate, bool spectralMode, size_t fftSize, size_t hopFactor = 4, 
-            float loopStart = 0.0f, float loopEnd = 1.0f) : stft(fftSize, 4) {
-            setMix(mix); setRate(rate); setSpectralMode(spectralMode); 
+        Freezer(float mix = 1.0f, float rate = 1.0f, bool spectralMode = false, size_t fftSize = 1024, size_t hopFactor = 4, 
+            float loopStart = 0.0f, float loopEnd = 1.0f) : stft(fftSize, hopFactor) {
+            setMix(mix); setRate(rate); setSpectralMode(spectralMode);
             setFFTSize(fftSize); setHopSize(hopFactor); setLoopRegion(loopStart, loopEnd); 
             inBuf.resize(bufSize, 0.0f);
-
-            // Create crossfade envelope
-            float crossfadeFrames = 1.0f + (smooth * smooth * 999.0f);
-            size_t envSize = (size_t)(crossfadeFrames * 2.0f);
-            makeEnvelope(crossfadeEnv, envSize, HANN);
         }
         
         void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
@@ -717,19 +739,20 @@ class Freezer : public Effect {
             }
             readPos = loopStart * (float)bufSize;
         }
-        inline void setParam(const string& name, float value) override {
-            if (name == "Mix") { setMix(value); }
-            else if (name == "Rate") { setRate(value); }
-            else if (name == "Spectral Mode") { setSpectralMode(value > 0.5f); }
-            else if (name == "FFT Size") { setFFTSize((size_t)value); }
-            else if (name == "Hop Size") { setHopSize((size_t)value); }
-            else if (name == "Loop Start") { setLoopRegion(value, loopEnd); }
-            else if (name == "Loop End") { setLoopRegion(loopStart, value); }
+        inline void setParam(ParamID param, float value) override {
+            switch (param) {
+                case MIX: setMix(value); break;
+                case RATE: setRate(value); break;
+                case SPECTRAL_MODE: setSpectralMode(value > 0.5f); break;
+                case FFT_SIZE: setFFTSize((size_t)value); break;
+                case HOP_SIZE: setHopSize((size_t)value); break;
+                case LOOP_START: setLoopRegion(value, loopEnd); break;
+                case LOOP_END: setLoopRegion(loopStart, value); break;
+            }
         }
         
         void process(const float* in, float* out, size_t n) override {
             const size_t fftN = stft.getFFTSize(), hopN = stft.getHopSize();
-            const auto& window = stft.getWindow();
 
             // Compute loop boundaries
             float loopStartSamples = loopStart * (float)bufSize;
@@ -761,7 +784,7 @@ class Freezer : public Effect {
                         // IFFT
                         stft.getFFT().inverse(interpFrame.mag.data(), interpFrame.phase.data(), spectFrame.data());
                         // Window and OLA
-                        overlapAdd(spectBuf, spectFrame, window, spectPos);
+                        overlapAdd(spectBuf, spectFrame, HANN, spectPos);
                     }
                     
                     ++spectPos; if (spectPos >= fftN) spectPos = 0;
@@ -775,21 +798,18 @@ class Freezer : public Effect {
 
                 if (!spectralMode) wetSig = lerp(inBuf, readPos, bufSize); // Time domain mode
 
-                // Calculate and apply crossfade envelope
                 float crossfade = 1.0f;
                 if (rate != 0.0f) {
-                    float fadeSize = (float)crossfadeEnv.size() / (2.0f * loopLength);
-                    if (loopPos < fadeSize) { // Fade in
-                        float envIndex = (loopPos / fadeSize) * (crossfadeEnv.size() / 2.0f);
-                        crossfade = lerp(crossfadeEnv, envIndex, crossfadeEnv.size());
-                    } else if (loopPos > (1.0f - fadeSize)) { // Fade out
-                        float t = (loopPos - (1.0f - fadeSize)) / fadeSize;
-                        float envIndex = (crossfadeEnv.size() / 2.0f) + (t * (crossfadeEnv.size() / 2.0f));
-                        crossfade = lerp(crossfadeEnv, envIndex, crossfadeEnv.size());
+                    if (loopPos < smooth) { // Fade in
+                        float t = loopPos / smooth; // 0..1
+                        crossfade = getEnvelopeValue(t, 1, HANN);
+                    } else if (loopPos > (1.0f - smooth)) { // Fade out
+                        float t = (loopPos - (1.0f - smooth)) / smooth;
+                        crossfade = getEnvelopeValue(1.0f - t, 1, HANN);
                     }
                 } wetSig *= crossfade;
             
-                out[i] = lerp(in[i], wetSig, mix); // Mix
+                out[i] = dryWetMix(in[i], wetSig, mix); // Mix
             }
         }
 };
@@ -798,18 +818,24 @@ class Freezer : public Effect {
 
 class SpectralGate : public Spectral_Effect {
     private:
+        enum Params : ParamID { THRESHOLD = 1, TILT };
+
         float threshold, tilt;
+        
     public:
-        SpectralGate(float mix, float thresholdDB, float tilt, int fftSize) : Spectral_Effect(mix, fftSize)
+        SpectralGate(float mix = 1.0f, float thresholdDB = -10.0f, float tilt = 0.5f, int fftSize = 1024) : Spectral_Effect(mix, fftSize)
             { setThreshold(thresholdDB); setTilt(tilt); }
         
         void setThreshold(float thresholdDB) { threshold = dbAmp(clamp(thresholdDB, -100.0f, 0.0f)); } // dB, [-100.0, 0.0]
         void setTilt(float tilt) { this->tilt = clamp(tilt, -1.0f, 1.0f) * 2.0f; } // [-1.0, 1.0], + gates lows more, - gates highs more
-        inline void setParam(const string& name, float value) override {
-            if (name == "Threshold") { setThreshold(value); }
-            else if (name == "Tilt") { setTilt(value); }
-            else { Spectral_Effect::setParam(name, value); }
+        inline void setParam(ParamID param, float value) override {
+            switch (param) {
+                case THRESHOLD: setThreshold(value); break;
+                case TILT: setTilt(value); break;
+                default: Spectral_Effect::setParam(param, value);
+            }
         }
+
     protected:
         void processSpectrum(float* mag, float* /*phs*/, size_t numBins) override {
             const float binTilt = tilt / (float)(numBins - 1);

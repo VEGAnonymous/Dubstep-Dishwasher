@@ -45,10 +45,21 @@
 - Add critical section when calling setParam() or setBypass() via Serial command
 - Minor fixes - Serial.begin() called, Limiter no longer bypassed
 
-10-24-25
+10-24-25a
 - Refactor Phaser, Chorus, Reverb, Granulator to use significantly less memory
 - Add temporary debug tools and flags to main
 - Tentative DelayLine refactor for PSRAM
 - Implement getEnvelopeValue() utility
 - Increase wavetable size to 2048
 - Remove critical section for setParam() and setBypass()
+
+10-24-25b
+- Refactor AudioChain and Effect to use EffectID -> add, remove, get, swap
+- Refactor all Effect setParam() to switch ParamID against local Params enum
+- Change processCommand() to parse bytestring commands
+- Move effect parameter defaults from AudioChain() to individual constructors
+- Refactor APF to allow Direct Form II implementation
+- Tentatively deprecate makeEnvelope() for getEnvelopeValue(); refactor STFT, Granulator, Freezer to match
+- Switch lerp() effect mixing to equal power crossfade via new utility dryWetMix()
+- Fix Compressor gain blowup issue
+- Remove damping control from Reverb

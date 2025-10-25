@@ -17,38 +17,65 @@
 class AudioChain {
     private:
         vector<unique_ptr<Effect>> effects;
-        std::map<string, Effect*> fxMap;
+        std::map<uint8_t, Effect*> fxMap;
+        EffectID nextID = 0;
+
     public:
         template<typename T, typename... Args>
-        void addEffect(const string& name, Args&&... args) {
-            effects.push_back(make_unique<T>(args...));
-            fxMap[name] = effects.back().get();
+        void addEffect(Args&&... args) {
+            auto effect = make_unique<T>(args...);
+            effect->setID(nextID);
+
+            fxMap[nextID] = effect.get();
+
+            effects.push_back(move(effect));
+            ++nextID;
         }
 
-        Effect* getEffect(string key) { return fxMap[key]; }
-        // TODO: Overload with id getter
+        void removeEffect(EffectID id) {
+            // Search for effect by ID
+            auto it = find_if(effects.begin(), effects.end(), [id](const unique_ptr<Effect>& effect){ return effect->getID() == id; });
+            if (it == effects.end()) return; // Not found
 
-        AudioChain() {
-            // Build effects chain, initial order
+            fxMap.erase((*it)->getID());
+            effects.erase(it);
+        }
+
+        Effect* getEffect(EffectID id) {
+            auto it = fxMap.find(id);
+            return (it != fxMap.end()) ? it->second : nullptr;
+        }
+
+        void swapEffects(uint8_t idA, uint8_t idB) { // TODO: Maybe expand to also shift order? 
+            auto itA = find_if(effects.begin(), effects.end(), [idA](const unique_ptr<Effect>& effect){ return effect->getID() == idA; });
+            auto itB = find_if(effects.begin(), effects.end(), [idB](const unique_ptr<Effect>& effect){ return effect->getID() == idB; });
+            if (itA == effects.end() || itB == effects.end()) return;
+            iter_swap(itA, itB);
+        }
+
+        AudioChain() { // Build effects chain, initial order
             // BUG: Extreme DTCM memory issues - offending effects disabled until PSRAM arrives
-            addEffect<Distortion>("Distortion", 1.0f, TUBE, 0.25f, false);
-            addEffect<Delay>("Delay", 0.3f, 200.0f, 500.0f, 0.4f);
-            addEffect<Flanger>("Flanger", 1.0f, 0.08f, 1.0f, 0.5f);
-            addEffect<Phaser>("Phaser", 1.0f, 0.08f, 600.0f, 1.0f, 0.5f, 0.8f, 8, 0.8f);
-            addEffect<Chorus>("Chorus", 1.0f, 0.08f, 25.0f, 5.0f, 0.1f, 4);
-            addEffect<Reverb>("Reverb", 0.2f, 0.0f, 3000.0f, 0.5f, 0.2f);
-            addEffect<Compressor>("Compressor", 1.0f, -18.0f, 4.0f, 10.0f, 100.0f, 100.0f, 0.0f, true);
-            // addEffect<Granulator>("Granulator", 1.0f, 0.5f, 0.5f, 50.0f, 0.0f, 200.0f, 0.0f, 0.8f, 0.0f, 0.0f, HANN);
-            // addEffect<Freezer>("Freezer", 1.0f, 2.0f, false, 1024, 4, 0.0f, 1.0f);
-            // addEffect<SpectralGate>("Spectral Gate", 1.0f, -10.0f, 1.0f, 1024);
+            addEffect<Distortion>();
+            addEffect<Delay>();
+            addEffect<Flanger>();
+            addEffect<Phaser>();
+            addEffect<Chorus>();
+            addEffect<Reverb>();
+            addEffect<Compressor>();
+            // addEffect<Granulator>();
+            // addEffect<Freezer>();
+            // addEffect<SpectralGate>();
 
-            addEffect<Compressor>("Limiter", 1.0f, dbAmp(-0.6f), 100.0f, 0.0f, 1.0f, 50.0f, dbAmp(-0.3f), false); // DO NOT TOUCH
+            addEffect<Compressor>(1.0f, dbAmp(-0.6f), 100.0f, 0.0f, 1.0f, 50.0f, dbAmp(-0.3f), false); // LIMITER, DO NOT TOUCH
 
             // Bypass all except Limiter
             for (size_t i = 0; i < effects.size() - 1; ++i) effects[i]->setBypass(true);
-        }
 
-        void reorder(uint8_t fxA, uint8_t fxB) { swap(effects[fxA], effects[fxB]); } // TODO: Maybe expand to either swap OR shift
+            Serial.println("Active effects:");
+            for (auto &fx : effects)
+                if (!fx->isBypassed())
+                    Serial.printf("  ID %d active\n", fx->getID());
+        }
 
         void processChain(float* input, float* output, size_t n = BUFFER_SIZE) {
             // Mark last active effect
@@ -74,6 +101,7 @@ class AudioChainStream : public AudioStream {
     private:
         audio_block_t * _inputQueueArray[1];
         AudioChain &chain;
+
     public:
         AudioChainStream(AudioChain &chain) : AudioStream(1, _inputQueueArray), chain(chain) {}
 

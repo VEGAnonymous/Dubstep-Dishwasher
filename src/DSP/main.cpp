@@ -18,7 +18,7 @@ using namespace std;
 
 // TESTING - 
 const bool USB_IO = true, // <-- SET FLAGS HERE
-           LOG_DBG = false;
+           LOG_DBG = true;
 
 AudioInputUSB usbIn; 
 AudioOutputUSB usbOut;
@@ -36,73 +36,24 @@ unique_ptr<AudioChainStream> stream;
 // Connections
 unique_ptr<AudioConnection> patch1, patch2;
 
-void processCommand(const String& s, AudioChain& chain) { // TEMP: Vibecoded slop for debugging
-    String t = s;
-    t.trim();
-    if (t.length() == 0) return;
+void processCommand(const String& s, AudioChain& chain) {
+    uint8_t fxID, paramID, bypass;
+    float value;
 
-    if (t.startsWith("SET")) {
-        int a = t.indexOf(' ') + 1;
-        int b = t.indexOf(' ', a);
-        int c = t.indexOf(' ', b + 1);
-        if (a < 0 || b < 0 || c < 0) {
-            Serial.println("ERROR: Invalid SET command format");
-            return;
-        }
-
-        std::string fxName = t.substring(a, b).c_str();
-        Effect* fx = chain.getEffect(fxName);
-        if (!fx) {
-            Serial.print("ERROR: Effect not found -> ");
-            Serial.println(fxName.c_str());
-            return;
-        }
-
-        std::string paramName = t.substring(b + 1, c).c_str();
-        float val = t.substring(c + 1).toFloat();
-
-        AudioNoInterrupts();
-        fx->setParam(paramName.c_str(), val);
-        AudioInterrupts();
-
-        Serial.print("OK: SET ");
-        Serial.print(fxName.c_str());
-        Serial.print(" ");
-        Serial.print(paramName.c_str());
-        Serial.print(" = ");
-        Serial.println(val);
-
-    } else if (t.startsWith("BYPASS")) {
-        int a = t.indexOf(' ') + 1;
-        int b = t.indexOf(' ', a);
-        if (a < 0 || b < 0) {
-            Serial.println("ERROR: Invalid BYPASS command format");
-            return;
-        }
-
-        std::string fxName = t.substring(a, b).c_str();
-        Effect* fx = chain.getEffect(fxName);
-        if (!fx) {
-            Serial.print("ERROR: Effect not found -> ");
-            Serial.println(fxName.c_str());
-            return;
-        }
-
-        int bypass = t.substring(b + 1).toInt();
-
-        AudioNoInterrupts();
+    // Command structure: [Type][EffectID][ParamID/Bypass][Value], ex:
+    // S 1 2 0.75
+    // B 1 1
+    if (sscanf(s.c_str(), "S %d %d %f", &fxID, &paramID, &value) == 3) {
+        Effect* fx = chain.getEffect((EffectID)fxID);
+        if (!fx) { Serial.println("ERR: Invalid EffectID"); return; }
+        fx->setParam((ParamID)paramID, value);
+        Serial.println("OK");
+    } else if (sscanf(s.c_str(), "B %d %d", &fxID, &bypass) == 2) {
+        Effect* fx = chain.getEffect((EffectID)fxID);
+        if (!fx) { Serial.println("ERR: Invalid EffectID"); return; }
         fx->setBypass(bypass);
-        AudioInterrupts();
-
-        Serial.print("OK: BYPASS ");
-        Serial.print(fxName.c_str());
-        Serial.print(" -> ");
-        Serial.println(bypass ? "ON" : "OFF");
-
-    } else {
-        Serial.print("ERROR: Unknown command -> ");
-        Serial.println(t);
-    }
+        Serial.println("OK");
+    } else { Serial.println("ERR: Parse"); }
 }
 
 void setup() {
@@ -125,6 +76,7 @@ void setup() {
     if (USB_IO) {
         patch1 = make_unique<AudioConnection>(usbIn, 0, *stream, 0);
         patch2 = make_unique<AudioConnection>(*stream, 0, usbOut, 0);
+        // patch1 = make_unique<AudioConnection>(usbIn, 0, usbOut, 0);
     } else {
         patch1 = make_unique<AudioConnection>(adcIn, 0, *stream, 0);
         patch2 = make_unique<AudioConnection>(*stream, 0, dacOut, 0);
@@ -142,9 +94,7 @@ void setup() {
 }
 
 void loop() { 
-    // Send parameter updates via serial, ex:
-    // SET Distortion Mix 0.75
-    // BYPASS Distortion 1
+    // Send parameter updates via serial
     static String cmd;
     while (Serial.available()) {
         char c = Serial.read();
