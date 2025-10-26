@@ -95,9 +95,9 @@ class Distortion : public Effect {
 
     public:
         Distortion(float mix = 1.0f, distortionMode mode = TUBE, float drive = 0.25f, bool enableAAF = false) 
-        : antiAlias(1.0f, vector<float>(begin(AAF), end(AAF))) { setMix(mix); setMode(mode); setDrive(drive); setAAF(enableAAF); }
+        : antiAlias(1.0f, std::vector<float>(std::begin(AAF), std::end(AAF))) { setMix(mix); setMode(mode); setDrive(drive); setAAF(enableAAF); }
 
-        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
         void setMode(distortionMode mode) {
             this->mode = mode;
             switch (mode) {
@@ -111,7 +111,7 @@ class Distortion : public Effect {
                 default: algorithm = &Distortion::hardClip;
             }
         }
-        void setDrive(float drive) { this->drive = clamp(drive, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setDrive(float drive) { this->drive = std::clamp(drive, 0.0f, 1.0f); } // [0.0, 1.0]
         void setAAF(bool enableAAF) { this->enableAAF = enableAAF; } 
         inline void setParam(ParamID param, float value) override {
             switch (param) {
@@ -147,9 +147,9 @@ class Delay : public Effect {
         Delay(float mix = 0.3f, float delayTime = 200.0f, float feedback = 0.4f) :
         delayLine(delayTime, maxDelayTime) { setMix(mix); setFeedback(feedback); }
 
-        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setDelayTime(float delayTime) { delayLine.setDelayTime(clamp(delayTime, 1.0f, maxDelayTime)); } // ms, [1.0, 500.0]
-        void setFeedback(float feedback) { this->feedback = clamp(feedback, -0.95f, 0.95f); } // [-0.95, 0.95]
+        void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setDelayTime(float delayTime) { delayLine.setDelayTime(std::clamp(delayTime, 1.0f, maxDelayTime)); } // ms, [1.0, 500.0]
+        void setFeedback(float feedback) { this->feedback = std::clamp(feedback, -0.95f, 0.95f); } // [-0.95, 0.95]
         inline void setParam(ParamID param, float value) override {
             switch (param) {
                 case MIX: setMix(value); break;
@@ -184,10 +184,10 @@ class Flanger : public Effect {
         Flanger(float mix = 1.0f, float rate = 0.08f, float depth = 1.0f, float feedback = 0.5f) 
         : delayLine(15, 30), LFO(rate, SINE_TABLE) { setMix(mix); setRate(rate); setDepth(depth); setFeedback(feedback); }
 
-        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setRate(float rate) { this->rate = clamp(rate, 0.0f, 20.0f); LFO.setFreq(rate); } // Hz, [0.0, 20.0]
-        void setDepth(float depth) { this->depth = clamp(depth, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setFeedback(float feedback) { this->feedback = clamp(feedback, -0.95f, 0.95f); } // [-0.95, 0.95]
+        void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setRate(float rate) { this->rate = std::clamp(rate, 0.0f, 20.0f); LFO.setFreq(rate); } // Hz, [0.0, 20.0]
+        void setDepth(float depth) { this->depth = std::clamp(depth, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setFeedback(float feedback) { this->feedback = std::clamp(feedback, -0.95f, 0.95f); } // [-0.95, 0.95]
         inline void setParam(ParamID param, float value) override {
             switch (param) {
                 case MIX: setMix(value); break;
@@ -215,13 +215,13 @@ class Phaser : public Effect {
     private:
         enum Params : ParamID { MIX, RATE, CENTER_FREQ, SPREAD, DEPTH, FEEDBACK };
 
-        const uint8_t order = 8;
+        const uint8_t order = 6;
         const float q = 0.8f;
 
         float mix, rate, centerFreq, spread, depth, feedback;
 
-        vector<APF> apfSections; // APF bank
-        vector<float> baseFreqs; // Store APF base freqs
+        std::vector<APF> apfSections; // APF bank
+        std::vector<float> baseFreqs; // Store APF base freqs
         Wavetable LFO;
         float wetSig = 0.0f, stageSig = 0.0f;
 
@@ -243,12 +243,12 @@ class Phaser : public Effect {
             setMix(mix); setRate(rate); setCenterFreq(centerFreq); setSpread(spread), setDepth(depth); setFeedback(feedback);
         }
 
-        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setRate(float rate) { this->rate = clamp(rate, 0.0f, 20.0f); LFO.setFreq(rate); } // Hz, [0.0, 20.0]
-        void setCenterFreq(float centerFreq) { this->centerFreq = clamp(centerFreq, 50.0f, 8000.0f); setupStages(); } // Hz, // [50.0, 8000.0]
-        void setSpread(float spread) { this->spread = clamp(spread, 0.1f, 1.0f); setupStages(); } // [0.1, 1.0]
-        void setDepth(float depth) { this->depth = clamp(depth, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setFeedback(float feedback) { this->feedback = clamp(feedback, -0.95f, 0.95f); } // [-0.95, 0.95]
+        void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setRate(float rate) { this->rate = std::clamp(rate, 0.0f, 20.0f); LFO.setFreq(rate); } // Hz, [0.0, 20.0]
+        void setCenterFreq(float centerFreq) { this->centerFreq = std::clamp(centerFreq, 50.0f, 8000.0f); setupStages(); } // Hz, // [50.0, 8000.0]
+        void setSpread(float spread) { this->spread = std::clamp(spread, 0.1f, 1.0f); setupStages(); } // [0.1, 1.0]
+        void setDepth(float depth) { this->depth = std::clamp(depth, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setFeedback(float feedback) { this->feedback = std::clamp(feedback, -0.95f, 0.95f); } // [-0.95, 0.95]
         inline void setParam(ParamID param, float value) override { // [0.0, 1.0]
             switch (param) {
                 case MIX: setMix(value); break;
@@ -263,17 +263,15 @@ class Phaser : public Effect {
         void process(const float* in, float* out, size_t n) override {
             float inSig, mod;
             for (size_t i = 0; i < n; ++i) {
-                mod = pow(2.0f, depth * LFO.next());
+                mod = exp2f(depth * LFO.next());
                 inSig = in[i] + (wetSig * feedback);
                 
-                const float* in_ptr = &inSig;
-                float* out_ptr = nullptr;
+                float x = inSig, y = 0.0f;
                 for (size_t j = 0; j < apfSections.size(); ++j) { // Process APFs serially, output to wetSig
                     apfSections[j].setCutoff(baseFreqs[j] * mod); // Modulate each base freq with LFO
-                    out_ptr = (j == apfSections.size() - 1) ? &wetSig : &stageSig;
-                    apfSections[j].process(in_ptr, out_ptr, 1);
-                    in_ptr = out_ptr;
-                }
+                    y = apfSections[j].processSample(x);
+                    x = y;
+                } wetSig = y;
 
                 out[i] = dryWetMix(in[i], wetSig, mix); // Mix
             }
@@ -291,7 +289,7 @@ class Chorus : public Effect {
             Random mod;
         };
 
-        vector<voice> voices;
+        std::vector<voice> voices;
         DelayLine delayLine;
     public:
         Chorus(float mix = 1.0f, float rate = 0.08f, float depth = 25.0f, float delayTime = 5.0f, float feedback = 0.1f)
@@ -300,23 +298,23 @@ class Chorus : public Effect {
             setMix(mix); setRate(rate); setDepth(depth); setDelayTime(delayTime); setFeedback(feedback);
         }
 
-        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
         void setRate(float rate) { // Hz, [0.0, 20.0]
-            this->rate = clamp(rate, 0.0f, 20.0f); 
+            this->rate = std::clamp(rate, 0.0f, 20.0f); 
             for (voice& vc : voices) vc.mod.setFreq(rate);
         }
         void setDepth(float depth) { // ms, [0.0, 25.0]
-            this->depth = clamp(depth, 0.0f, 25.0f);
+            this->depth = std::clamp(depth, 0.0f, 25.0f);
             for (voice& vc : voices) vc.depth = depth; 
         }
         void setDelayTime(float delayTime) { // ms, [0.0, 20.0]
-            this->delayTime = clamp(delayTime, 0.0f, 20.0f); 
+            this->delayTime = std::clamp(delayTime, 0.0f, 20.0f); 
             for (size_t i = 0; i < voiceCount; ++i) { 
                 float detune = ((float)i / voiceCount - 0.5f) * 2.0f;
                 voices[i].baseDelay = delayTime * (1.0f + 0.3f * detune);
             };
         }
-        void setFeedback(float feedback) { this->feedback = clamp(feedback, -0.95f, 0.95f); } // [-0.95, 0.95]
+        void setFeedback(float feedback) { this->feedback = std::clamp(feedback, -0.95f, 0.95f); } // [-0.95, 0.95]
         inline void setParam(ParamID param, float value) override {
             switch (param) {
                 case MIX: setMix(value); break;
@@ -351,9 +349,9 @@ class Reverb : public Effect {
         enum Params : ParamID { MIX, PREDELAY_TIME, DECAY_TIME, MOD_RATE, MOD_DEPTH };
 
         float mix, predelayTime, decayTime, decayGainL, decayGainR, modRate, modDepth;
-        vector<APF> diffusers; // 8
-        vector<OnePole> filters; // 3
-        vector<DelayLine> delayLines; // 5
+        std::vector<APF> diffusers; // 8
+        std::vector<OnePole> filters; // 3
+        std::vector<DelayLine> delayLines; // 5
         Wavetable LFO;
         float tankInSig, nodeSig, tankSig1 = 0, tankSig2 = 0;
 
@@ -362,46 +360,46 @@ class Reverb : public Effect {
         : LFO(modRate, SINE_TABLE) {
             const float inputDiffuse[2] = {0.750f, 0.625f};
             const float decayDiffuse[2] = {0.70f, 0.50f};
-            const float apfDelays[8] = {142, 107, 379, 277, 672, 908, 1800, 2656};
+            const size_t apfDelays[8] = {142, 107, 379, 277, 672, 908, 1800, 2656};
             const float delays[5] = {predelayTime, 100.97f, 84.35f, 95.62f, 71.72f};
             const float bandwidth = 0.9995f, damping = 0.0005f;
 
             // Diffusers
             size_t apf_i = 0;
             for (float diff : inputDiffuse) {
-                for (size_t i = 0; i < 2; ++i) { diffusers.push_back(APF(1.0f, 0.0f, 0.0f, false, 10.0f, false)); 
+                for (size_t i = 0; i < 2; ++i) { diffusers.push_back(APF(1.0f, 0.0f, 0.0f, false, 10.0f, true)); 
                 diffusers.back().setDelay(apfDelays[apf_i++]); diffusers.back().setQ(1.0f / (1.0f - diff)); };
             }
             for (float diff : decayDiffuse) {
-                for (size_t i = 0; i < 2; ++i) { diffusers.push_back(APF(1.0f, 0.0f, 0.0f, false, 61.0f, false));
+                for (size_t i = 0; i < 2; ++i) { diffusers.push_back(APF(1.0f, 0.0f, 0.0f, false, 61.0f, true));
                 diffusers.back().setDelay(apfDelays[apf_i++]); diffusers.back().setQ(1.0f / (1.0f - diff)); };
             } diffusers[4].setInvert(true); diffusers[5].setInvert(true);
 
             // Filters
             filters.push_back(OnePole(1.0f, bandwidth * SAMPLE_RATE / 2.0f));
             for (size_t i = 0; i < 2; ++i) { 
-                filters.push_back(OnePole(1.0f, damping * 10000.0f));
+                filters.push_back(OnePole(1.0f, 2000.0f + (damping * 10000.0f)));
             }
 
             // Delays
-            for (float delay : delays) { delayLines.push_back(DelayLine(delay, 100.0f)); }
+            for (float delay : delays) { delayLines.push_back(DelayLine(delay, 102.0f)); }
 
             setMix(mix); setPredelayTime(predelayTime); setDecayTime(decayTime); setModRate(modRate); setModDepth(modDepth);
         }
 
-        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setPredelayTime(float predelayTime) { // ms, [0.0, 500.0]
-            this->predelayTime = clamp(predelayTime, 0.0f, 500.0f); 
+        void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setPredelayTime(float predelayTime) { // ms, [0.0, 100.0]
+            this->predelayTime = std::clamp(predelayTime, 0.0f, 100.0f); 
             delayLines.front().setDelayTime(this->predelayTime); 
         } 
         void setDecayTime(float decayTime) { // ms, [100.0, 10000.0]
-            this->decayTime = clamp(decayTime, 100.0f, 10000.0f);
+            this->decayTime = std::clamp(decayTime, 100.0f, 10000.0f);
             float RT60 = this->decayTime / 1000.0f;
             decayGainL = powf(0.001f, 4648.0f / (RT60 * SAMPLE_RATE));
             decayGainR = powf(0.001f, 4924.0f / (RT60 * SAMPLE_RATE));
         }
-        void setModRate(float modRate) { this->modRate = clamp(modRate, 0.05f, 5.0f); LFO.setFreq(this->modRate); } // Hz, [0.05, 5.0]
-        void setModDepth(float modDepth) { this->modDepth = clamp(modDepth, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setModRate(float modRate) { this->modRate = std::clamp(modRate, 0.05f, 5.0f); LFO.setFreq(this->modRate); } // Hz, [0.05, 5.0]
+        void setModDepth(float modDepth) { this->modDepth = std::clamp(modDepth, 0.0f, 1.0f); } // [0.0, 1.0]
         inline void setParam(ParamID param, float value) override {
             switch (param) {
                 case MIX: setMix(value); break;
@@ -415,14 +413,12 @@ class Reverb : public Effect {
         void process(const float* in, float* out, size_t n) override {
             for (size_t i = 0; i < n; ++i) {
                 nodeSig = delayLines.front().read(); delayLines.front().write(in[i]); // Predelay
-                filters.front().process(&nodeSig, &tankInSig, 1); // Input-bandwidth filter
+                tankInSig = filters.front().processSample(nodeSig); // Input-bandwidth filter
 
-                float* in_ptr = &tankInSig;
-                float* out_ptr = nullptr;
+                float x = tankInSig, y = 0.0f;
                 for (size_t apf_i = 0; apf_i < 4; ++apf_i) { // Input diffusion
-                    out_ptr = (apf_i == 3) ? &tankInSig : &nodeSig; 
-                    diffusers[apf_i].process(in_ptr, out_ptr, 1);
-                    in_ptr = out_ptr;
+                    y = diffusers[apf_i].processSample(x);
+                    x = y;
                 }
 
                 // Tank left
@@ -430,45 +426,51 @@ class Reverb : public Effect {
 
                 float tankMod = LFO.next() * modDepth * 16.0f; // EXCURSION = 16 samples
                 diffusers[4].setDelay(672.0f + tankMod);
-                diffusers[4].process(&tankSig1, &nodeSig, 1); tankSig1 = nodeSig; // Decay diffusion 1L
+                tankSig1 = diffusers[4].processSample(tankSig1); // Decay diffusion 1L
 
                 nodeSig = delayLines[1].read(); delayLines[1].write(tankSig1); tankSig1 = nodeSig;
-                filters[1].process(&tankSig1, &nodeSig, 1); // Damping L
+                tankSig1 = filters[1].processSample(tankSig1); // Damping L
 
-                tankSig1 = nodeSig * decayGainL; // Decay L
-                diffusers[6].process(&tankSig1, &nodeSig, 1); tankSig1 = nodeSig; // Decay diffusion 2L
+                tankSig1 *= decayGainL; // Decay L
+                tankSig1 = diffusers[6].processSample(tankSig1); // Decay diffusion 2L
                 nodeSig = delayLines[2].read(); delayLines[2].write(tankSig1); tankSig1 = nodeSig; // END
 
                 // Tank right
                 tankSig2 = tankInSig + tankSig1;
 
                 diffusers[5].setDelay(908.0f + tankMod);
-                diffusers[5].process(&tankSig2, &nodeSig, 1); tankSig2 = nodeSig; // Decay diffusion 1L
+                tankSig2 = diffusers[5].processSample(tankSig2); // Decay diffusion 1L
 
                 nodeSig = delayLines[3].read(); delayLines[3].write(tankSig2); tankSig2 = nodeSig;
-                filters[2].process(&tankSig2, &nodeSig, 1); // Damping L
+                tankSig2 = filters[2].processSample(tankSig2); // Damping L
 
-                tankSig2 = nodeSig * decayGainR; // Decay R
-                diffusers[7].process(&tankSig2, &nodeSig, 1); tankSig2 = nodeSig; // Decay diffusion 2L
+                tankSig2 *= decayGainR; // Decay R
+                tankSig2 = diffusers[7].processSample(tankSig2); // Decay diffusion 2L
                 nodeSig = delayLines[4].read(); delayLines[4].write(tankSig2); tankSig2 = nodeSig; // END
 
                 // Mixdown output taps
                 const float tapGain = 0.6f;
-                float accumulatorL = tapGain * delayLines[3].read(266.0f);
-                accumulatorL += tapGain * delayLines[3].read(2974.0f);
-                accumulatorL -= tapGain * diffusers[7].readTap(1913.0f);
-                accumulatorL += tapGain * delayLines[4].read(1996.0f);
-                accumulatorL -= tapGain * delayLines[1].read(1990.0f);
-                accumulatorL -= tapGain * diffusers[6].readTap(187.0f);
-                accumulatorL -= tapGain * delayLines[2].read(1066.0f);
+                float accumulatorL = (
+                    delayLines[3].read(266.0f) +
+                    delayLines[3].read(2974.0f) +
+                    delayLines[4].read(1996.0f)
+                ) - (
+                    diffusers[7].readTap(1913.0f) +
+                    delayLines[1].read(1990.0f) +
+                    diffusers[6].readTap(187.0f) +
+                    delayLines[2].read(1066.0f)
+                ); accumulatorL *= tapGain;
 
-                float accumulatorR = tapGain * delayLines[1].read(353.0f);
-                accumulatorR += tapGain * delayLines[1].read(3627.0f);
-                accumulatorR -= tapGain * diffusers[6].readTap(1228.0f);
-                accumulatorR += tapGain * delayLines[2].read(2673.0f);
-                accumulatorR -= tapGain * delayLines[3].read(2111.0f);
-                accumulatorR -= tapGain * diffusers[7].readTap(335.0f);
-                accumulatorR -= tapGain * delayLines[4].read(121.0f);
+                float accumulatorR = (
+                    delayLines[1].read(353.0f) + 
+                    delayLines[1].read(3627.0f) +
+                    delayLines[2].read(2673.0f) 
+                ) - (
+                    diffusers[6].readTap(1228.0f) +
+                    delayLines[3].read(2111.0f) +
+                    diffusers[7].readTap(335.0f) +
+                    delayLines[4].read(121.0f)
+                ); accumulatorR *= tapGain;
 
                 float wetSig = (accumulatorL + accumulatorR) * 0.5f;
                 out[i] = dryWetMix(in[i], wetSig, mix); // Total mix
@@ -507,13 +509,13 @@ class Compressor : public Effect {
             makeupCoeff = exp(-2.2f / (100.0f * SAMPLE_RATE / 1000.0f)); // Auto-makeup smoothing factor
         }
 
-        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setThreshold(float threshold) { this->threshold = clamp(threshold, -200.0f, 0.0f); } // dB, [-200.0, 0.0]
-        void setRatio(float ratio) { this->ratio = clamp(ratio, 1.0f, 100.0f); } // [1.0, 100.0]
-        void setKnee(float knee) { this->knee = clamp(knee, 0.0f, 40.0f); }// [0.0, 40.0]
-        void setAttackTime(float attackTime) { attackCoeff = exp(-2.2f / (clamp(attackTime, 0.005f, 250.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [0.005, 250.0]
-        void setReleaseTime(float releaseTime) { releaseCoeff = exp(-2.2f / (clamp(releaseTime, 10.0f, 2500.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [10.0, 2500.0]
-        void setMakeupGain(float makeupGain) { this->makeupGain = clamp(makeupGain, -72.0f, 36.0f); } // dB, [-72.0, 36.0]
+        void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setThreshold(float threshold) { this->threshold = std::clamp(threshold, -200.0f, 0.0f); } // dB, [-200.0, 0.0]
+        void setRatio(float ratio) { this->ratio = std::clamp(ratio, 1.0f, 100.0f); } // [1.0, 100.0]
+        void setKnee(float knee) { this->knee = std::clamp(knee, 0.0f, 40.0f); }// [0.0, 40.0]
+        void setAttackTime(float attackTime) { attackCoeff = exp(-2.2f / (std::clamp(attackTime, 0.005f, 250.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [0.005, 250.0]
+        void setReleaseTime(float releaseTime) { releaseCoeff = exp(-2.2f / (std::clamp(releaseTime, 10.0f, 2500.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [10.0, 2500.0]
+        void setMakeupGain(float makeupGain) { this->makeupGain = std::clamp(makeupGain, -72.0f, 36.0f); } // dB, [-72.0, 36.0]
         void setAutoMakeup(bool autoMakeup) { 
             this->autoMakeup = autoMakeup;
             if (autoMakeup) { reductionSmoothed = 0.0f; autoMakeupGain = 0.0f; }
@@ -552,7 +554,7 @@ class Compressor : public Effect {
                     autoMakeupGain = -reductionSmoothed;
                 }
                 float makeupDB = autoMakeup ? autoMakeupGain : makeupGain;
-                float g = dbAmp(clamp(gainSmoothed + makeupDB, -60.0f, 20.0f));
+                float g = dbAmp(std::clamp(gainSmoothed + makeupDB, -60.0f, 20.0f));
                 float y_i = x_i * g;
 
                 // Hard clip just in case (e.g., limiter use case)
@@ -560,6 +562,79 @@ class Compressor : public Effect {
                 else if (y_i < -1.0f) { y_i = -1.0f; }
 
                 out[i] = dryWetMix(x_L, y_i, mix); // Mix
+            }
+        }
+};
+
+class Equalizer : public Effect {
+    private:
+        enum Params : ParamID { EQ_MIX, BAND1_TYPE, BAND1_CUTOFF, BAND1_Q, BAND1_GAIN, BAND2_TYPE, BAND2_CUTOFF, BAND2_Q, BAND2_GAIN };
+
+        std::array<std::unique_ptr<Biquad>, 2> bands;
+
+        biquadType band1Type, band2Type;
+        float mix, band1Cutoff, band1Q, band1Gain, band2Cutoff, band2Q, band2Gain;
+
+        std::unique_ptr<Biquad> createBiquad(biquadType type, float cutoff, float q, float gainDB) {
+            switch (type) {
+                case LOW_PASS: return std::make_unique<LPF_Biquad>(cutoff, q, gainDB);
+                case HIGH_PASS: return std::make_unique<HPF_Biquad>(cutoff, q, gainDB);
+                case LOW_SHELF: return std::make_unique<LowShelf_Biquad>(cutoff, q, gainDB);
+                case HIGH_SHELF: return std::make_unique<HighShelf_Biquad>(cutoff, q, gainDB);
+                case PEAK: return std::make_unique<Peak_Biquad>(cutoff, q, gainDB);
+                case NOTCH: return std::make_unique<Notch_Biquad>(cutoff, q, gainDB);
+                default: return std::make_unique<Peak_Biquad>(cutoff, q, gainDB);
+                }
+        }
+
+    public:
+        Equalizer(float mix = 1.0f,
+        biquadType band1Type = LOW_SHELF,  float band1Cutoff = 200.0f,  float band1Q = 0.707f, float band1Gain = 0.0f,
+        biquadType band2Type = HIGH_SHELF, float band2Cutoff = 2000.0f, float band2Q = 0.707f, float band2Gain = 0.0f) {
+            bands[0] = createBiquad(band1Type, band1Cutoff, band1Q, band1Gain);
+            bands[1] = createBiquad(band2Type, band2Cutoff, band2Q, band2Gain);
+
+            setMix(mix);
+            setBand1Type(band1Type); setBand1Cutoff(band1Cutoff); setBand1Q(band1Q); setBand1Gain(band1Gain);
+            setBand2Type(band2Type); setBand2Cutoff(band2Cutoff); setBand2Q(band2Q); setBand2Gain(band2Gain);
+        }
+
+        void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setBand1Type(biquadType type) {
+            if (type == band1Type) return;
+            band1Type = type;
+            bands[0] = createBiquad(band1Type, band1Cutoff, band1Q, band1Gain);
+        }
+        void setBand1Cutoff(float cutoff) { band1Cutoff = std::clamp(cutoff, 20.0f, 20000.0f); bands[0]->setCutoff(band1Cutoff); } // Hz, [20.0, 20000.0]
+        void setBand1Q(float q) { band1Q = std::clamp(q, 0.025f, 40.0f); bands[0]->setQ(band1Q); } // [0.025, 40.0]
+        void setBand1Gain(float gainDB) { band1Gain = std::clamp(gainDB, -24.0f, 24.0f); bands[0]->setGain(band1Gain); } // dB, [-24.0, 24.0]
+        void setBand2Type(biquadType type) {
+            if (type == band2Type) return; 
+            band2Type = type;
+            bands[1] = createBiquad(band2Type, band2Cutoff, band2Q, band2Gain);
+        }
+        void setBand2Cutoff(float cutoff) { band2Cutoff = std::clamp(cutoff, 20.0f, 20000.0f); bands[1]->setCutoff(band2Cutoff); } // Hz, [20.0, 20000.0]
+        void setBand2Q(float q) { band2Q = std::clamp(q, 0.025f, 40.0f); bands[1]->setQ(band2Q); } // [0.025, 40.0]
+        void setBand2Gain(float gainDB) { band2Gain = std::clamp(gainDB, -24.0f, 24.0f); bands[1]->setGain(band2Gain); } // dB, [-24.0, 24.0]
+        inline void setParam(ParamID param, float value) override { 
+            switch (param) {
+                case EQ_MIX: setMix(value); break;
+                case BAND1_TYPE: setBand1Type((biquadType)value); break; 
+                case BAND1_CUTOFF: setBand1Cutoff(value); break;
+                case BAND1_Q: setBand1Q(value); break;
+                case BAND1_GAIN: setBand1Gain(value); break;
+                case BAND2_TYPE: setBand2Type((biquadType)value); break;
+                case BAND2_CUTOFF: setBand2Cutoff(value); break;
+                case BAND2_Q: setBand2Q(value); break;
+                case BAND2_GAIN: setBand2Gain(value); break;
+            }
+        }
+
+        void process(const float* in, float* out, size_t n) override {
+            for (size_t i = 0; i < n; ++i) {
+                float y = in[i];
+                for (auto& band : bands) if (!band->isBypassed()) y = band->processSample(y);
+                out[i] = dryWetMix(in[i], y, mix);
             }
         }
 };
@@ -578,7 +653,7 @@ class Granulator : public Effect {
         float positionRand, rateRand, lengthRand, levelRand;
         envelopeType envType;
         
-        vector<float> inBuf; size_t writePos = 0;
+        std::vector<float> inBuf; size_t writePos = 0;
         float grainCounter = 0.0f;
         
         struct Grain {
@@ -590,7 +665,7 @@ class Granulator : public Effect {
             bool reverse;
         };
         
-        vector<Grain> grains; // Grain pool
+        std::vector<Grain> grains; // Grain pool
 
         void spawnGrain() {
             // Find free grain
@@ -602,14 +677,14 @@ class Granulator : public Effect {
             }
             
             // Calculate grain parameters
-            float positionFactor = clamp(position + (uniform() * positionRand), 0.0f, 1.0f);
+            float positionFactor = std::clamp(position + (uniform() * positionRand), 0.0f, 1.0f);
             int grainStartPos = (int)writePos - (int)(positionFactor * (bufSize - 1));
             if (grainStartPos < 0) grainStartPos += bufSize;
             
-            float grainLength = clamp(length * (1.0f + (uniform() * lengthRand)), 5.0f, 1000.0f);
+            float grainLength = std::clamp(length * (1.0f + (uniform() * lengthRand)), 5.0f, 1000.0f);
             int grainLengthSamples = min((int)(grainLength * SAMPLE_RATE / 1000.0f), (int)bufSize - 1);
 
-            float grainLevel = clamp(level + (uniform() * 0.25f * levelRand), 0.0f, 1.0f) * 0.5f;
+            float grainLevel = std::clamp(level + (uniform() * 0.25f * levelRand), 0.0f, 1.0f) * 0.5f;
             
             bool reversed = ((uniform() + 1.0f) / 2.0f) <= reverseChance;
             
@@ -645,16 +720,16 @@ class Granulator : public Effect {
             inBuf.resize(bufSize, 0.0f);
         }
 
-        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setPosition(float position) { this->position = clamp(position, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setPositionRand(float positionRand) { this->positionRand = clamp(positionRand, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setRate(float rate) { this->rate = clamp(rate, 1.0f, 500.0f); } // ms, [1.0, 500.0]
-        void setRateRand(float rateRand) { this->rateRand = clamp(rateRand, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setLength(float length) { this->length = clamp(length, 5.0f, 500.0f); } // ms, [5.0, 500.0]
-        void setLengthRand(float lengthRand) { this->lengthRand = clamp(lengthRand, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setReverseChance(float reverseChance) { this->reverseChance = clamp(reverseChance, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setLevel(float level) { this->level = clamp(level, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setLevelRand(float levelRand) { this->levelRand = clamp(levelRand, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setPosition(float position) { this->position = std::clamp(position, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setPositionRand(float positionRand) { this->positionRand = std::clamp(positionRand, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setRate(float rate) { this->rate = std::clamp(rate, 1.0f, 500.0f); } // ms, [1.0, 500.0]
+        void setRateRand(float rateRand) { this->rateRand = std::clamp(rateRand, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setLength(float length) { this->length = std::clamp(length, 5.0f, 500.0f); } // ms, [5.0, 500.0]
+        void setLengthRand(float lengthRand) { this->lengthRand = std::clamp(lengthRand, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setReverseChance(float reverseChance) { this->reverseChance = std::clamp(reverseChance, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setLevel(float level) { this->level = std::clamp(level, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setLevelRand(float levelRand) { this->levelRand = std::clamp(levelRand, 0.0f, 1.0f); } // [0.0, 1.0]
         void setEnvelopeType(envelopeType envType) { this->envType = envType; }
         inline void setParam(ParamID param, float value) override {
             switch (param) {
@@ -699,40 +774,40 @@ class Freezer : public Effect {
     private:
         enum Params : ParamID { MIX, RATE, SPECTRAL_MODE, FFT_SIZE, HOP_SIZE, LOOP_START, LOOP_END };
 
-        const size_t bufSize = 3 * (size_t)SAMPLE_RATE; // 3 seconds
-        const float smooth = 0.5f;
+        const size_t bufSize = 1 * (size_t)SAMPLE_RATE;
+        const float smooth = 0.05f;
         
         float mix, rate; bool spectralMode;
         float loopStart, loopEnd;
         
-        vector<float> inBuf; size_t writePos = 0; float readPos = 0.0f;
+        std::vector<float> inBuf; size_t writePos = 0; float readPos = 0.0f;
         
         // Spectral resythesis
         STFT stft;
-        vector<float> spectBuf, spectFrame;
+        std::vector<float> spectBuf, spectFrame;
         size_t spectPos = 0, spectHopCounter = 0;
 
     public:
-        Freezer(float mix = 1.0f, float rate = 1.0f, bool spectralMode = false, size_t fftSize = 1024, size_t hopFactor = 4, 
+        Freezer(float mix = 1.0f, float rate = 0.5f, bool spectralMode = true, size_t fftSize = 256, size_t hopFactor = 4, 
             float loopStart = 0.0f, float loopEnd = 1.0f) : stft(fftSize, hopFactor) {
             setMix(mix); setRate(rate); setSpectralMode(spectralMode);
             setFFTSize(fftSize); setHopSize(hopFactor); setLoopRegion(loopStart, loopEnd); 
             inBuf.resize(bufSize, 0.0f);
         }
         
-        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setRate(float rate) { this->rate = clamp(rate, -4.0f, 4.0f); } // [-4.0, 4.0]
+        void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setRate(float rate) { this->rate = std::clamp(rate, -4.0f, 4.0f); } // [-4.0, 4.0]
         void setSpectralMode(bool spectralMode) { this->spectralMode = spectralMode; }
         void setFFTSize(size_t N) { // [256, 8192], MUST BE POWER OF 2
-            const size_t fftN = clamp(N, (size_t)256, (size_t)8192);
+            const size_t fftN = std::clamp(N, (size_t)256, (size_t)8192);
             stft.setFFTSize(fftN); 
             spectBuf.assign(fftN, 0.0f); spectFrame.resize(fftN);
             spectPos = 0; spectHopCounter = 0;
         }
-        void setHopSize(size_t hopFactor) { stft.setHopSize(clamp(hopFactor, (size_t)2, (size_t)8)); } // [2, 8]
+        void setHopSize(size_t hopFactor) { stft.setHopSize(std::clamp(hopFactor, (size_t)2, (size_t)8)); } // [2, 8]
         void setLoopRegion(float start, float end) { // [0.0, 1.0] for both
-            loopStart = clamp(start, 0.0f, 1.0f);
-            loopEnd = clamp(end, 0.0f, 1.0f);
+            loopStart = std::clamp(start, 0.0f, 1.0f);
+            loopEnd = std::clamp(end, 0.0f, 1.0f);
             if (loopStart >= loopEnd) { // start < end
                 loopEnd = loopStart + 0.01f;
                 if (loopEnd > 1.0f) { loopEnd = 1.0f; loopStart = 0.99f; }
@@ -801,7 +876,7 @@ class Freezer : public Effect {
                 float crossfade = 1.0f;
                 if (rate != 0.0f) {
                     if (loopPos < smooth) { // Fade in
-                        float t = loopPos / smooth; // 0..1
+                        float t = loopPos / smooth;
                         crossfade = getEnvelopeValue(t, 1, HANN);
                     } else if (loopPos > (1.0f - smooth)) { // Fade out
                         float t = (loopPos - (1.0f - smooth)) / smooth;
@@ -826,8 +901,8 @@ class SpectralGate : public Spectral_Effect {
         SpectralGate(float mix = 1.0f, float thresholdDB = -10.0f, float tilt = 0.5f, int fftSize = 1024) : Spectral_Effect(mix, fftSize)
             { setThreshold(thresholdDB); setTilt(tilt); }
         
-        void setThreshold(float thresholdDB) { threshold = dbAmp(clamp(thresholdDB, -100.0f, 0.0f)); } // dB, [-100.0, 0.0]
-        void setTilt(float tilt) { this->tilt = clamp(tilt, -1.0f, 1.0f) * 2.0f; } // [-1.0, 1.0], + gates lows more, - gates highs more
+        void setThreshold(float thresholdDB) { threshold = dbAmp(std::clamp(thresholdDB, -100.0f, 0.0f)); } // dB, [-100.0, 0.0]
+        void setTilt(float tilt) { this->tilt = std::clamp(tilt, -1.0f, 1.0f) * 2.0f; } // [-1.0, 1.0], + gates lows more, - gates highs more
         inline void setParam(ParamID param, float value) override {
             switch (param) {
                 case THRESHOLD: setThreshold(value); break;

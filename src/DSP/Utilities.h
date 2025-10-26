@@ -7,10 +7,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <deque>
 #include <functional>
 #include <vector>
-
-using namespace std;
 
 /* UTILITIES */
 
@@ -60,9 +59,14 @@ inline float lerp(const T& buffer, float index, size_t size) { // Linearly inter
 
 inline float lerp(float a, float b, float t) { return a + (t * (b - a)); } // Linearly interpolate scalars
 
-inline float dryWetMix(float dry, float wet, float mix) { return (dry * cosf(mix * M_PI_2)) + (wet * sinf(mix * M_PI_2)); } // Equal power crossfade
+inline float dryWetMix(float dry, float wet, float mix, bool lin = true) {
+    if (mix == 1.0f) return wet;
+    else if (mix == 0.0f) return dry;
+    else if (lin) return lerp(dry, wet, mix); // Linear mix
+    else return (dry * cosf(mix * M_PI_2)) + (wet * sinf(mix * M_PI_2)); // Equal power crossfade
+}
 
-inline void overlapAdd(vector<float>& target, const vector<float>& frame, envelopeType type, size_t startPos = 0) {
+inline void overlapAdd(std::vector<float>& target, const std::vector<float>& frame, envelopeType type, size_t startPos = 0) {
     const size_t N = frame.size();
     for (size_t i = 0; i < N; ++i) {
         size_t pos = (startPos + i) % target.size();
@@ -76,12 +80,12 @@ class DelayLine { // Implements z^-N
     private:
         float delaySamples; 
         size_t writeIndex;
-        // vector<float> buffer;
+        // std::vector<float> buffer;
         float* buffer; size_t size;
     public:
         DelayLine(float delayTime, float maxDelayTime) : writeIndex((size_t)0) {
             size = (size_t)((maxDelayTime * SAMPLE_RATE) / 1000.0f) + 1;
-            buffer = (float *)extmem_malloc(size * sizeof(float));
+            buffer = (float*)extmem_malloc(size * sizeof(float));
             if (!buffer) while (1) { }
             memset(buffer, 0, size * sizeof(float));
 
@@ -102,7 +106,7 @@ class DelayLine { // Implements z^-N
 
         inline void write(float in) { 
             buffer[writeIndex] = in;
-            if (++writeIndex >= size) writeIndex = 0;
+            if (++writeIndex == size) writeIndex = 0;
         }
 };
 
@@ -111,7 +115,7 @@ class DelayLine { // Implements z^-N
     private:
         float delaySamples; 
         size_t writeIndex;
-        vector<float> buffer;
+        std::vector<float> buffer;
     public:
         DelayLine(float delayTime, float maxDelayTime) : writeIndex((size_t)0) {
             buffer.resize(((maxDelayTime * SAMPLE_RATE) / 1000.0f) + 1, 0.0f);
@@ -140,7 +144,7 @@ class FFT {
     private:
         size_t fftSize;
         kiss_fftr_cfg cfgF = nullptr, cfgI = nullptr;
-        vector<kiss_fft_cpx> fftOut; // Complex output buffer
+        std::vector<kiss_fft_cpx> fftOut; // Complex output buffer
 
         void allocateFFT() {
             if(cfgF) { kiss_fft_free(cfgF); } if(cfgI) { kiss_fft_free(cfgI); }
@@ -185,24 +189,26 @@ class FFT {
 class STFT {
     public:
         struct FFTFrame {
-            vector<float> mag;
-            vector<float> phase;
+            std::vector<float> mag;
+            std::vector<float> phase;
             FFTFrame(size_t bins) : mag(bins, 0.0f), phase(bins, 0.0f) {}
         };
     private:
-        const float bufDur = 3.0f;
+        const float bufDur = 0.25f;
 
         FFT fft;
         size_t fftSize, numBins, hopSize, hopFactor = 4;
         
         // Time-domain
-        vector<float> inBuf, outBuf;
+        std::vector<float> inBuf, outBuf;
         size_t inPos = 0, outPos = 0, hopCounter = 0;
-        bool frameReady = false;
 
         // Spectral-domain
-        vector<FFTFrame> spectrogram; // Store FFT frames
+        std::vector<FFTFrame> spectrogram; // Store FFT frames
         size_t spectPos = 0, spectSize;
+        std::deque<FFTFrame> processingQueue; // Queue frames ready for IFFT
+        std::function<void(FFTFrame&)> processCallback; // Function to process frames
+
     public:
         STFT(size_t fftSize, size_t hopFactor) : fft(fftSize) { setHopSize(hopFactor); setFFTSize(fftSize); }
 
@@ -220,7 +226,7 @@ class STFT {
         void setHopSize(size_t hopFactor) { hopSize = fftSize / hopFactor; }
         void setFFTSize(size_t N) { // !!! Must be a power of 2 !!!
             fftSize = N; numBins = (fftSize / 2) + 1; hopSize = fftSize / hopFactor;
-            inPos = 0; outPos = 0; hopCounter = 0; frameReady = false;
+            inPos = 0; outPos = 0; hopCounter = 0;
             inBuf.resize(fftSize, 0.0f); outBuf.assign(fftSize, 0.0f);
 
             fft.setFFTSize(fftSize);
@@ -231,6 +237,7 @@ class STFT {
             for (size_t i = 0; i < spectSize; ++i) { spectrogram.emplace_back(numBins); }
             spectPos = 0;
         }
+        void setProcessCallback(std::function<void(FFTFrame&)> callback) { processCallback = callback; }
 
         void forward(float input) { // Store FFT frames in spectrogram
             const size_t fftN = fftSize, hopN = hopSize;
@@ -243,7 +250,7 @@ class STFT {
                 hopCounter = 0;
                 
                 // Extract full FFT frame from circular buffer
-                vector<float> frame(fftN);
+                std::vector<float> frame(fftN);
                 size_t readPos = inPos; // Start from oldest sample
                 for (size_t j = 0; j < fftN; ++j) {
                     frame[j] = inBuf[readPos] * getEnvelopeValue((float)j / fftN, fftN, HANN);
@@ -251,7 +258,7 @@ class STFT {
                 }
                 
                 // Forward FFT
-                vector<float> mag(numBins), phs(numBins);
+                std::vector<float> mag(numBins), phs(numBins);
                 fft.forward(frame.data(), mag.data(), phs.data());
 
                 // Store in spectrogram buffer
@@ -260,9 +267,11 @@ class STFT {
                     currentFrame.mag[k] = mag[k];
                     currentFrame.phase[k] = phs[k];
                 }
+
+                if (processCallback) processCallback(currentFrame); // Process frame if applicable
+                processingQueue.push_back(currentFrame); // Enqueue frame for IFFT
                 
                 ++spectPos; if (spectPos >= spectSize) spectPos = 0;
-                frameReady = true;
             }
         }
 
@@ -271,14 +280,14 @@ class STFT {
             outBuf[outPos] = 0.0f;
 
             /* RECONSTRUCT FFT FRAMES */
-            if (frameReady) { // Every hopN samples
-                const FFTFrame& frameSpec = getFrame();
-                // IFFT
-                vector<float> frame(fftSize);
+            if (!processingQueue.empty()) { // Process queued frames
+                const FFTFrame& frameSpec = processingQueue.front();
+                
+                std::vector<float> frame(fftSize);
                 fft.inverse(frameSpec.mag.data(), frameSpec.phase.data(), frame.data());
-                // Window and OLA
-                overlapAdd(outBuf, frame, HANN, outPos);        
-                frameReady = false;
+                overlapAdd(outBuf, frame, HANN, outPos);
+                
+                processingQueue.pop_front();
             }
 
             ++outPos; if (outPos >= fftSize) outPos = 0;

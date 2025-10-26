@@ -10,19 +10,21 @@
 
 /* FILTERS */
 
+/* FIR */
+
 class FIR_Filter : public Effect {
     private:
         enum Params : ParamID { MIX };
 
         float mix;
-        vector<float> h; // Kernel
-        vector<float> z; // Circular double buffer (filter state)
+        std::vector<float> h; // Kernel
+        std::vector<float> z; // Circular double buffer (filter state)
         size_t z_i = 0; // State pointer
         
     public:
-        FIR_Filter(float mix, vector<float> h) : h(move(h)), z(this->h.size() * 2, 0.0f), z_i(0) { setMix(mix); }
+        FIR_Filter(float mix, std::vector<float> h) : h(move(h)), z(this->h.size() * 2, 0.0f), z_i(0) { setMix(mix); }
 
-        void setMix(float mix) { this->mix = clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
         inline void setParam(ParamID param, float value) override { 
             switch (param) {
                 case MIX: setMix(value); break;
@@ -48,7 +50,9 @@ class FIR_Filter : public Effect {
         }
 };
 
-class OnePole : public IIR_Filter { // One pole
+/* 1st-order IIR */
+
+class OnePole : public IIR_Filter { // One-pole LPF
     private:
         enum Params : ParamID { CUTOFF = 1, COEFF };
 
@@ -56,7 +60,7 @@ class OnePole : public IIR_Filter { // One pole
         float cutoff;
 
     public:
-        OnePole(float mix, float cutoff) { IIR_Filter::mix = mix; setCutoff(cutoff); }
+        OnePole(float mix = 1.0f, float cutoff = SAMPLE_RATE / 2.0f) { IIR_Filter::mix = mix; setCutoff(cutoff); }
 
         void setCoeff(float a) {
             b0 = 1.0f - a; a1 = a;
@@ -87,26 +91,32 @@ class APF : public IIR_Filter { // 1st order, Direct Form I/II
     private:
         enum Params : ParamID { CUTOFF = 1, Q };
 
-        const int maxDelaySamples;
+        const size_t maxDelaySamples;
         const bool useDFII;
 
         float cutoff, g;
-        float N;
+        size_t N;
         bool invert;
 
-        unique_ptr<DelayLine> bufferX, bufferY; // DFI
-        unique_ptr<DelayLine> buffer; // DFII
+        std::unique_ptr<DelayLine> bufferX, bufferY; // DFI
+        std::unique_ptr<DelayLine> buffer; // DFII
 
+        float g_s, g_sq; // Cached
+
+        void updateSign() {
+            auto s = invert ? -1 : 1; // Invert sign as needed
+            g_s = s * g;
+        }
     public:
-        APF(float mix, float cutoff, float q, bool invert, float maxDelayTime, bool useDFII = false)
-            : maxDelaySamples(maxDelayTime * SAMPLE_RATE / 1000.0f), useDFII(useDFII) {
+        APF(float mix = 1.0f, float cutoff = 1000.0f, float q = 0.8f, bool invert = false, float maxDelayTime = 1.0f, bool useDFII = true)
+            : maxDelaySamples((size_t)(maxDelayTime * SAMPLE_RATE / 1000.0f)), useDFII(useDFII) {
 
             // Allocate buffers
             if (useDFII) {
-                buffer = make_unique<DelayLine>(500.0f / cutoff, maxDelayTime);
+                buffer = std::make_unique<DelayLine>(500.0f / cutoff, maxDelayTime);
             } else {
-                bufferX = make_unique<DelayLine>(500.0f / cutoff, maxDelayTime);
-                bufferY = make_unique<DelayLine>(500.0f / cutoff, maxDelayTime);
+                bufferX = std::make_unique<DelayLine>(500.0f / cutoff, maxDelayTime);
+                bufferY = std::make_unique<DelayLine>(500.0f / cutoff, maxDelayTime);
             }
 
             IIR_Filter::mix = mix; setCutoff(cutoff); setQ(q); setInvert(invert);
@@ -116,20 +126,24 @@ class APF : public IIR_Filter { // 1st order, Direct Form I/II
             if (useDFII) return 0.0f;
             return bufferY->read(offset);
         } 
-        void setInvert(bool invert) { this->invert = invert; }
-        void setDelay(float N) { 
-            this->N = N; 
+        void setInvert(bool invert) { this->invert = invert; updateSign(); }
+        void setDelay(size_t N) { 
+            this->N = std::clamp(N, (size_t)1, maxDelaySamples); 
             cutoff = SAMPLE_RATE / (2.0f * (float)N);
             if (useDFII) { buffer->setDelaySamples(N);
             } else { bufferX->setDelaySamples(N); bufferY->setDelaySamples(N); }
         }
         void setCutoff(float cutoff) { // Hz
-            N = clamp(SAMPLE_RATE / (2.0f * cutoff), 1.0f, (float)maxDelaySamples); // Cutoff translates to delay N
+            N = std::clamp(SAMPLE_RATE / (2.0f * cutoff), 1.0f, (float)maxDelaySamples); // Cutoff translates to delay N
             this->cutoff = cutoff;
             if (useDFII) { buffer->setDelaySamples(N);
             } else { bufferX->setDelaySamples(N); bufferY->setDelaySamples(N); }
         }
-        void setQ(float q) { g = clamp(1.0f - (1.0f / q), -0.999f, 0.999f); } // Q translates to coefficient g
+        void setQ(float q) { // Q translates to coefficient g
+            g = std::clamp(1.0f - (1.0f / q), -0.999f, 0.999f);
+            g_sq = 1.0f - g*g;
+            updateSign();
+        } 
         inline void setParam(ParamID param, float value) override { 
             switch (param) {
                 case CUTOFF: setCutoff(value); break;
@@ -138,23 +152,156 @@ class APF : public IIR_Filter { // 1st order, Direct Form I/II
             }
         }
 
-        float LCCDE(float x) override {
-            auto s = invert ? -1 : 1; // Invert sign as needed
+        inline float LCCDE(float x) override {
             if (!useDFII) { // Direct Form I
                 // y[n] = -gy[n-N] + gx[n] + x[n-N]
-                float y = (s * -g * bufferY->read()) + (s * g * x) + bufferX->read();
+                float y = (-g_s * bufferY->read()) + (g_s * x) + bufferX->read();
                 bufferX->write(x); bufferY->write(y);
                 return y;
             } else { // Direct Form II
                 // v[n] = (1-g^2)x[n] - gw[n-N]
                 // y[n] = gx[n] + w[n-N]
                 float v_D = buffer->read();
-                float y = (s * g * x) + v_D;
-                float v = ((1 - g*g) * x) - (s * g * v_D);
+                float y = (g_s * x) + v_D;
+                float v = (g_sq * x) - (g_s * v_D);
                 buffer->write(v);
                 return y;
             }
         }
+};
+
+/* Biquads */
+// https://www.w3.org/TR/audio-eq-cookbook/ <-- Godsend of DSP
+
+class LPF_Biquad : public Biquad {
+    private:
+        void updateCoeffs() override {
+            const float w0 = 2.0f * static_cast<float>(M_PI) * (cutoff / SAMPLE_RATE);
+            const float cos_w0 = cosf(w0), sin_w0 = sinf(w0);
+            const float a = sin_w0 / (2.0f * q);
+
+            const float a0 = 1.0f + a;
+            b0 = ((1.0f - cos_w0) / 2.0f) / a0; b1 = (1.0f - cos_w0) / a0; b2 = b0;
+            a1 = (-2.0f * cos_w0) / a0; a2 = (1.0f - a) / a0;
+        }
+    public:
+        LPF_Biquad(float cutoff = 1000.0f, float q = 0.707f, float gainDB = 0.0f) {
+            this->cutoff = cutoff; this->q = q; this->gainDB = gainDB;
+            updateCoeffs(); }
+};
+
+class HPF_Biquad : public Biquad {
+    private:
+        void updateCoeffs() override {
+            const float w0 = 2.0f * static_cast<float>(M_PI) * (cutoff / SAMPLE_RATE);
+            const float cos_w0 = cosf(w0), sin_w0 = sinf(w0);
+            const float a = sin_w0 / (2.0f * q);
+
+            const float a0 = 1.0f + a;
+            b0 = ((1.0f + cos_w0) / 2.0f) / a0; b1 = -(1.0f + cos_w0) / a0; b2 = b0;
+            a1 = (-2.0f * cos_w0) / a0; a2 = (1.0f - a) / a0;
+        }
+    public:
+        HPF_Biquad(float cutoff = 1000.0f, float q = 0.707f, float gainDB = 0.0f) {
+            this->cutoff = cutoff; this->q = q; this->gainDB = gainDB;
+            updateCoeffs(); }
+};
+
+class LowShelf_Biquad : public Biquad {
+    private:
+        void updateCoeffs() override {
+            const float w0 = 2.0f * static_cast<float>(M_PI) * (cutoff / SAMPLE_RATE);
+            const float cos_w0 = cosf(w0), sin_w0 = sinf(w0);
+            const float A = exp10f(gainDB / 40.0f);
+            const float sqrt_A = sqrtf(A);
+            const float a = sin_w0 / (2.0f * q);
+
+            const float a0 = (A + 1.0f) + ((A - 1.0f) * cos_w0) + (2.0f * sqrt_A * a);
+            b0 = (A * ((A + 1.0f) - ((A - 1.0f) * cos_w0) + (2.0f * sqrt_A * a))) / a0;
+            b1 = ((2.0f * A) * ((A - 1.0f) - ((A + 1.0f) * cos_w0))) / a0;
+            b2 = (A * ((A + 1.0f) - ((A - 1.0f) * cos_w0) - (2.0f * sqrt_A * a))) / a0; 
+            a1 = (-2.0f * ((A - 1.0f) + ((A + 1.0f) * cos_w0))) / a0; 
+            a2 = ((A + 1.0f) + ((A - 1.0f) * cos_w0) - (2.0f * sqrt_A * a)) / a0;
+        }
+    public:
+        void setGain(float gainDB) { // dB, [-24.0, 24.0]
+            setBypass(fabs(gainDB) < 1e-3f); // Bypass if gain is close or at 0.0dB
+            this->gainDB = std::clamp(gainDB, -24.0f, 24.0f); 
+            if (!isBypassed()) updateCoeffs();
+        }
+
+        LowShelf_Biquad(float cutoff = 1000.0f, float q = 0.707f, float gainDB = 0.0f) {
+            this->cutoff = cutoff; this->q = q; this->gainDB = gainDB;
+            updateCoeffs(); }
+};
+
+class HighShelf_Biquad : public Biquad {
+    private:
+        void updateCoeffs() override {
+            const float w0 = 2.0f * static_cast<float>(M_PI) * (cutoff / SAMPLE_RATE);
+            const float cos_w0 = cosf(w0), sin_w0 = sinf(w0);
+            const float A = exp10f(gainDB / 40.0f);
+            const float sqrt_A = sqrtf(A);
+            const float a = sin_w0 / (2.0f * q);
+
+            const float a0 = (A + 1.0f) - ((A - 1.0f) * cos_w0) + (2.0f * sqrt_A * a);
+            b0 = (A * ((A + 1.0f) + ((A - 1.0f) * cos_w0) + (2.0f * sqrt_A * a))) / a0;
+            b1 = ((-2.0f * A) * ((A - 1.0f) + ((A + 1.0f) * cos_w0))) / a0;
+            b2 = (A * ((A + 1.0f) + ((A - 1.0f) * cos_w0) - (2.0f * sqrt_A * a))) / a0; 
+            a1 = (2.0f * ((A - 1.0f) - ((A + 1.0f) * cos_w0))) / a0; 
+            a2 = ((A + 1.0f) - ((A - 1.0f) * cos_w0) - (2.0f * sqrt_A * a)) / a0;
+        }
+    public:
+        void setGain(float gainDB) { // dB, [-24.0, 24.0]
+            setBypass(fabs(gainDB) < 1e-3f); // Bypass if gain is close or at 0.0dB
+            this->gainDB = std::clamp(gainDB, -24.0f, 24.0f); 
+            if (!isBypassed()) updateCoeffs();
+        }
+
+        HighShelf_Biquad(float cutoff = 1000.0f, float q = 0.707f, float gainDB = 0.0f) {
+            this->cutoff = cutoff; this->q = q; this->gainDB = gainDB;
+            updateCoeffs(); }
+};
+
+class Peak_Biquad : public Biquad {
+    private:
+        void updateCoeffs() override {
+            const float w0 = 2.0f * static_cast<float>(M_PI) * (cutoff / SAMPLE_RATE);
+            const float cos_w0 = cosf(w0), sin_w0 = sinf(w0);
+            const float A = exp10f(gainDB / 40.0f);
+            const float a = sin_w0 / (2.0f * q);
+
+            const float a0 = 1.0f + (a / A);
+            b0 = (1.0f + (a * A)) / a0; b1 = (-2.0f * cos_w0) / a0; b2 = (1.0f - (a * A)) / a0; 
+            a1 = b1; a2 = (1.0f - (a / A)) / a0;
+        }
+    public:
+        void setGain(float gainDB) { // dB, [-24.0, 24.0]
+            setBypass(fabs(gainDB) < 1e-3f); // Bypass if gain is close or at 0.0dB
+            this->gainDB = std::clamp(gainDB, -24.0f, 24.0f); 
+            if (!isBypassed()) updateCoeffs();
+        }
+
+        Peak_Biquad(float cutoff = 1000.0f, float q = 0.707f, float gainDB = 0.0f) {
+            this->cutoff = cutoff; this->q = q; this->gainDB = gainDB;
+            updateCoeffs(); }
+};
+
+class Notch_Biquad : public Biquad {
+    private:
+        void updateCoeffs() override {
+            const float w0 = 2.0f * static_cast<float>(M_PI) * (cutoff / SAMPLE_RATE);
+            const float cos_w0 = cosf(w0), sin_w0 = sinf(w0);
+            const float a = sin_w0 / (2.0f * q);
+
+            const float a0 = 1.0f + a;
+            b0 = 1.0f / a0; b1 = (-2.0f * cos_w0) / a0; b2 = 1.0f / a0; 
+            a1 = b1; a2 = (1.0f - a) / a0;
+        }
+    public:
+        Notch_Biquad(float cutoff = 1000.0f, float q = 0.707f, float gainDB = 0.0f) { 
+            this->cutoff = cutoff; this->q = q; this->gainDB = gainDB;
+            updateCoeffs(); }
 };
 
 #endif // FILTERS

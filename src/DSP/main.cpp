@@ -14,8 +14,6 @@
 #include "Control.h"
 #include "LUTs.h"
 
-using namespace std;
-
 // TESTING - 
 const bool USB_IO = true, // <-- SET FLAGS HERE
            LOG_DBG = true;
@@ -30,11 +28,11 @@ AudioInputI2S adcIn; // ADC input
 AudioOutputI2S dacOut; // DAC output
 
 // DSP
-unique_ptr<AudioChain> chain;
-unique_ptr<AudioChainStream> stream;
+std::unique_ptr<AudioChain> chain;
+std::unique_ptr<AudioChainStream> stream;
 
 // Connections
-unique_ptr<AudioConnection> patch1, patch2;
+std::unique_ptr<AudioConnection> patch1, patch2;
 
 void processCommand(const String& s, AudioChain& chain) {
     uint8_t fxID, paramID, bypass;
@@ -43,12 +41,12 @@ void processCommand(const String& s, AudioChain& chain) {
     // Command structure: [Type][EffectID][ParamID/Bypass][Value], ex:
     // S 1 2 0.75
     // B 1 1
-    if (sscanf(s.c_str(), "S %d %d %f", &fxID, &paramID, &value) == 3) {
+    if (sscanf(s.c_str(), "S %c %c %f", &fxID, &paramID, &value) == 3) {
         Effect* fx = chain.getEffect((EffectID)fxID);
         if (!fx) { Serial.println("ERR: Invalid EffectID"); return; }
         fx->setParam((ParamID)paramID, value);
         Serial.println("OK");
-    } else if (sscanf(s.c_str(), "B %d %d", &fxID, &bypass) == 2) {
+    } else if (sscanf(s.c_str(), "B %c %c", &fxID, &bypass) == 2) {
         Effect* fx = chain.getEffect((EffectID)fxID);
         if (!fx) { Serial.println("ERR: Invalid EffectID"); return; }
         fx->setBypass(bypass);
@@ -70,16 +68,16 @@ void setup() {
     }
     
     /* Instantiate DSP chain */
-    chain = make_unique<AudioChain>();
-    stream = make_unique<AudioChainStream>(*chain);
+    chain = std::make_unique<AudioChain>();
+    stream = std::make_unique<AudioChainStream>(*chain);
 
     if (USB_IO) {
-        patch1 = make_unique<AudioConnection>(usbIn, 0, *stream, 0);
-        patch2 = make_unique<AudioConnection>(*stream, 0, usbOut, 0);
-        // patch1 = make_unique<AudioConnection>(usbIn, 0, usbOut, 0);
+        patch1 = std::make_unique<AudioConnection>(usbIn, 0, *stream, 0);
+        patch2 = std::make_unique<AudioConnection>(*stream, 0, usbOut, 0);
+        // patch1 = std::make_unique<AudioConnection>(usbIn, 0, usbOut, 0);
     } else {
-        patch1 = make_unique<AudioConnection>(adcIn, 0, *stream, 0);
-        patch2 = make_unique<AudioConnection>(*stream, 0, dacOut, 0);
+        patch1 = std::make_unique<AudioConnection>(adcIn, 0, *stream, 0);
+        patch2 = std::make_unique<AudioConnection>(*stream, 0, dacOut, 0);
     }
     
     /* Teensy Audio setup */

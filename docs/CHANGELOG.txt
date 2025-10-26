@@ -63,3 +63,14 @@
 - Switch lerp() effect mixing to equal power crossfade via new utility dryWetMix()
 - Fix Compressor gain blowup issue
 - Remove damping control from Reverb
+
+10-25-25a
+- Implement Equalizer effect
+- Implement Biquad base class + LPF_Biquad, HPF_Biquad, LowShelf_Biquad, HighShelf_Biquad, Peak_Biquad, and Notch_Biquad filter classes
+- Refactor STFT and Spectral_Effect to process frames with a deque and callback function -> reduce CPU spike frequency (but not intensity) 
+- Switch effect mixing back to default lerp() - crossfade too expensive, consider LUT
+- Optimize APF hot path: cache values, force integer delays
+- Add lightweight processSample() method to IIR_Filter - refactor Phaser and Reverb to use
+- Fix issue with Reverb not rendering
+- Remove 'using namespace std' reliance
+- Miscellaneous small optimizations

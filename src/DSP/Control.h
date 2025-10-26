@@ -16,14 +16,14 @@
 
 class AudioChain {
     private:
-        vector<unique_ptr<Effect>> effects;
+        std::vector<std::unique_ptr<Effect>> effects;
         std::map<uint8_t, Effect*> fxMap;
         EffectID nextID = 0;
 
     public:
         template<typename T, typename... Args>
         void addEffect(Args&&... args) {
-            auto effect = make_unique<T>(args...);
+            auto effect = std::make_unique<T>(args...);
             effect->setID(nextID);
 
             fxMap[nextID] = effect.get();
@@ -34,7 +34,7 @@ class AudioChain {
 
         void removeEffect(EffectID id) {
             // Search for effect by ID
-            auto it = find_if(effects.begin(), effects.end(), [id](const unique_ptr<Effect>& effect){ return effect->getID() == id; });
+            auto it = find_if(effects.begin(), effects.end(), [id](const std::unique_ptr<Effect>& effect){ return effect->getID() == id; });
             if (it == effects.end()) return; // Not found
 
             fxMap.erase((*it)->getID());
@@ -47,8 +47,8 @@ class AudioChain {
         }
 
         void swapEffects(uint8_t idA, uint8_t idB) { // TODO: Maybe expand to also shift order? 
-            auto itA = find_if(effects.begin(), effects.end(), [idA](const unique_ptr<Effect>& effect){ return effect->getID() == idA; });
-            auto itB = find_if(effects.begin(), effects.end(), [idB](const unique_ptr<Effect>& effect){ return effect->getID() == idB; });
+            auto itA = find_if(effects.begin(), effects.end(), [idA](const std::unique_ptr<Effect>& effect){ return effect->getID() == idA; });
+            auto itB = find_if(effects.begin(), effects.end(), [idB](const std::unique_ptr<Effect>& effect){ return effect->getID() == idB; });
             if (itA == effects.end() || itB == effects.end()) return;
             iter_swap(itA, itB);
         }
@@ -62,7 +62,8 @@ class AudioChain {
             addEffect<Chorus>();
             addEffect<Reverb>();
             addEffect<Compressor>();
-            // addEffect<Granulator>();
+            addEffect<Equalizer>();
+            addEffect<Granulator>();
             // addEffect<Freezer>();
             // addEffect<SpectralGate>();
 
@@ -110,17 +111,16 @@ class AudioChainStream : public AudioStream {
             if (!inBlock) return;
 
             // Convert int16_t samples to float
-            constexpr int N = AUDIO_BLOCK_SAMPLES;
-            float buf[N];
-            for (int i = 0; i < N; ++i) { buf[i] = (float)inBlock->data[i] / 32768.0f; }
+            float buf[AUDIO_BLOCK_SAMPLES];
+            for (int i = 0; i < AUDIO_BLOCK_SAMPLES; ++i) { buf[i] = (float)inBlock->data[i] / 32768.0f; }
 
             // Process effect chain (in place)
-            chain.processChain(buf, buf, N);
+            chain.processChain(buf, buf, AUDIO_BLOCK_SAMPLES);
 
             // Convert back to int16_t
             audio_block_t *outBlock = allocate();
             if (!outBlock) { release(inBlock); return; }
-            for (int i = 0; i < N; ++i) { // Clipping
+            for (int i = 0; i < AUDIO_BLOCK_SAMPLES; ++i) { // Clipping
                 float f = buf[i] * 32767.0f;
                 if (f > 32767.0f) f = 32767.0f;
                 else if (f < -32768.0f) f = -32768.0f;
