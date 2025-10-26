@@ -164,37 +164,25 @@ class FFT {
             allocateFFT();
         }
 
-        // Process real input buffer (fftSize) into output magnitudes and phase (fftSize/2 + 1)
-        void forward(const float* in, float* mag, float* phs) {
-            kiss_fftr(cfgF, in, fftOut.data());
-            for(size_t k = 0; k < (fftSize/2 + 1); ++k) {
-                mag[k] = sqrt((fftOut[k].r * fftOut[k].r) + (fftOut[k].i * fftOut[k].i)); // |H[k]| = sqrt(Re[k]^2 + Im[k]^2)
-                phs[k] = atan2(fftOut[k].i, fftOut[k].r); // arg(H[k])
-            }
+        void forward(const float* in, kiss_fft_cpx* out) {
+            kiss_fftr(cfgF, in, out);
         }
 
-        // Do the opposite (reconstruct)
-        void inverse(const float* mag, const float* phs, float* out) {
-            fftOut[0].r = 0.0f; fftOut[0].i = 0.0f; // Zero DC
-            for (size_t k = 0; k < (fftSize/2 + 1); ++k) { // Convert polar to rectangular
-                fftOut[k].r = mag[k] * cos(phs[k]);
-                fftOut[k].i = mag[k] * sin(phs[k]);
-            }
-
+        void inverse(kiss_fft_cpx* in, float* out) {
+            for(size_t k = 0; k < (fftSize/2 + 1); ++k) fftOut[k] = in[k];
             kiss_fftri(cfgI, fftOut.data(), out);
-            for (size_t n = 0; n < fftSize; ++n) out[n] /= (float)fftSize; // Normalize
+            for (size_t n = 0; n < fftSize; ++n) out[n] /= (float)fftSize;
         }
 };
 
 class STFT {
     public:
         struct FFTFrame {
-            std::vector<float> mag;
-            std::vector<float> phase;
-            FFTFrame(size_t bins) : mag(bins, 0.0f), phase(bins, 0.0f) {}
+            std::vector<kiss_fft_cpx> bins;
+            FFTFrame(size_t numBins) : bins(numBins) {}
         };
     private:
-        const float bufDur = 0.25f;
+        const float bufDur;
 
         FFT fft;
         size_t fftSize, numBins, hopSize, hopFactor = 4;
@@ -205,17 +193,18 @@ class STFT {
 
         // Spectral-domain
         std::vector<FFTFrame> spectrogram; // Store FFT frames
+        std::vector<float> forwardFrame, inverseFrame;
         size_t spectPos = 0, spectSize;
-        std::deque<FFTFrame> processingQueue; // Queue frames ready for IFFT
+        std::deque<size_t> processingQueue; // Queue frame indices ready for IFFT
         std::function<void(FFTFrame&)> processCallback; // Function to process frames
 
     public:
-        STFT(size_t fftSize, size_t hopFactor) : fft(fftSize) { setHopSize(hopFactor); setFFTSize(fftSize); }
+        STFT(size_t fftSize, size_t hopFactor, float bufDur = 0.25f) : bufDur(bufDur), fft(fftSize), hopFactor(hopFactor) { setFFTSize(fftSize); }
 
         // Exposing this shit for external use
         size_t getSpectSize() const { return spectSize; }
-        size_t getHopSize() const { return hopSize; }
         size_t getFFTSize() const { return fftSize; }
+                size_t getHopSize() const { return hopSize; }
         size_t getNumBins() const { return numBins; }
         FFT& getFFT() { return fft; }
         FFTFrame& getFrame() { // Get most recent FFT frame
@@ -223,13 +212,16 @@ class STFT {
             return spectrogram[index];
         }
 
-        void setHopSize(size_t hopFactor) { hopSize = fftSize / hopFactor; }
         void setFFTSize(size_t N) { // !!! Must be a power of 2 !!!
-            fftSize = N; numBins = (fftSize / 2) + 1; hopSize = fftSize / hopFactor;
+            fftSize = N; numBins = (fftSize / 2) + 1; 
+            hopSize = fftSize / hopFactor;
+            
             inPos = 0; outPos = 0; hopCounter = 0;
             inBuf.resize(fftSize, 0.0f); outBuf.assign(fftSize, 0.0f);
 
             fft.setFFTSize(fftSize);
+
+            forwardFrame.resize(fftSize, 0.0f); inverseFrame.resize(fftSize, 0.0f);
 
             // Init spectrogram
             spectrogram.clear();
@@ -237,6 +229,9 @@ class STFT {
             for (size_t i = 0; i < spectSize; ++i) { spectrogram.emplace_back(numBins); }
             spectPos = 0;
         }
+        void setHopSize(size_t hopFactor) { 
+            this->hopFactor = std::clamp(hopFactor, (size_t)2, (size_t)8); 
+            hopSize = fftSize / hopFactor; }
         void setProcessCallback(std::function<void(FFTFrame&)> callback) { processCallback = callback; }
 
         void forward(float input) { // Store FFT frames in spectrogram
@@ -250,26 +245,19 @@ class STFT {
                 hopCounter = 0;
                 
                 // Extract full FFT frame from circular buffer
-                std::vector<float> frame(fftN);
                 size_t readPos = inPos; // Start from oldest sample
                 for (size_t j = 0; j < fftN; ++j) {
-                    frame[j] = inBuf[readPos] * getEnvelopeValue((float)j / fftN, fftN, HANN);
+                    forwardFrame[j] = inBuf[readPos] * getEnvelopeValue((float)j / fftN, fftN, HANN);
                     ++readPos; if (readPos >= fftN) readPos = 0;
                 }
                 
-                // Forward FFT
-                std::vector<float> mag(numBins), phs(numBins);
-                fft.forward(frame.data(), mag.data(), phs.data());
+                // Forward FFT, store in spectrogram buffer
+                fft.forward(forwardFrame.data(), spectrogram[spectPos].bins.data());
 
-                // Store in spectrogram buffer
-                FFTFrame& currentFrame = spectrogram[spectPos];
-                for (size_t k = 0; k < numBins; ++k) {
-                    currentFrame.mag[k] = mag[k];
-                    currentFrame.phase[k] = phs[k];
-                }
-
-                if (processCallback) processCallback(currentFrame); // Process frame if applicable
-                processingQueue.push_back(currentFrame); // Enqueue frame for IFFT
+                // Process frame if applicable
+                if (processCallback) processCallback(spectrogram[spectPos]);
+                // Enqueue frame for IFFT 
+                processingQueue.push_back(spectPos); 
                 
                 ++spectPos; if (spectPos >= spectSize) spectPos = 0;
             }
@@ -281,11 +269,10 @@ class STFT {
 
             /* RECONSTRUCT FFT FRAMES */
             if (!processingQueue.empty()) { // Process queued frames
-                const FFTFrame& frameSpec = processingQueue.front();
+                size_t framePos = processingQueue.front();
                 
-                std::vector<float> frame(fftSize);
-                fft.inverse(frameSpec.mag.data(), frameSpec.phase.data(), frame.data());
-                overlapAdd(outBuf, frame, HANN, outPos);
+                fft.inverse(spectrogram[framePos].bins.data(), inverseFrame.data());
+                overlapAdd(outBuf, inverseFrame, HANN, outPos);
                 
                 processingQueue.pop_front();
             }
@@ -294,28 +281,19 @@ class STFT {
             return out;
         }
 
-        FFTFrame interpolateFrame(float framePos) { // Take float index to spectrogram buffer and return lerped frame mag/phs
+        FFTFrame interpolateFrame(float framePos) { 
             if (spectrogram.empty()) { return FFTFrame(numBins); }
-
+            
             int frameIndex = (int)floor(framePos);
             float frameFrac = framePos - floor(framePos);
-
             size_t frame0 = frameIndex % spectSize;
             size_t frame1 = (frame0 + 1) % spectSize;
-
+            
             FFTFrame interpFrame(numBins);
             for (size_t k = 0; k < numBins; ++k) {
-                // Lerp magnitudes
-                interpFrame.mag[k] = lerp(spectrogram[frame0].mag[k], spectrogram[frame1].mag[k], frameFrac);
-
-                // Lerp phases
-                float phase0 = spectrogram[frame0].phase[k];
-                float phase1 = spectrogram[frame1].phase[k];
-                float phaseDiff = fmod((phase1 - phase0) + M_PI, 2.0f * M_PI); // PHASE UNWRAPPING!
-                if (phaseDiff < 0) phaseDiff += 2.0f * M_PI;
-                phaseDiff -= M_PI;
-                
-                interpFrame.phase[k] = phase0 + (frameFrac * phaseDiff);
+                // Lerp real and imaginary components
+                interpFrame.bins[k].r = lerp(spectrogram[frame0].bins[k].r, spectrogram[frame1].bins[k].r, frameFrac);
+                interpFrame.bins[k].i = lerp(spectrogram[frame0].bins[k].i, spectrogram[frame1].bins[k].i, frameFrac);
             }
             return interpFrame;
         }

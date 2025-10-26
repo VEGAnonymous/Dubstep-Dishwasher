@@ -106,7 +106,7 @@ class Spectral_Effect : public Effect {
         enum Params : ParamID { MIX, FFT_SIZE };
 
         float mix;
-        size_t fftSize, hopSize;
+        size_t fftSize;
 
         STFT stft;
         std::vector<float> mag, phs; // Temp buffers
@@ -114,14 +114,14 @@ class Spectral_Effect : public Effect {
 
         DelayLine latencyComp;
 
-        virtual void processSpectrum(float* mag, float* phs, size_t numBins) = 0; // Subclasses must implement
+        virtual void processSpectrum(STFT::FFTFrame& frame) = 0; // Subclasses must implement
 
     public:
-        Spectral_Effect(float mix = 1.0f, size_t fftSize = 1024) : stft(fftSize, 2), latencyComp(1.0f, (8192.0f * 1000.0f) / (float)SAMPLE_RATE) { 
+        Spectral_Effect(float mix = 1.0f, size_t fftSize = 512) : stft(fftSize, 4, 0.25f), 
+        latencyComp(1.0f, (8192.0f * 1000.0f) / (float)SAMPLE_RATE) { 
             setMix(mix); setFFTSize(fftSize); 
-
             // Set the STFT frame process callback to processSpectrum()
-            stft.setProcessCallback([this](STFT::FFTFrame& frame) { processSpectrum(frame.mag.data(), frame.phase.data(), frame.mag.size());
+            stft.setProcessCallback([this](STFT::FFTFrame& frame) { processSpectrum(frame);
     });
         
         }
@@ -130,12 +130,12 @@ class Spectral_Effect : public Effect {
         void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
         void setFFTSize(size_t N) { // [256, 8192], MUST BE POWER OF 2
             const size_t fftN = std::clamp(N, (size_t)256, (size_t)8192);
-            fftSize = fftN; hopSize = fftN / 4;
+            fftSize = fftN;
             
             stft.setFFTSize(fftSize);
             mag.assign((fftSize / 2) + 1, 0.0f); phs.assign((fftSize / 2) + 1, 0.0f);
             hopCounter = 0;
-            latencyComp.setDelaySamples((float)hopSize + ((float)fftSize / 2.0f));
+            latencyComp.setDelaySamples((float)fftSize);
         }
 
         inline void setParam(ParamID param, float value) override {

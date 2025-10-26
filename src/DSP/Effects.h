@@ -774,7 +774,7 @@ class Freezer : public Effect {
     private:
         enum Params : ParamID { MIX, RATE, SPECTRAL_MODE, FFT_SIZE, HOP_SIZE, LOOP_START, LOOP_END };
 
-        const size_t bufSize = 1 * (size_t)SAMPLE_RATE;
+        const size_t bufSize = 1 * (size_t)SAMPLE_RATE; // TEMP: Increase bufSize later
         const float smooth = 0.05f;
         
         float mix, rate; bool spectralMode;
@@ -788,8 +788,8 @@ class Freezer : public Effect {
         size_t spectPos = 0, spectHopCounter = 0;
 
     public:
-        Freezer(float mix = 1.0f, float rate = 0.5f, bool spectralMode = true, size_t fftSize = 256, size_t hopFactor = 4, 
-            float loopStart = 0.0f, float loopEnd = 1.0f) : stft(fftSize, hopFactor) {
+        Freezer(float mix = 1.0f, float rate = 1.0f, bool spectralMode = true, size_t fftSize = 256, size_t hopFactor = 4, 
+            float loopStart = 0.0f, float loopEnd = 1.0f) : stft(fftSize, hopFactor, 0.25f) { // TEMP: 0.25 bufSize is insufficient
             setMix(mix); setRate(rate); setSpectralMode(spectralMode);
             setFFTSize(fftSize); setHopSize(hopFactor); setLoopRegion(loopStart, loopEnd); 
             inBuf.resize(bufSize, 0.0f);
@@ -851,15 +851,17 @@ class Freezer : public Effect {
                     /* SYNTHESIZE FFT FRAMES */
                     if (spectHopCounter >= hopN) { // Every hopN samples
                         spectHopCounter = 0;
-                        // Map readPos to FFT frame index
-                        float framePos = fmod(readPos / (float)hopN, (float)stft.getSpectSize());
-                        if (framePos < 0) framePos += stft.getSpectSize();
-                        // Interpolate spectral frame
-                        STFT::FFTFrame interpFrame = stft.interpolateFrame(framePos);
-                        // IFFT
-                        stft.getFFT().inverse(interpFrame.mag.data(), interpFrame.phase.data(), spectFrame.data());
-                        // Window and OLA
-                        overlapAdd(spectBuf, spectFrame, HANN, spectPos);
+                        if (stft.getSpectSize() > 0) {
+                            // Map readPos to FFT frame index
+                            float framePos = fmod(readPos / (float)hopN, (float)stft.getSpectSize());
+                            if (framePos < 0) framePos += stft.getSpectSize();
+                            // Interpolate spectral frame
+                            STFT::FFTFrame interpFrame = stft.interpolateFrame(framePos);
+                            // IFFT
+                            stft.getFFT().inverse(interpFrame.bins.data(), spectFrame.data());
+                            // Window and OLA
+                            overlapAdd(spectBuf, spectFrame, HANN, spectPos);
+                        }
                     }
                     
                     ++spectPos; if (spectPos >= fftN) spectPos = 0;
@@ -898,11 +900,11 @@ class SpectralGate : public Spectral_Effect {
         float threshold, tilt;
         
     public:
-        SpectralGate(float mix = 1.0f, float thresholdDB = -10.0f, float tilt = 0.5f, int fftSize = 1024) : Spectral_Effect(mix, fftSize)
+        SpectralGate(float mix = 1.0f, float thresholdDB = -10.0f, float tilt = 0.5f, int fftSize = 512) : Spectral_Effect(mix, fftSize)
             { setThreshold(thresholdDB); setTilt(tilt); }
         
         void setThreshold(float thresholdDB) { threshold = dbAmp(std::clamp(thresholdDB, -100.0f, 0.0f)); } // dB, [-100.0, 0.0]
-        void setTilt(float tilt) { this->tilt = std::clamp(tilt, -1.0f, 1.0f) * 2.0f; } // [-1.0, 1.0], + gates lows more, - gates highs more
+        void setTilt(float tilt) { this->tilt = std::clamp(tilt, -1.0f, 1.0f) * 2.0f; } // [-1.0, 1.0]
         inline void setParam(ParamID param, float value) override {
             switch (param) {
                 case THRESHOLD: setThreshold(value); break;
@@ -912,13 +914,22 @@ class SpectralGate : public Spectral_Effect {
         }
 
     protected:
-        void processSpectrum(float* mag, float* /*phs*/, size_t numBins) override {
+        void processSpectrum(STFT::FFTFrame& frame) override {
+            const size_t numBins = frame.bins.size();
             const float binTilt = tilt / (float)(numBins - 1);
+            const float threshold_sq = threshold * threshold;
+            
             for (size_t k = 0; k < numBins; ++k) {
-                float weight = 1.0f + ((k * binTilt) - (tilt * 0.5f));
+                // + tilt gates lows more, - tilt gates highs more
+                float weight = 1.0f - ((k * binTilt) - (tilt * 0.5f));
                 if (weight < 0.0f) weight = 0.0f;
-
-                if ((mag[k] * weight) < threshold) mag[k] = 0.0f;
+                
+                // Compare squared magnitudes
+                float mag_sq = (frame.bins[k].r * frame.bins[k].r) + (frame.bins[k].i * frame.bins[k].i);
+                float weight_sq = weight * weight;
+                
+                if ((mag_sq * weight_sq) < threshold_sq) { // Gate bins under threshold
+                    frame.bins[k].r = 0.0f; frame.bins[k].i = 0.0f; }
             }
         }
 };
