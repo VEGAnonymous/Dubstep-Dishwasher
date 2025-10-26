@@ -154,13 +154,13 @@ class FFT {
             fftOut.resize(fftSize/2 + 1);
         }
     public:
-        FFT(size_t fftSize = 1024) { setFFTSize(fftSize); }
+        FFT(size_t fftSize = 512) { setFFTSize(fftSize); }
         ~FFT() { if(cfgF) kiss_fft_free(cfgF); if(cfgI) kiss_fft_free(cfgI); }
         FFT(const FFT&) = delete;
         FFT& operator=(const FFT&) = delete;
 
-        void setFFTSize(size_t N) { // !!! Must be a power of 2 !!!
-            fftSize = N;
+        void setFFTSize(size_t N) { // [128, FFT_MAX_SIZE], MUST BE POWER OF 2
+            fftSize = std::clamp(N, (size_t)128, (size_t)FFT_MAX_SIZE);
             allocateFFT();
         }
 
@@ -212,8 +212,8 @@ class STFT {
             return spectrogram[index];
         }
 
-        void setFFTSize(size_t N) { // !!! Must be a power of 2 !!!
-            fftSize = N; numBins = (fftSize / 2) + 1; 
+        void setFFTSize(size_t N) { // [128, FFT_MAX_SIZE], MUST BE POWER OF 2
+            fftSize = std::clamp(N, (size_t)128, (size_t)FFT_MAX_SIZE); numBins = (fftSize / 2) + 1; 
             hopSize = fftSize / hopFactor;
             
             inPos = 0; outPos = 0; hopCounter = 0;
@@ -229,9 +229,10 @@ class STFT {
             for (size_t i = 0; i < spectSize; ++i) { spectrogram.emplace_back(numBins); }
             spectPos = 0;
         }
-        void setHopSize(size_t hopFactor) { 
+        void setHopSize(size_t hopFactor) { // [2, 8]
             this->hopFactor = std::clamp(hopFactor, (size_t)2, (size_t)8); 
-            hopSize = fftSize / hopFactor; }
+            setFFTSize(fftSize);
+        }
         void setProcessCallback(std::function<void(FFTFrame&)> callback) { processCallback = callback; }
 
         void forward(float input) { // Store FFT frames in spectrogram

@@ -54,18 +54,18 @@ class AudioChain {
         }
 
         AudioChain() { // Build effects chain, initial order
-            // BUG: Extreme DTCM memory issues - offending effects disabled until PSRAM arrives
+            // BUG: DTCM memory issues - some effects disabled until PSRAM arrives
             addEffect<Distortion>();
             addEffect<Delay>();
             addEffect<Flanger>();
             addEffect<Phaser>();
             addEffect<Chorus>();
             addEffect<Reverb>();
-            addEffect<Compressor>();
+            // addEffect<Compressor>();
             addEffect<Equalizer>();
             addEffect<Granulator>();
             // addEffect<Freezer>();
-            // addEffect<SpectralGate>();
+            addEffect<SpectralGate>();
 
             addEffect<Compressor>(1.0f, dbAmp(-0.6f), 100.0f, 0.0f, 1.0f, 50.0f, dbAmp(-0.3f), false); // LIMITER, DO NOT TOUCH
 
@@ -73,9 +73,7 @@ class AudioChain {
             for (size_t i = 0; i < effects.size() - 1; ++i) effects[i]->setBypass(true);
 
             Serial.println("Active effects:");
-            for (auto &fx : effects)
-                if (!fx->isBypassed())
-                    Serial.printf("  ID %d active\n", fx->getID());
+            for (auto &fx : effects) if (!fx->isBypassed()) Serial.printf("  ID %d active\n", fx->getID());
         }
 
         void processChain(float* input, float* output, size_t n = BUFFER_SIZE) {

@@ -78,3 +78,9 @@
 10-25-25b
 - Refactor FFT to use rectangular form (remove mag and phs calculations)
 - Refactor STFT, Spectral_Effect, SpectralGate to use rectangular form FFT
+
+10-26-25
+- Globally reduce max FFT size to 1024
+- Optimize memory usage for Spectral_Effect - now only uses one frame in STFT and a smaller latency comp buffer
+- Attempt to fix Freezer (Sisyphean task) - make spectral mode STFT dynamically allocated via smart pointer
+- Minor readability changes

@@ -64,7 +64,7 @@ class OnePole : public IIR_Filter { // One-pole LPF
 
         void setCoeff(float a) {
             b0 = 1.0f - a; a1 = a;
-            cutoff = -((float)SAMPLE_RATE * log(a)) / (2 * M_PI);
+            cutoff = -(SAMPLE_RATE * log(a)) / (2 * M_PI);
         }
         void setCutoff(float cutoff) { // Hz
             this->cutoff = cutoff;
@@ -224,7 +224,7 @@ class LowShelf_Biquad : public Biquad {
             a2 = ((A + 1.0f) + ((A - 1.0f) * cos_w0) - (2.0f * sqrt_A * a)) / a0;
         }
     public:
-        void setGain(float gainDB) { // dB, [-24.0, 24.0]
+        void setGain(float gainDB) override { // dB, [-24.0, 24.0]
             setBypass(fabs(gainDB) < 1e-3f); // Bypass if gain is close or at 0.0dB
             this->gainDB = std::clamp(gainDB, -24.0f, 24.0f); 
             if (!isBypassed()) updateCoeffs();

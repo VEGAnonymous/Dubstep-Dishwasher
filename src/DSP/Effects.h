@@ -502,7 +502,8 @@ class Compressor : public Effect {
 
     public:
         Compressor(float mix = 1.0f, float threshold = -18.0f, float ratio = 4.0f, float knee = 10.0f, 
-            float attack = 100.0f, float release = 100.0f, float makeupGain = 0.0f, bool autoMakeup = false) : inBuffer(1.0f, L + 1.0f) {
+                   float attack = 100.0f, float release = 100.0f, float makeupGain = 0.0f, bool autoMakeup = false) 
+            : inBuffer(1.0f, L + 1.0f) {
             setMix(mix); setThreshold(threshold); setRatio(ratio); setKnee(knee); 
             setAttackTime(attack); setReleaseTime(release); setMakeupGain(makeupGain); setAutoMakeup(autoMakeup);
             inBuffer.setDelayTime(L);
@@ -589,8 +590,8 @@ class Equalizer : public Effect {
 
     public:
         Equalizer(float mix = 1.0f,
-        biquadType band1Type = LOW_SHELF,  float band1Cutoff = 200.0f,  float band1Q = 0.707f, float band1Gain = 0.0f,
-        biquadType band2Type = HIGH_SHELF, float band2Cutoff = 2000.0f, float band2Q = 0.707f, float band2Gain = 0.0f) {
+                  biquadType band1Type = LOW_SHELF,  float band1Cutoff = 200.0f,  float band1Q = 0.707f, float band1Gain = 0.0f,
+                  biquadType band2Type = HIGH_SHELF, float band2Cutoff = 2000.0f, float band2Q = 0.707f, float band2Gain = 0.0f) {
             bands[0] = createBiquad(band1Type, band1Cutoff, band1Q, band1Gain);
             bands[1] = createBiquad(band2Type, band2Cutoff, band2Q, band2Gain);
 
@@ -712,8 +713,8 @@ class Granulator : public Effect {
 
     public:
         Granulator(float mix = 1.0f, float position = 0.5f, float positionRand = 0.5f, float time = 50.0f, float timeRand = 0.0f, 
-            float length = 200.0f, float lengthRand = 0.0f, float level = 0.8f, float levelRand = 0.0f, 
-            float reverseChance = 0.0f, envelopeType envType = HANN) {
+                   float length = 200.0f, float lengthRand = 0.0f, float level = 0.8f, float levelRand = 0.0f, 
+                   float reverseChance = 0.0f, envelopeType envType = HANN) {
             setMix(mix); setPosition(position); setPositionRand(positionRand); setRate(time); setRateRand(timeRand); setLength(length); 
             setLengthRand(lengthRand); setLevel(level); setLevelRand(levelRand); setReverseChance(reverseChance); setEnvelopeType(envType);
             grains.resize(maxGrains);
@@ -775,7 +776,7 @@ class Freezer : public Effect {
         enum Params : ParamID { MIX, RATE, SPECTRAL_MODE, FFT_SIZE, HOP_SIZE, LOOP_START, LOOP_END };
 
         const size_t bufSize = 1 * (size_t)SAMPLE_RATE; // TEMP: Increase bufSize later
-        const float smooth = 0.05f;
+        const float smooth = 0.2f;
         
         float mix, rate; bool spectralMode;
         float loopStart, loopEnd;
@@ -783,13 +784,24 @@ class Freezer : public Effect {
         std::vector<float> inBuf; size_t writePos = 0; float readPos = 0.0f;
         
         // Spectral resythesis
-        STFT stft;
+        size_t fftSize, hopFactor;
+        std::unique_ptr<STFT> stft;
         std::vector<float> spectBuf, spectFrame;
         size_t spectPos = 0, spectHopCounter = 0;
 
+        void allocateSTFT() {
+            stft = std::make_unique<STFT>(fftSize, hopFactor, 0.25f);
+            spectBuf.assign(fftSize, 0.0f); spectFrame.assign(fftSize, 0.0f);
+            spectPos = 0; spectHopCounter = 0;
+        }
+        void freeSTFT() {
+            stft.reset(); 
+            spectBuf.clear(); spectFrame.clear();
+        }
+
     public:
-        Freezer(float mix = 1.0f, float rate = 1.0f, bool spectralMode = true, size_t fftSize = 256, size_t hopFactor = 4, 
-            float loopStart = 0.0f, float loopEnd = 1.0f) : stft(fftSize, hopFactor, 0.25f) { // TEMP: 0.25 bufSize is insufficient
+        Freezer(float mix = 1.0f, float rate = 1.0f, bool spectralMode = false, size_t fftSize = 1024, size_t hopFactor = 4, 
+                float loopStart = 0.0f, float loopEnd = 1.0f) {
             setMix(mix); setRate(rate); setSpectralMode(spectralMode);
             setFFTSize(fftSize); setHopSize(hopFactor); setLoopRegion(loopStart, loopEnd); 
             inBuf.resize(bufSize, 0.0f);
@@ -797,14 +809,27 @@ class Freezer : public Effect {
         
         void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
         void setRate(float rate) { this->rate = std::clamp(rate, -4.0f, 4.0f); } // [-4.0, 4.0]
-        void setSpectralMode(bool spectralMode) { this->spectralMode = spectralMode; }
+        void setSpectralMode(bool mode) { 
+            if (mode == spectralMode) return;
+            spectralMode = mode;
+
+            if (spectralMode) allocateSTFT();
+            else freeSTFT();
+        }
         void setFFTSize(size_t N) { // [256, 8192], MUST BE POWER OF 2
             const size_t fftN = std::clamp(N, (size_t)256, (size_t)8192);
-            stft.setFFTSize(fftN); 
-            spectBuf.assign(fftN, 0.0f); spectFrame.resize(fftN);
-            spectPos = 0; spectHopCounter = 0;
+            fftSize = fftN;
+            if (stft) {
+                stft->setFFTSize(fftN); 
+                spectBuf.assign(fftN, 0.0f); spectFrame.resize(fftN);
+                spectPos = 0; spectHopCounter = 0;
+            }
+
         }
-        void setHopSize(size_t hopFactor) { stft.setHopSize(std::clamp(hopFactor, (size_t)2, (size_t)8)); } // [2, 8]
+        void setHopSize(size_t hopFactor) { // [2, 8]
+            this->hopFactor = std::clamp(hopFactor, (size_t)2, (size_t)8);
+            if (stft) stft->setHopSize(hopFactor);
+        } 
         void setLoopRegion(float start, float end) { // [0.0, 1.0] for both
             loopStart = std::clamp(start, 0.0f, 1.0f);
             loopEnd = std::clamp(end, 0.0f, 1.0f);
@@ -827,21 +852,23 @@ class Freezer : public Effect {
         }
         
         void process(const float* in, float* out, size_t n) override {
-            const size_t fftN = stft.getFFTSize(), hopN = stft.getHopSize();
+            const size_t bufN = bufSize,
+                         fftN = stft ? stft->getFFTSize() : 0,
+                         hopN = stft ? stft->getHopSize() : 0;
 
             // Compute loop boundaries
-            float loopStartSamples = loopStart * (float)bufSize;
-            float loopEndSamples = loopEnd * (float)bufSize;
+            float loopStartSamples = loopStart * (float)bufN;
+            float loopEndSamples = loopEnd * (float)bufN;
             float loopLength = loopEndSamples - loopStartSamples;
             
             for (size_t i = 0; i < n; ++i) {
                 inBuf[writePos] = in[i]; // Write input to circular buffer
-                ++writePos; if (writePos >= bufSize) writePos = 0;
+                ++writePos; if (writePos >= bufN) writePos = 0;
                 
                 float wetSig = 0.0f;
-                if (spectralMode) { // Spectral resynthesis mode
+                if (spectralMode && stft) { // Spectral resynthesis mode
 
-                    stft.forward(in[i]); // Forward FFT
+                    stft->forward(in[i]); // Forward FFT
 
                     // Read from OLA buffer
                     wetSig = spectBuf[spectPos];
@@ -851,14 +878,14 @@ class Freezer : public Effect {
                     /* SYNTHESIZE FFT FRAMES */
                     if (spectHopCounter >= hopN) { // Every hopN samples
                         spectHopCounter = 0;
-                        if (stft.getSpectSize() > 0) {
+                        if (stft->getSpectSize() > 0) {
                             // Map readPos to FFT frame index
-                            float framePos = fmod(readPos / (float)hopN, (float)stft.getSpectSize());
-                            if (framePos < 0) framePos += stft.getSpectSize();
+                            float framePos = fmod(readPos / (float)hopN, (float)stft->getSpectSize());
+                            if (framePos < 0) framePos += stft->getSpectSize();
                             // Interpolate spectral frame
-                            STFT::FFTFrame interpFrame = stft.interpolateFrame(framePos);
+                            STFT::FFTFrame interpFrame = stft->interpolateFrame(framePos);
                             // IFFT
-                            stft.getFFT().inverse(interpFrame.bins.data(), spectFrame.data());
+                            stft->getFFT().inverse(interpFrame.bins.data(), spectFrame.data());
                             // Window and OLA
                             overlapAdd(spectBuf, spectFrame, HANN, spectPos);
                         }
@@ -873,7 +900,7 @@ class Freezer : public Effect {
                 else if (readPos >= loopEndSamples) { readPos -= loopLength; }
                 float loopPos = (readPos - loopStartSamples) / loopLength; // Map to loop pos
 
-                if (!spectralMode) wetSig = lerp(inBuf, readPos, bufSize); // Time domain mode
+                if (!spectralMode) wetSig = lerp(inBuf, readPos, bufN); // Time domain mode
 
                 float crossfade = 1.0f;
                 if (rate != 0.0f) {

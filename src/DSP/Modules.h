@@ -89,7 +89,7 @@ class Biquad : public IIR_Filter { // Generic SOS form, Direct Form II-Transpose
     public:
         void setCutoff(float cutoff) { this->cutoff = std::clamp(cutoff, 20.0f, 20000.0f); updateCoeffs(); } // Hz, [20.0, 20000.0]
         void setQ(float q) { this->q = std::clamp(q, 0.025f, 40.0f); updateCoeffs(); } // [0.025, 40.0]
-        void setGain(float gainDB) { this->gainDB = std::clamp(gainDB, -24.0f, 24.0f); updateCoeffs(); } // dB, [-24.0, 24.0]
+        virtual void setGain(float gainDB) { this->gainDB = std::clamp(gainDB, -24.0f, 24.0f); updateCoeffs(); } // dB, [-24.0, 24.0]
         
         inline void setParam(ParamID param, float value) override {
             switch (param) {
@@ -104,9 +104,9 @@ class Biquad : public IIR_Filter { // Generic SOS form, Direct Form II-Transpose
 class Spectral_Effect : public Effect {
     protected:
         enum Params : ParamID { MIX, FFT_SIZE };
-
-        float mix;
-        size_t fftSize;
+        
+        const size_t hopFactor = 4;
+        float mix; size_t fftSize;
 
         STFT stft;
         std::vector<float> mag, phs; // Temp buffers
@@ -117,9 +117,10 @@ class Spectral_Effect : public Effect {
         virtual void processSpectrum(STFT::FFTFrame& frame) = 0; // Subclasses must implement
 
     public:
-        Spectral_Effect(float mix = 1.0f, size_t fftSize = 512) : stft(fftSize, 4, 0.25f), 
-        latencyComp(1.0f, (8192.0f * 1000.0f) / (float)SAMPLE_RATE) { 
-            setMix(mix); setFFTSize(fftSize); 
+        Spectral_Effect(float mix = 1.0f, size_t fftSize = 512) 
+        : stft(fftSize, hopFactor, ((FFT_MAX_SIZE / (float)hopFactor) + 1.0f) / SAMPLE_RATE), 
+          latencyComp(1.0f, ((FFT_MAX_SIZE + 1.0f) * 1000.0f) / SAMPLE_RATE) { 
+            setMix(mix); setFFTSize(fftSize);
             // Set the STFT frame process callback to processSpectrum()
             stft.setProcessCallback([this](STFT::FFTFrame& frame) { processSpectrum(frame);
     });
@@ -128,8 +129,8 @@ class Spectral_Effect : public Effect {
         virtual ~Spectral_Effect() = default;
 
         void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setFFTSize(size_t N) { // [256, 8192], MUST BE POWER OF 2
-            const size_t fftN = std::clamp(N, (size_t)256, (size_t)8192);
+        void setFFTSize(size_t N) { // [128, FFT_MAX_SIZE], MUST BE POWER OF 2
+            const size_t fftN = std::clamp(N, (size_t)128, (size_t)FFT_MAX_SIZE);
             fftSize = fftN;
             
             stft.setFFTSize(fftSize);
