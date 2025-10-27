@@ -19,6 +19,7 @@ using ParamID = uint8_t;
 
 /* ENUMS */
 
+enum commandType { ADD, REMOVE, REORDER, SET, BYPASS };
 enum envelopeType { HANN, HAMMING, SINE, TRI, PERC, SMOOTH_RECT };
 enum wavetable { SINE_TABLE, TRI_TABLE, SAW_TABLE, SQUARE_TABLE };
 enum randomMode { PERLIN, SAMPLE_HOLD, BINARY };

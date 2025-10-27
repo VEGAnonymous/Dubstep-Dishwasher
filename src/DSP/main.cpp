@@ -14,11 +14,9 @@
 #include "Control.h"
 #include "LUTs.h"
 
-#define RX_PIN 0
-
 // TESTING - 
-const bool USB_IO = true, // <-- SET FLAGS HERE
-           LOG_DBG = true;
+const bool USB_IO = false, // <-- SET FLAGS HERE
+           LOG_DBG = false;
 
 AudioInputUSB usbIn; 
 AudioOutputUSB usbOut;
@@ -41,40 +39,45 @@ struct Command {
     uint8_t cmd;        // Command type (0 = Add, 1 = Remove, 2 = Reorder, 3 = Set param, 4 = Bypass)
     uint8_t id1;        // Effect id 1
     uint8_t id2;        // Effect id 2 or ParamID
-    uint8_t reserved;   // Reserved/padding
+    uint8_t checksum;   // Checksum (XOR)
     float value;        // Parameter value (float)
 } __attribute__((packed));
 
-// void processCommand(const String& s, AudioChain& chain) {
-//     uint8_t fxID, paramID, bypass;
-//     float value;
+// Checksum utilities
+uint8_t calculateChecksum(const Command& cmd) {
+    uint8_t checksum = cmd.cmd ^ cmd.id1 ^ cmd.id2;
+    const uint8_t* valueBytes = (const uint8_t*)&cmd.value;
+    for(int i = 0; i < (int)sizeof(float); ++i) {
+        checksum ^= valueBytes[i];
+    }
+    return checksum;
+}
 
-//     // Command structure: [Type][EffectID][ParamID/Bypass][Value], ex:
-//     // S 1 2 0.75
-//     // B 1 1
-//     if (sscanf(s.c_str(), "S %c %c %f", &fxID, &paramID, &value) == 3) {
-//         Effect* fx = chain.getEffect((EffectID)fxID);
-//         if (!fx) { Serial.println("ERR: Invalid EffectID"); return; }
-//         fx->setParam((ParamID)paramID, value);
-//         Serial.println("OK");
-//     } else if (sscanf(s.c_str(), "B %c %c", &fxID, &bypass) == 2) {
-//         Effect* fx = chain.getEffect((EffectID)fxID);
-//         if (!fx) { Serial.println("ERR: Invalid EffectID"); return; }
-//         fx->setBypass(bypass);
-//         Serial.println("OK");
-//     } else { Serial.println("ERR: Parse"); }
-// }
+// Verify checksum of received command
+bool verifyChecksum(const Command& cmd) {
+    uint8_t storedChecksum = cmd.checksum;
+    Command tempCmd = cmd;
+    tempCmd.checksum = 0; // Zero out checksum for calculation
+    return (storedChecksum == calculateChecksum(tempCmd));
+}
 
-// void processCommand(Command& cmd, AudioChain& chain) {
-//     switch (cmd.cmd) {
-//         case 0: // Add Effect
-//     }
-// }
+// Parse commands
+void processCommand(Command& cmd, AudioChain& chain) {
+    Serial.println(cmd.cmd);
+    switch (cmd.cmd) {
+        case ADD: /* chain.addEffect(cmd.id1); */ Serial.printf("Added effect %d\n", cmd.id1); break; // Add effect
+        case REMOVE: chain.removeEffect(cmd.id1); Serial.printf("Removed effect %d\n", cmd.id1); break; // Remove effect
+        case REORDER: chain.swapEffects(cmd.id1, cmd.id2); Serial.printf("Swapped effect %d and effect %d\n", cmd.id1, cmd.id2); break; // Swap effects
+        case SET: chain.getEffect(cmd.id1)->setParam(cmd.id2, cmd.value); Serial.printf("Set parameter %d for effect %d to %f\n", cmd.id2, cmd.id1, cmd.value); break; // Set effect parameter
+        case BYPASS: chain.getEffect(cmd.id1)->setBypass(cmd.value); Serial.printf("Set bypass at effect %d to %f\n", cmd.id1, cmd.value); break; // Bypass effect
+    }
+}
+
 void setup() {
     Serial.begin(115200);
-    pinMode(LED_BUILTIN, OUTPUT);
+    Serial1.begin(115200); // Pin 0
 
-    Serial1.begin(115200); // UART1 RX only (pin 0)
+    pinMode(LED_BUILTIN, OUTPUT);
 
     while (!Serial && millis() < 4000) {}
 
@@ -94,7 +97,7 @@ void setup() {
         patch2 = std::make_unique<AudioConnection>(*stream, 0, usbOut, 0);
         // patch1 = std::make_unique<AudioConnection>(usbIn, 0, usbOut, 0);
     } else {
-        patch1 = std::make_unique<AudioConnection>(adcIn, 0, *stream, 0);
+        patch1 = std::make_unique<AudioConnection>(usbIn, 0, *stream, 0);
         patch2 = std::make_unique<AudioConnection>(*stream, 0, dacOut, 0);
     }
     
@@ -110,28 +113,36 @@ void setup() {
 }
 
 void loop() {
+
     if (Serial1.available()) {
-        Command rcvCmd;
-        size_t rcvBytes = 0;
-
+        Command rcvCmd; size_t rcvBytes = 0;
         uint8_t* buf = (uint8_t*)&rcvCmd;
-        Serial1.readBytes((char*)buf, sizeof(Command));
 
-        
-        
+        rcvBytes = Serial1.readBytes((char*)buf, sizeof(Command));
+
         if (rcvBytes == sizeof(Command)) {
-            Serial.print("\n=== Received Command ===\n");
-            Serial.printf("cmd: %c | ", rcvCmd.cmd);
-            Serial.printf("id1: %c | ", rcvCmd.id1);
-            Serial.printf("id2: %c | ", rcvCmd.id2);
-            Serial.printf("value: %.3f\n", rcvCmd.value);
-            Serial.println("===================");
-            
-            // processCommand(rcvCmd, *chain);
-        } else {
-            Serial.println("ERR: Incomplete Command");
-        }
+            if (verifyChecksum(rcvCmd)) {
+                Serial.print("\n=== Received Echo ===\n");
+                Serial.printf("cmd: %d | ", rcvCmd.cmd);
+                Serial.printf("id1: %d | ", rcvCmd.id1);
+                Serial.printf("id2: %d | ", rcvCmd.id2);
+                Serial.printf("value: %.3f | ", rcvCmd.value);
+                Serial.printf("checksum: 0x%02X (valid)\n", rcvCmd.checksum);
+                Serial.println("===================");
+
+                processCommand(rcvCmd, *chain);
+            } else {
+                Serial.print("\n=== Received Echo (INVALID CHECKSUM) ===\n");
+                Serial.printf("cmd: %d | ", rcvCmd.cmd);
+                Serial.printf("id1: %d | ", rcvCmd.id1);
+                Serial.printf("id2: %d | ", rcvCmd.id2);
+                Serial.printf("value: %.3f | ", rcvCmd.value);
+                Serial.printf("checksum: 0x%02X (invalid)\n", rcvCmd.checksum);
+                Serial.println("=====================================");
+            }
+        } else Serial.println("ERR: Incomplete Command");
     }
+
     // TESTING: Send parameter updates via serial
     // static String cmd;
     // while (Serial.available()) {
