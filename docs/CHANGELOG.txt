@@ -1,5 +1,3 @@
---- DSP ---
-
 10-9-25:
 - Initial commit
 
@@ -79,8 +77,14 @@
 - Refactor FFT to use rectangular form (remove mag and phs calculations)
 - Refactor STFT, Spectral_Effect, SpectralGate to use rectangular form FFT
 
-10-26-25
+10-26-25a
 - Globally reduce max FFT size to 1024
 - Optimize memory usage for Spectral_Effect - now only uses one frame in STFT and a smaller latency comp buffer
 - Attempt to fix Freezer (Sisyphean task) - make spectral mode STFT dynamically allocated via smart pointer
 - Minor readability changes
+
+10-26-25b
+- Add ESP32 <-> Teensy UART command structure (packet interface defined in Handler.h)
+- Integrate command parsing with AudioChain methods
+- Update AudioChain - addEffect() and constructor now instantiates from EffectName id/enum, deprecate swapEffects() for reorderEffect()
+- Rename source directories, move things around
