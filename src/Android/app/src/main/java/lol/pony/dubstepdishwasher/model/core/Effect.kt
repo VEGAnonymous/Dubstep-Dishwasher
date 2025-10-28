@@ -5,7 +5,6 @@ abstract class Effect {
     abstract val effectType: EffectType
     abstract val parameters: MutableList<EffectParameter<*>>
     var isBypassed = false
-        get() = isBypassed
 
     @Suppress("UNCHECKED_CAST")
     fun setParam(paramId: Int, value: Any) {

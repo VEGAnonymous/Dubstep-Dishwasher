@@ -4,6 +4,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 
 import lol.pony.dubstepdishwasher.ui.*
 import lol.pony.dubstepdishwasher.ui.theme.DubstepDishwasherTheme
@@ -14,7 +17,14 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             DubstepDishwasherTheme {
-                FXPanel()
+                Row(Modifier.fillMaxSize()) {
+                    FXPanel(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(280.dp)
+                            .padding(16.dp)
+                    )
+                }
             }
         }
     }

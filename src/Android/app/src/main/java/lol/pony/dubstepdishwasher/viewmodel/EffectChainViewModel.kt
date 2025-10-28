@@ -29,12 +29,11 @@ class EffectChainViewModel : ViewModel() {
 
     fun setParam(effectId: Int, paramId: Int, value: Any) {
         chain.setParam(effectId, paramId, value)
-        _effects.value = chain.getAll()
+        _effects.value = chain.getAll() // FIXME: Probably also doesn't fucking update Compose
     }
 
     fun toggleBypass(effectId: Int) {
-        val currentState : Boolean = chain.get(effectId)!!.isBypassed
-        chain.setBypass(effectId, !currentState)
-        _effects.value = chain.getAll()
+        chain.setBypass(effectId, !chain.get(effectId)!!.isBypassed)
+        _effects.value = chain.getAll() // FIXME: Doesn't fucking update Compose
     }
 }

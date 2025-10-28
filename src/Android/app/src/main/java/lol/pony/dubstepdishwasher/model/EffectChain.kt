@@ -20,7 +20,7 @@ class EffectChain {
     )
 
     fun get(effectId: Int): Effect? = effects.find { it.effectId == effectId }
-    fun getAll(): List<Effect> = effects
+    fun getAll(): List<Effect> = effects.toList()
     fun indexOf(effectId: Int): Int = effects.indexOfFirst { it.effectId == effectId }
     fun reorder(posFrom: Int, posTo: Int) {
         val effect = effects.removeAt(posFrom)
@@ -31,5 +31,5 @@ class EffectChain {
     fun removeEffect(effectId: Int) = effects.removeIf { it.effectId == effectId }
     fun reorderEffect(effectId: Int, toIndex: Int) { reorder(indexOf(effectId), toIndex) }
     fun setParam(effectId: Int, paramId: Int, value: Any) { effects.find { it.effectId == effectId }?.setParam(paramId, value) }
-    fun setBypass(effectId: Int, state: Boolean) { effects.find { it.effectId == effectId }?.isBypassed = state }
+    fun setBypass(effectId: Int, state: Boolean) { effects.find { it.effectId == effectId }?.setBypass(state) }
 }
