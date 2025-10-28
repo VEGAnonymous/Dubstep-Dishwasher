@@ -3,17 +3,17 @@ package lol.pony.dubstepdishwasher.model.core
 /* DEFINES */
 /* ENUMS */
 
-enum class EffectType {
-    DISTORTION,
-    DELAY,
-    FLANGER,
-    PHASER,
-    CHORUS,
-    REVERB,
-    COMPRESSOR,
-    EQUALIZER,
-    GRANULATOR,
-    SPECTRAL_GATE
+enum class EffectType(val uiName: String) {
+    DISTORTION("Distortion"),
+    DELAY("Delay"),
+    FLANGER("Flanger"),
+    PHASER("Phaser"),
+    CHORUS("Chorus"),
+    REVERB("Reverb"),
+    COMPRESSOR("Compressor"),
+    EQUALIZER("Equalizer"),
+    GRANULATOR("Granulator"),
+    SPECTRAL_GATE("Spectral Gate")
 }
 
 enum class EnvelopeType { HANN, HAMMING, SINE, TRI, PERC, SMOOTH_RECT }
