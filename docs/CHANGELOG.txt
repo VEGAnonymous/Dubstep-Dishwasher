@@ -90,4 +90,5 @@
 - Rename source directories, move things around
 
 10-27-25
+- Initialize app structure (model, view model)
 - Rename and scope DSP enums
