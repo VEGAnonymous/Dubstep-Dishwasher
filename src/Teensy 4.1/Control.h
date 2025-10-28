@@ -19,24 +19,24 @@
 /* FUNCTIONS */
 
 void processCommand(Command& cmd, AudioChain& chain) {
-    switch (cmd.cmd) {
-        case CMD_ADD: // Add effect
+    switch (static_cast<CommandType>(cmd.cmd)) {
+        case CommandType::ADD: // Add effect
             chain.addEffect(static_cast<EffectName>(cmd.id1));
             if (LOG_CMD) Serial.printf("Added effect %d\n", cmd.id1);
             break;
-        case CMD_REMOVE: // Remove effect
+        case CommandType::REMOVE: // Remove effect
             chain.removeEffect(cmd.id1); 
             if (LOG_CMD) Serial.printf("Removed effect %d\n", cmd.id1);
             break;
-        case CMD_REORDER: // Reorder effects
-            chain.reorderEffect(cmd.id1, (size_t)cmd.value);
+        case CommandType::REORDER: // Reorder effects
+            chain.reorderEffect(cmd.id1, static_cast<size_t>(cmd.value));
             if (LOG_CMD) Serial.printf("Moved effect %d to position %d\n", cmd.id1, cmd.id2);
             break;
-        case CMD_SET: // Set effect parameter
+        case CommandType::SET: // Set effect parameter
             chain.getEffect(cmd.id1)->setParam(cmd.id2, cmd.value);
             if (LOG_CMD) Serial.printf("Set parameter %d for effect %d to %f\n", cmd.id2, cmd.id1, cmd.value);
             break;
-        case CMD_BYPASS: // Bypass effect
+        case CommandType::BYPASS: // Bypass effect
             chain.getEffect(cmd.id1)->setBypass(cmd.value > 0.5f);
             if (LOG_CMD) Serial.printf("Set bypass at effect %d to %f\n", cmd.id1, cmd.value);
             break;

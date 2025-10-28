@@ -44,7 +44,7 @@ class Distortion : public Effect {
     private:
         enum Params : ParamID { MIX, MODE, DRIVE, ENABLE_AAF };
 
-        distortionMode mode;
+        DistortionMode mode;
         float mix, drive;
         bool enableAAF;
 
@@ -94,20 +94,20 @@ class Distortion : public Effect {
         }
 
     public:
-        Distortion(float mix = 1.0f, distortionMode mode = TUBE, float drive = 0.25f, bool enableAAF = false) 
+        Distortion(float mix = 1.0f, DistortionMode mode = DistortionMode::TUBE, float drive = 0.25f, bool enableAAF = false) 
         : antiAlias(1.0f, std::vector<float>(std::begin(AAF), std::end(AAF))) { setMix(mix); setMode(mode); setDrive(drive); setAAF(enableAAF); }
 
         void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setMode(distortionMode mode) {
+        void setMode(DistortionMode mode) {
             this->mode = mode;
             switch (mode) {
-                case TUBE: algorithm = &Distortion::tube; break;
-                case SOFT_CLIP: algorithm = &Distortion::softClip; break;
-                case HARD_CLIP: algorithm = &Distortion::hardClip; break;
-                case DIODE: algorithm = &Distortion::diode; break;
-                case BITCRUSH: algorithm = &Distortion::bitCrush; break;
-                case RECTIFY: algorithm = &Distortion::rectify; break;
-                case SATURATE: algorithm = &Distortion::saturate; break;
+                case DistortionMode::TUBE: algorithm = &Distortion::tube; break;
+                case DistortionMode::SOFT_CLIP: algorithm = &Distortion::softClip; break;
+                case DistortionMode::HARD_CLIP: algorithm = &Distortion::hardClip; break;
+                case DistortionMode::DIODE: algorithm = &Distortion::diode; break;
+                case DistortionMode::BITCRUSH: algorithm = &Distortion::bitCrush; break;
+                case DistortionMode::RECTIFY: algorithm = &Distortion::rectify; break;
+                case DistortionMode::SATURATE: algorithm = &Distortion::saturate; break;
                 default: algorithm = &Distortion::hardClip;
             }
         }
@@ -116,7 +116,7 @@ class Distortion : public Effect {
         inline void setParam(ParamID param, float value) override {
             switch (param) {
                 case MIX: setMix(value); break;
-                case MODE: setMode(static_cast<distortionMode>(value)); break;
+                case MODE: setMode(static_cast<DistortionMode>(value)); break;
                 case DRIVE: setDrive(value); break;
                 case ENABLE_AAF: setAAF(value > 0.5f); break;
             }
@@ -182,7 +182,7 @@ class Flanger : public Effect {
 
     public:
         Flanger(float mix = 1.0f, float rate = 0.08f, float depth = 1.0f, float feedback = 0.5f) 
-        : delayLine(15, 30), LFO(rate, SINE_TABLE) { setMix(mix); setRate(rate); setDepth(depth); setFeedback(feedback); }
+        : delayLine(15, 30), LFO(rate, WavetableType::SINE) { setMix(mix); setRate(rate); setDepth(depth); setFeedback(feedback); }
 
         void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
         void setRate(float rate) { this->rate = std::clamp(rate, 0.0f, 20.0f); LFO.setFreq(rate); } // Hz, [0.0, 20.0]
@@ -237,7 +237,7 @@ class Phaser : public Effect {
             }
         }
         Phaser(float mix = 1.0f, float rate = 0.08f, float centerFreq = 600.0f, float spread = 1.0f, float depth = 0.5f, float feedback = 0.8f)
-        : LFO(rate, SINE_TABLE) {
+        : LFO(rate, WavetableType::SINE) {
             for (size_t i = 0; i < order; ++i) { apfSections.push_back(APF(1.0f, centerFreq, q, false, 20.0f, true)); }
             setupStages();
             setMix(mix); setRate(rate); setCenterFreq(centerFreq); setSpread(spread), setDepth(depth); setFeedback(feedback);
@@ -294,7 +294,7 @@ class Chorus : public Effect {
     public:
         Chorus(float mix = 1.0f, float rate = 0.08f, float depth = 25.0f, float delayTime = 5.0f, float feedback = 0.1f)
         : delayLine(delayTime, 51.0f) {
-            for (size_t i = 0; i < voiceCount; ++i) voices.push_back({1.0f / (float)voiceCount, depth, delayTime, Random(rate, PERLIN)});
+            for (size_t i = 0; i < voiceCount; ++i) voices.push_back({1.0f / (float)voiceCount, depth, delayTime, Random(rate, RandomMode::PERLIN)});
             setMix(mix); setRate(rate); setDepth(depth); setDelayTime(delayTime); setFeedback(feedback);
         }
 
@@ -357,7 +357,7 @@ class Reverb : public Effect {
 
     public:
         Reverb(float mix = 0.2f, float predelayTime = 0.0f, float decayTime = 3000.0f, float modRate = 0.5f, float modDepth = 0.2f) 
-        : LFO(modRate, SINE_TABLE) {
+        : LFO(modRate, WavetableType::SINE) {
             const float inputDiffuse[2] = {0.750f, 0.625f};
             const float decayDiffuse[2] = {0.70f, 0.50f};
             const size_t apfDelays[8] = {142, 107, 379, 277, 672, 908, 1800, 2656};
@@ -502,7 +502,7 @@ class Compressor : public Effect {
 
     public:
         Compressor(float mix = 1.0f, float threshold = -18.0f, float ratio = 4.0f, float knee = 10.0f, 
-                   float attack = 100.0f, float release = 100.0f, float makeupGain = 0.0f, bool autoMakeup = false) 
+                   float attack = 100.0f, float release = 100.0f, float makeupGain = 0.0f, bool autoMakeup = true) 
             : inBuffer(1.0f, L + 1.0f) {
             setMix(mix); setThreshold(threshold); setRatio(ratio); setKnee(knee); 
             setAttackTime(attack); setReleaseTime(release); setMakeupGain(makeupGain); setAutoMakeup(autoMakeup);
@@ -514,7 +514,7 @@ class Compressor : public Effect {
         void setThreshold(float threshold) { this->threshold = std::clamp(threshold, -200.0f, 0.0f); } // dB, [-200.0, 0.0]
         void setRatio(float ratio) { this->ratio = std::clamp(ratio, 1.0f, 100.0f); } // [1.0, 100.0]
         void setKnee(float knee) { this->knee = std::clamp(knee, 0.0f, 40.0f); }// [0.0, 40.0]
-        void setAttackTime(float attackTime) { attackCoeff = exp(-2.2f / (std::clamp(attackTime, 0.005f, 250.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [0.005, 250.0]
+        void setAttackTime(float attackTime) { attackCoeff = exp(-2.2f / (std::clamp(attackTime, 0.01f, 250.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [0.01, 250.0]
         void setReleaseTime(float releaseTime) { releaseCoeff = exp(-2.2f / (std::clamp(releaseTime, 10.0f, 2500.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [10.0, 2500.0]
         void setMakeupGain(float makeupGain) { this->makeupGain = std::clamp(makeupGain, -72.0f, 36.0f); } // dB, [-72.0, 36.0]
         void setAutoMakeup(bool autoMakeup) { 
@@ -573,25 +573,25 @@ class Equalizer : public Effect {
 
         std::array<std::unique_ptr<Biquad>, 2> bands;
 
-        biquadType band1Type, band2Type;
+        BiquadType band1Type, band2Type;
         float mix, band1Cutoff, band1Q, band1Gain, band2Cutoff, band2Q, band2Gain;
 
-        std::unique_ptr<Biquad> createBiquad(biquadType type, float cutoff, float q, float gainDB) {
+        std::unique_ptr<Biquad> createBiquad(BiquadType type, float cutoff, float q, float gainDB) {
             switch (type) {
-                case LOW_PASS: return std::make_unique<LPF_Biquad>(cutoff, q, gainDB);
-                case HIGH_PASS: return std::make_unique<HPF_Biquad>(cutoff, q, gainDB);
-                case LOW_SHELF: return std::make_unique<LowShelf_Biquad>(cutoff, q, gainDB);
-                case HIGH_SHELF: return std::make_unique<HighShelf_Biquad>(cutoff, q, gainDB);
-                case PEAK: return std::make_unique<Peak_Biquad>(cutoff, q, gainDB);
-                case NOTCH: return std::make_unique<Notch_Biquad>(cutoff, q, gainDB);
+                case BiquadType::LOW_PASS: return std::make_unique<LPF_Biquad>(cutoff, q, gainDB);
+                case BiquadType::HIGH_PASS: return std::make_unique<HPF_Biquad>(cutoff, q, gainDB);
+                case BiquadType::LOW_SHELF: return std::make_unique<LowShelf_Biquad>(cutoff, q, gainDB);
+                case BiquadType::HIGH_SHELF: return std::make_unique<HighShelf_Biquad>(cutoff, q, gainDB);
+                case BiquadType::PEAK: return std::make_unique<Peak_Biquad>(cutoff, q, gainDB);
+                case BiquadType::NOTCH: return std::make_unique<Notch_Biquad>(cutoff, q, gainDB);
                 default: return std::make_unique<Peak_Biquad>(cutoff, q, gainDB);
                 }
         }
 
     public:
         Equalizer(float mix = 1.0f,
-                  biquadType band1Type = LOW_SHELF,  float band1Cutoff = 200.0f,  float band1Q = 0.707f, float band1Gain = 0.0f,
-                  biquadType band2Type = HIGH_SHELF, float band2Cutoff = 2000.0f, float band2Q = 0.707f, float band2Gain = 0.0f) {
+                  BiquadType band1Type = BiquadType::LOW_SHELF,  float band1Cutoff = 200.0f,  float band1Q = 0.707f, float band1Gain = 0.0f,
+                  BiquadType band2Type = BiquadType::HIGH_SHELF, float band2Cutoff = 2000.0f, float band2Q = 0.707f, float band2Gain = 0.0f) {
             bands[0] = createBiquad(band1Type, band1Cutoff, band1Q, band1Gain);
             bands[1] = createBiquad(band2Type, band2Cutoff, band2Q, band2Gain);
 
@@ -601,30 +601,30 @@ class Equalizer : public Effect {
         }
 
         void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setBand1Type(biquadType type) {
+        void setBand1Type(BiquadType type) {
             if (type == band1Type) return;
             band1Type = type;
             bands[0] = createBiquad(band1Type, band1Cutoff, band1Q, band1Gain);
         }
         void setBand1Cutoff(float cutoff) { band1Cutoff = std::clamp(cutoff, 20.0f, 20000.0f); bands[0]->setCutoff(band1Cutoff); } // Hz, [20.0, 20000.0]
-        void setBand1Q(float q) { band1Q = std::clamp(q, 0.025f, 40.0f); bands[0]->setQ(band1Q); } // [0.025, 40.0]
+        void setBand1Q(float q) { band1Q = std::clamp(q, 0.02f, 40.0f); bands[0]->setQ(band1Q); } // [0.02, 40.0]
         void setBand1Gain(float gainDB) { band1Gain = std::clamp(gainDB, -24.0f, 24.0f); bands[0]->setGain(band1Gain); } // dB, [-24.0, 24.0]
-        void setBand2Type(biquadType type) {
+        void setBand2Type(BiquadType type) {
             if (type == band2Type) return; 
             band2Type = type;
             bands[1] = createBiquad(band2Type, band2Cutoff, band2Q, band2Gain);
         }
         void setBand2Cutoff(float cutoff) { band2Cutoff = std::clamp(cutoff, 20.0f, 20000.0f); bands[1]->setCutoff(band2Cutoff); } // Hz, [20.0, 20000.0]
-        void setBand2Q(float q) { band2Q = std::clamp(q, 0.025f, 40.0f); bands[1]->setQ(band2Q); } // [0.025, 40.0]
+        void setBand2Q(float q) { band2Q = std::clamp(q, 0.02f, 40.0f); bands[1]->setQ(band2Q); } // [0.02, 40.0]
         void setBand2Gain(float gainDB) { band2Gain = std::clamp(gainDB, -24.0f, 24.0f); bands[1]->setGain(band2Gain); } // dB, [-24.0, 24.0]
         inline void setParam(ParamID param, float value) override { 
             switch (param) {
                 case EQ_MIX: setMix(value); break;
-                case BAND1_TYPE: setBand1Type((biquadType)value); break; 
+                case BAND1_TYPE: setBand1Type((BiquadType)value); break; 
                 case BAND1_CUTOFF: setBand1Cutoff(value); break;
                 case BAND1_Q: setBand1Q(value); break;
                 case BAND1_GAIN: setBand1Gain(value); break;
-                case BAND2_TYPE: setBand2Type((biquadType)value); break;
+                case BAND2_TYPE: setBand2Type((BiquadType)value); break;
                 case BAND2_CUTOFF: setBand2Cutoff(value); break;
                 case BAND2_Q: setBand2Q(value); break;
                 case BAND2_GAIN: setBand2Gain(value); break;
@@ -652,7 +652,7 @@ class Granulator : public Effect {
         
         float mix, position, rate, length, level, reverseChance;
         float positionRand, rateRand, lengthRand, levelRand;
-        envelopeType envType;
+        EnvelopeType envType;
         
         std::vector<float> inBuf; size_t writePos = 0;
         float grainCounter = 0.0f;
@@ -714,7 +714,7 @@ class Granulator : public Effect {
     public:
         Granulator(float mix = 1.0f, float position = 0.5f, float positionRand = 0.5f, float time = 50.0f, float timeRand = 0.0f, 
                    float length = 200.0f, float lengthRand = 0.0f, float level = 0.8f, float levelRand = 0.0f, 
-                   float reverseChance = 0.0f, envelopeType envType = HANN) {
+                   float reverseChance = 0.0f, EnvelopeType envType = EnvelopeType::HANN) {
             setMix(mix); setPosition(position); setPositionRand(positionRand); setRate(time); setRateRand(timeRand); setLength(length); 
             setLengthRand(lengthRand); setLevel(level); setLevelRand(levelRand); setReverseChance(reverseChance); setEnvelopeType(envType);
             grains.resize(maxGrains);
@@ -731,7 +731,7 @@ class Granulator : public Effect {
         void setReverseChance(float reverseChance) { this->reverseChance = std::clamp(reverseChance, 0.0f, 1.0f); } // [0.0, 1.0]
         void setLevel(float level) { this->level = std::clamp(level, 0.0f, 1.0f); } // [0.0, 1.0]
         void setLevelRand(float levelRand) { this->levelRand = std::clamp(levelRand, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setEnvelopeType(envelopeType envType) { this->envType = envType; }
+        void setEnvelopeType(EnvelopeType envType) { this->envType = envType; }
         inline void setParam(ParamID param, float value) override {
             switch (param) {
                 case MIX: setMix(value); break;
@@ -744,7 +744,7 @@ class Granulator : public Effect {
                 case LEVEL: setLevel(value); break;
                 case LEVEL_RAND: setLevelRand(value); break;
                 case REVERSE_CHANCE: setReverseChance(value); break;
-                case ENVELOPE_TYPE: setEnvelopeType(static_cast<envelopeType>(value)); break;
+                case ENVELOPE_TYPE: setEnvelopeType(static_cast<EnvelopeType>(value)); break;
             }
         }
 
@@ -887,7 +887,7 @@ class Freezer : public Effect {
                             // IFFT
                             stft->getFFT().inverse(interpFrame.bins.data(), spectFrame.data());
                             // Window and OLA
-                            overlapAdd(spectBuf, spectFrame, HANN, spectPos);
+                            overlapAdd(spectBuf, spectFrame, EnvelopeType::HANN, spectPos);
                         }
                     }
                     
@@ -906,10 +906,10 @@ class Freezer : public Effect {
                 if (rate != 0.0f) {
                     if (loopPos < smooth) { // Fade in
                         float t = loopPos / smooth;
-                        crossfade = getEnvelopeValue(t, 1, HANN);
+                        crossfade = getEnvelopeValue(t, 1, EnvelopeType::HANN);
                     } else if (loopPos > (1.0f - smooth)) { // Fade out
                         float t = (loopPos - (1.0f - smooth)) / smooth;
-                        crossfade = getEnvelopeValue(1.0f - t, 1, HANN);
+                        crossfade = getEnvelopeValue(1.0f - t, 1, EnvelopeType::HANN);
                     }
                 } wetSig *= crossfade;
             
@@ -922,7 +922,7 @@ class Freezer : public Effect {
 
 class SpectralGate : public Spectral_Effect {
     private:
-        enum Params : ParamID { THRESHOLD = 1, TILT };
+        enum Params : ParamID { THRESHOLD = 2, TILT };
 
         float threshold, tilt;
         

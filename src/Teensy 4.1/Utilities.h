@@ -20,14 +20,14 @@ float ampDB(float amp) { return 20.0f * log10(amp + 1e-12); }
 
 float uniform() { return ((float)rand() / RAND_MAX) * 2.0f - 1.0f; } // Random float between [-1, 1]
 
-float getEnvelopeValue(float t, size_t N, envelopeType type) {
+float getEnvelopeValue(float t, size_t N, EnvelopeType type) {
     // https://www.desmos.com/calculator/j7vhnwaylq
     switch (type) {
-        case HANN: return 0.5f * (1.0f - cosf(2.0f * static_cast<float>(M_PI) * t));
-        case HAMMING: return 0.54f - (0.46f * cosf(2.0f * static_cast<float>(M_PI) * t));
-        case SINE: return sinf(static_cast<float>(M_PI) * t);
-        case TRI: return 1.0f - fabsf(2.0f * t - 1.0f);
-        case PERC: {
+        case EnvelopeType::HANN: return 0.5f * (1.0f - cosf(2.0f * static_cast<float>(M_PI) * t));
+        case EnvelopeType::HAMMING: return 0.54f - (0.46f * cosf(2.0f * static_cast<float>(M_PI) * t));
+        case EnvelopeType::SINE: return sinf(static_cast<float>(M_PI) * t);
+        case EnvelopeType::TRI: return 1.0f - fabsf(2.0f * t - 1.0f);
+        case EnvelopeType::PERC: {
             const float attack = 0.03f;
             const float decay = 6.0f;
             if (t < attack) { return t / attack; // Linear attack
@@ -36,7 +36,7 @@ float getEnvelopeValue(float t, size_t N, envelopeType type) {
                 return expf(-decay * t_decay);
             }
         }
-        case SMOOTH_RECT: {
+        case EnvelopeType::SMOOTH_RECT: {
             const float smooth = 0.05f;
             if (t < smooth) { // Fade in
                 return 0.5f * (1.0f - cosf(static_cast<float>(M_PI) * t / smooth)); 
@@ -66,7 +66,7 @@ inline float dryWetMix(float dry, float wet, float mix, bool lin = true) {
     else return (dry * cosf(mix * M_PI_2)) + (wet * sinf(mix * M_PI_2)); // Equal power crossfade
 }
 
-inline void overlapAdd(std::vector<float>& target, const std::vector<float>& frame, envelopeType type, size_t startPos = 0) {
+inline void overlapAdd(std::vector<float>& target, const std::vector<float>& frame, EnvelopeType type, size_t startPos = 0) {
     const size_t N = frame.size();
     for (size_t i = 0; i < N; ++i) {
         size_t pos = (startPos + i) % target.size();
@@ -248,7 +248,7 @@ class STFT {
                 // Extract full FFT frame from circular buffer
                 size_t readPos = inPos; // Start from oldest sample
                 for (size_t j = 0; j < fftN; ++j) {
-                    forwardFrame[j] = inBuf[readPos] * getEnvelopeValue((float)j / fftN, fftN, HANN);
+                    forwardFrame[j] = inBuf[readPos] * getEnvelopeValue((float)j / fftN, fftN, EnvelopeType::HANN);
                     ++readPos; if (readPos >= fftN) readPos = 0;
                 }
                 
@@ -273,7 +273,7 @@ class STFT {
                 size_t framePos = processingQueue.front();
                 
                 fft.inverse(spectrogram[framePos].bins.data(), inverseFrame.data());
-                overlapAdd(outBuf, inverseFrame, HANN, outPos);
+                overlapAdd(outBuf, inverseFrame, EnvelopeType::HANN, outPos);
                 
                 processingQueue.pop_front();
             }

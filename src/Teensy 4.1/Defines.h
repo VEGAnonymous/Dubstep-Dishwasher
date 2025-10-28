@@ -19,12 +19,7 @@ using ParamID = uint8_t;
 
 /* ENUMS */
 
-enum commandType { CMD_ADD, CMD_REMOVE, CMD_REORDER, CMD_SET, CMD_BYPASS };
-enum envelopeType { HANN, HAMMING, SINE, TRI, PERC, SMOOTH_RECT };
-enum wavetable { SINE_TABLE, TRI_TABLE, SAW_TABLE, SQUARE_TABLE };
-enum randomMode { PERLIN, SAMPLE_HOLD, BINARY };
-enum distortionMode { TUBE, SOFT_CLIP, HARD_CLIP, DIODE, BITCRUSH, RECTIFY, SATURATE };
-enum biquadType { LOW_PASS, HIGH_PASS, LOW_SHELF, HIGH_SHELF, PEAK, NOTCH };
+enum class CommandType : uint8_t { ADD, REMOVE, REORDER, SET, BYPASS };
 
 enum class EffectName : uint8_t {
     DISTORTION,
@@ -40,5 +35,11 @@ enum class EffectName : uint8_t {
     SPECTRAL_GATE,
     LIMITER
 };
+
+enum class EnvelopeType : uint8_t { HANN, HAMMING, SINE, TRI, PERC, SMOOTH_RECT };
+enum class WavetableType : uint8_t { SINE, TRI, SAW, SQUARE };
+enum class RandomMode : uint8_t { PERLIN, SAMPLE_HOLD, BINARY };
+enum class DistortionMode : uint8_t { TUBE, SOFT_CLIP, HARD_CLIP, DIODE, BITCRUSH, RECTIFY, SATURATE };
+enum class BiquadType : uint8_t { LOW_PASS, HIGH_PASS, LOW_SHELF, HIGH_SHELF, PEAK, NOTCH };
 
 #endif // DEFINES

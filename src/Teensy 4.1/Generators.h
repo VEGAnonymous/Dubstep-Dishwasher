@@ -19,15 +19,15 @@ class Wavetable : public Generator {
         static constexpr uint8_t TABLE_BITS = 11; // 2048
         static constexpr uint8_t INDEX_SHIFT = 32 - TABLE_BITS;
     public:
-        Wavetable(float freq, wavetable table) : phaseAccumulator(0) { setFreq(freq); setTable(table); }
+        Wavetable(float freq, WavetableType table) : phaseAccumulator(0) { setFreq(freq); setTable(table); }
 
         void setFreq(float freq) { this->freq = freq; phaseIncrement = freq * ((1ULL << 32) / SAMPLE_RATE); } // Hz
-        void setTable(wavetable table) {
+        void setTable(WavetableType table) {
             switch (table) {
-                case SINE_TABLE: this->table = SineTable; break;
-                case TRI_TABLE: this->table = TriTable; break;
-                case SAW_TABLE: this->table = SawTable; break;
-                case SQUARE_TABLE: this->table = SquareTable; break;
+                case WavetableType::SINE: this->table = SineTable; break;
+                case WavetableType::TRI: this->table = TriTable; break;
+                case WavetableType::SAW: this->table = SawTable; break;
+                case WavetableType::SQUARE: this->table = SquareTable; break;
                 default: this->table = SineTable;
             }
         };
@@ -42,7 +42,7 @@ class Wavetable : public Generator {
 class Random : public Generator {
     private:
         float freq, phase = 0.0f, currentVal = 0.0f, nextVal = 0.0f;
-        randomMode mode;
+        RandomMode mode;
         float (Random::*algorithm)() = nullptr;
 
         // Noise algorithms
@@ -73,15 +73,15 @@ class Random : public Generator {
             return currentVal;
         }
     public:
-        Random(float freq, randomMode mode) { setFreq(freq); setMode(mode); }
+        Random(float freq, RandomMode mode) { setFreq(freq); setMode(mode); }
 
         void setFreq(float freq) { this->freq = freq; } // Hz
-        void setMode(randomMode mode) {
+        void setMode(RandomMode mode) {
             this->mode = mode;
             switch (mode) {
-                case PERLIN: algorithm = &Random::perlin; break;
-                case SAMPLE_HOLD: algorithm = &Random::sampleHold; break;
-                case BINARY: algorithm = &Random::binary; break;
+                case RandomMode::PERLIN: algorithm = &Random::perlin; break;
+                case RandomMode::SAMPLE_HOLD: algorithm = &Random::sampleHold; break;
+                case RandomMode::BINARY: algorithm = &Random::binary; break;
             }
         }
 

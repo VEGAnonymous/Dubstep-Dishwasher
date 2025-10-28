@@ -88,3 +88,6 @@
 - Integrate command parsing with AudioChain methods
 - Update AudioChain - addEffect() and constructor now instantiates from EffectName id/enum, deprecate swapEffects() for reorderEffect()
 - Rename source directories, move things around
+
+10-27-25
+- Rename and scope DSP enums
