@@ -513,7 +513,7 @@ class Compressor : public Effect {
         void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
         void setThreshold(float threshold) { this->threshold = std::clamp(threshold, -200.0f, 0.0f); } // dB, [-200.0, 0.0]
         void setRatio(float ratio) { this->ratio = std::clamp(ratio, 1.0f, 100.0f); } // [1.0, 100.0]
-        void setKnee(float knee) { this->knee = std::clamp(knee, 0.0f, 40.0f); }// [0.0, 40.0]
+        void setKnee(float knee) { this->knee = std::clamp(knee, 0.0f, 40.0f); } // dB, [0.0, 40.0]
         void setAttackTime(float attackTime) { attackCoeff = exp(-2.2f / (std::clamp(attackTime, 0.01f, 250.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [0.01, 250.0]
         void setReleaseTime(float releaseTime) { releaseCoeff = exp(-2.2f / (std::clamp(releaseTime, 10.0f, 2500.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [10.0, 2500.0]
         void setMakeupGain(float makeupGain) { this->makeupGain = std::clamp(makeupGain, -72.0f, 36.0f); } // dB, [-72.0, 36.0]
@@ -569,7 +569,7 @@ class Compressor : public Effect {
 
 class Equalizer : public Effect {
     private:
-        enum Params : ParamID { EQ_MIX, BAND1_TYPE, BAND1_CUTOFF, BAND1_Q, BAND1_GAIN, BAND2_TYPE, BAND2_CUTOFF, BAND2_Q, BAND2_GAIN };
+        enum Params : ParamID { MIX, BAND1_TYPE, BAND1_CUTOFF, BAND1_Q, BAND1_GAIN, BAND2_TYPE, BAND2_CUTOFF, BAND2_Q, BAND2_GAIN };
 
         std::array<std::unique_ptr<Biquad>, 2> bands;
 
@@ -619,7 +619,7 @@ class Equalizer : public Effect {
         void setBand2Gain(float gainDB) { band2Gain = std::clamp(gainDB, -24.0f, 24.0f); bands[1]->setGain(band2Gain); } // dB, [-24.0, 24.0]
         inline void setParam(ParamID param, float value) override { 
             switch (param) {
-                case EQ_MIX: setMix(value); break;
+                case MIX: setMix(value); break;
                 case BAND1_TYPE: setBand1Type((BiquadType)value); break; 
                 case BAND1_CUTOFF: setBand1Cutoff(value); break;
                 case BAND1_Q: setBand1Q(value); break;
@@ -816,8 +816,8 @@ class Freezer : public Effect {
             if (spectralMode) allocateSTFT();
             else freeSTFT();
         }
-        void setFFTSize(size_t N) { // [256, 8192], MUST BE POWER OF 2
-            const size_t fftN = std::clamp(N, (size_t)256, (size_t)8192);
+        void setFFTSize(size_t N) { // [128, FFT_MAX_SIZE], MUST BE POWER OF 2
+            const size_t fftN = std::clamp(N, (size_t)128, (size_t)FFT_MAX_SIZE);
             fftSize = fftN;
             if (stft) {
                 stft->setFFTSize(fftN); 
