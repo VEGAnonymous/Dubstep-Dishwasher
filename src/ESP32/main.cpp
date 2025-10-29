@@ -30,22 +30,29 @@ void loop() {
 
     // Forward completed command to teensy
     if (bytesRead == sizeof(Command)) {
-        cmd.checksum = cmd.computeChecksum();
+        cmd.checksum = computeChecksum(cmd);   
         Serial1.write((uint8_t*)&cmd, sizeof(Command));
 
-        Serial.printf("cmd: %d | id1: %d | id2: %d | value: %.3f | checksum: 0x%02X (valid)\n", 
+        Serial.printf("cmd: %d | id1: %d | id2: %d | value: %.3f | checksum: 0x%02X\n", 
             cmd.cmd, cmd.id1, cmd.id2, cmd.value, cmd.checksum);
 
         bytesRead = 0; // Reset for next command
     }
 
     // Debug: Echo back any received commands
-    if (Serial1.available() >= sizeof(Command)) {
+    if (Serial1.available()) {
         Command rcvCmd;
-        Serial1.readBytes((char*)&rcvCmd, sizeof(Command));
-        if (rcvCmd.verifyChecksum()) {
-            Serial.printf("cmd: %d | id1: %d | id2: %d | value: %.3f | checksum: 0x%02X (valid)\n", 
-                rcvCmd.cmd, rcvCmd.id1, rcvCmd.id2, rcvCmd.value, rcvCmd.checksum);
-        } else return; // Drop invalid packets
+        size_t rcvBytes = 0;
+
+        while (Serial1.available() && rcvBytes < sizeof(Command)) {
+            uint8_t* buf = (uint8_t*)&rcvCmd;
+            buf[rcvBytes++] = Serial1.read();
+        }
+
+        if (rcvBytes == sizeof(Command)) {
+            if (verifyChecksum(rcvCmd)) {
+                Serial.printf("cmd: %d | id1: %d | id2: %d | value: %.3f | checksum: 0x%02X (valid)\n");
+            } else return; // Drop invalid packets
+        }
     }
 }
