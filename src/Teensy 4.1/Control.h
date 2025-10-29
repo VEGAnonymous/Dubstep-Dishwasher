@@ -16,35 +16,6 @@
 
 /* CONTROL */
 
-/* FUNCTIONS */
-
-void processCommand(Command& cmd, AudioChain& chain) {
-    switch (static_cast<CommandType>(cmd.cmd)) {
-        case CommandType::ADD: // Add effect
-            chain.addEffect(static_cast<EffectName>(cmd.id1));
-            if (LOG_CMD) Serial.printf("Added effect %d\n", cmd.id1);
-            break;
-        case CommandType::REMOVE: // Remove effect
-            chain.removeEffect(cmd.id1); 
-            if (LOG_CMD) Serial.printf("Removed effect %d\n", cmd.id1);
-            break;
-        case CommandType::REORDER: // Reorder effects
-            chain.reorderEffect(cmd.id1, static_cast<size_t>(cmd.value));
-            if (LOG_CMD) Serial.printf("Moved effect %d to position %d\n", cmd.id1, cmd.id2);
-            break;
-        case CommandType::SET: // Set effect parameter
-            chain.getEffect(cmd.id1)->setParam(cmd.id2, cmd.value);
-            if (LOG_CMD) Serial.printf("Set parameter %d for effect %d to %f\n", cmd.id2, cmd.id1, cmd.value);
-            break;
-        case CommandType::BYPASS: // Bypass effect
-            chain.getEffect(cmd.id1)->setBypass(cmd.value > 0.5f);
-            if (LOG_CMD) Serial.printf("Set bypass at effect %d to %f\n", cmd.id1, cmd.value);
-            break;
-    }
-}
-
-/* CLASSES */
-
 class AudioChain {
     private:
         std::vector<std::unique_ptr<Effect>> effects;
@@ -82,7 +53,7 @@ class AudioChain {
 
         void reorderEffect(EffectID id, size_t pos) {
             if (pos < 0) pos = 0;
-            if (pos >= (int)(effects.size()) - 1) pos = effects.size() - 2; // Prevent moving the Limiter
+            if (pos >= (size_t)(effects.size()) - 1) pos = effects.size() - 2; // Prevent moving the Limiter
 
             auto it = std::find_if(effects.begin(), effects.end(), [id](const std::unique_ptr<Effect>& effect) { return effect->getID() == id; });
             if (it == effects.end()) return;

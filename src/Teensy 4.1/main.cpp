@@ -35,6 +35,32 @@ std::unique_ptr<AudioChain> chain; // FX chain
 std::unique_ptr<AudioChainStream> stream; // Audio stream
 std::unique_ptr<AudioConnection> patch1, patch2; // Connections
 
+/* CONTROL */
+void processCommand(Command& cmd, AudioChain& chain) {
+    switch (static_cast<CommandType>(cmd.cmd)) {
+        case CommandType::ADD: // Add effect
+            chain.addEffect(static_cast<EffectName>(cmd.id1));
+            if (LOG_CMD) Serial.printf("Added effect %d\n", cmd.id1);
+            break;
+        case CommandType::REMOVE: // Remove effect
+            chain.removeEffect(cmd.id1); 
+            if (LOG_CMD) Serial.printf("Removed effect %d\n", cmd.id1);
+            break;
+        case CommandType::REORDER: // Reorder effects
+            chain.reorderEffect(cmd.id1, static_cast<size_t>(cmd.value));
+            if (LOG_CMD) Serial.printf("Moved effect %d to position %d\n", cmd.id1, cmd.id2);
+            break;
+        case CommandType::SET: // Set effect parameter
+            chain.getEffect(cmd.id1)->setParam(cmd.id2, cmd.value);
+            if (LOG_CMD) Serial.printf("Set parameter %d for effect %d to %f\n", cmd.id2, cmd.id1, cmd.value);
+            break;
+        case CommandType::BYPASS: // Bypass effect
+            chain.getEffect(cmd.id1)->setBypass(cmd.value > 0.5f);
+            if (LOG_CMD) Serial.printf("Set bypass at effect %d to %f\n", cmd.id1, cmd.value);
+            break;
+    }
+}
+
 /* RUNTIME */
 void setup() {
     Serial.begin(115200);
@@ -77,7 +103,7 @@ void setup() {
 void loop() {
 
     /* Parse received commands */
-    if (Serial1.available() >= sizeof(Command)) {
+    if (Serial1.available() >= (int)sizeof(Command)) {
         Command cmd;
         Serial1.readBytes((char*)(&cmd), sizeof(Command));
         if (cmd.verifyChecksum()) {
