@@ -1,45 +1,65 @@
 #include <Arduino.h>
-
 #include "../Handler.h"
+#include "espdefs.h"
 
 #define RX_PIN 18
 #define TX_PIN 17
 
-// Buffer to store incoming command
-Command cmd;
-size_t bytesRead = 0;
+
+
+// BLE stuff
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEServer.h>
+
+#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+
+class MyCallbacks: public BLECharacteristicCallbacks {
+    void onWrite(BLECharacteristic *pCharacteristic) {
+        std::string value = pCharacteristic->getValue();
+        // return on empty writes
+        if (value.length() == 0) return;
+
+        // sends written bytes to helper function
+        processIncomingBytes((const uint8_t*)value.data(), value.length());
+    }
+};
 
 void setup() {
+    // Serial port setup
     Serial.begin(115200);
     Serial1.begin(115200, SERIAL_8N1, RX_PIN, TX_PIN);
+
+    // BLE setup (I copied this from platformio setup tutorial)
+    BLEDevice::init("Team 8 ESP32 BLE");
+    BLEServer *pServer = BLEDevice::createServer();
+    BLEService *pService = pServer->createService(SERVICE_UUID);
+    BLECharacteristic *pCharacteristic = pService->createCharacteristic(
+                                          CHARACTERISTIC_UUID,
+                                          BLECharacteristic::PROPERTY_READ |
+                                          BLECharacteristic::PROPERTY_WRITE
+                                        );
+
+    pCharacteristic->setCallbacks(new MyCallbacks());
+
+    pService->start();
+
+    BLEAdvertising *pAdvertising = pServer->getAdvertising();
+    pAdvertising->start();
+    
 }
 
 void loop() {
-
-    // Reading commands from primary serial (change to BLE later)
-    while (Serial.available() && bytesRead < sizeof(Command)) {
-        uint8_t* buf = (uint8_t*)&cmd;
-        buf[bytesRead++] = Serial.read();
-        
-        // Debug: Print each received byte
-        if (bytesRead == 1) {
-            Serial.println("\nForwarding command to Teensy:");
-        }
-        Serial.printf("Byte %d: 0x%02X\n", bytesRead-1, buf[bytesRead-1]);
-    }
-
-    // Forward completed command to teensy
-    if (bytesRead == sizeof(Command)) {
-        cmd.checksum = computeChecksum(cmd);   
-        Serial1.write((uint8_t*)&cmd, sizeof(Command));
-
-        Serial.printf("cmd: %d | id1: %d | id2: %d | value: %.3f | checksum: 0x%02X\n", 
-            cmd.cmd, cmd.id1, cmd.id2, cmd.value, cmd.checksum);
-
-        bytesRead = 0; // Reset for next command
+    #if DEBUG
+    // Debug: Read from Serial and process incoming bytes
+    while (Serial.available()) {
+      uint8_t serialData = Serial.read();
+      processIncomingBytes(&serialData, 1);  
     }
 
     // Debug: Echo back any received commands
+    // not needed atm since no data is being received from the teensy
     if (Serial1.available()) {
         Command rcvCmd;
         size_t rcvBytes = 0;
@@ -51,8 +71,10 @@ void loop() {
 
         if (rcvBytes == sizeof(Command)) {
             if (verifyChecksum(rcvCmd)) {
-                Serial.printf("cmd: %d | id1: %d | id2: %d | value: %.3f | checksum: 0x%02X (valid)\n");
+                Serial.printf("cmd: %d | id1: %d | id2: %d | value: %.3f | checksum: 0x%02X (valid)\n", 
+                    rcvCmd.cmd, rcvCmd.id1, rcvCmd.id2, rcvCmd.value, rcvCmd.checksum);
             } else return; // Drop invalid packets
         }
     }
+    #endif
 }
