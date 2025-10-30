@@ -167,7 +167,7 @@ Audio freezing effect with both **time-domain** and **spectral** looping modes. 
 
 ---
 
-## `Spectral Gate`
+## `SpectralGate`
 
 **Description:**  
 Spectral-domain gate that removes frequency bins below a certain magnitude threshold.
@@ -180,3 +180,17 @@ Spectral-domain gate that removes frequency bins below a certain magnitude thres
 3. **`TILT`** — Gate tilt bias (positive = more low-end gating, negative = more high-end gating) `[-1.0, 1.0]` 
 
 ---
+
+## `FormantShifter`
+
+**Description:**  
+Alexander Panos' **GOATed** [formant shifter device](https://alexanderpanos.com/software) faithfully ported from Max/MSP (Gen) to C++! Because this processing is done in the frequency domain, it is possible to formant shift polyphonic audio.
+
+**Parameters:**
+
+0. **`MIX`** — Dry/wet balance `[0.0, 1.0]`
+1. **`FFT_SIZE`** — Size of FFT window (power of 2) `[128, FFT_MAX_SIZE]`
+2. **`FORMANT_SHIFT`** — Formant shift in semitones `[-12.0, 12.0]`
+3. **`ENVELOPE_WIDTH`** — Adjust the smoothness of the spectral envelope `[0, 16]` 
+    - Affects the balance between the input signal's pitch and its shifted formants. 
+    - Note that very low values may cause leakage of inharmonic pitch information.

@@ -33,6 +33,7 @@ enum class EffectName : uint8_t {
     GRANULATOR,
     FREEZER,
     SPECTRAL_GATE,
+    FORMANT_SHIFTER,
     LIMITER
 };
 

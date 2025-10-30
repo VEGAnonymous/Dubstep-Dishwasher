@@ -961,4 +961,141 @@ class SpectralGate : public Spectral_Effect {
         }
 };
 
+class FormantShifter : public Spectral_Effect {
+    // Alexander Panos' GOATed formant shifter device, faithfully ported from Max/MSP (Gen) to C++!
+    // https://alexanderpanos.com/software
+    private:
+        enum Params : ParamID { FORMANT_SHIFT = 2, ENVELOPE_WIDTH };
+
+        float formantShift; size_t envelopeWidth;
+        size_t width; // internal value after env_compensation
+        
+        std::vector<float> buf;
+        std::vector<float> interp; // interpolated peaks
+        std::vector<std::pair<float, size_t>> pk_info; // ch.0 = value of peak, ch.1 = index of peak in "buf"
+        std::vector<float> formants;
+        
+    public:
+        FormantShifter(float mix = 1.0f, float formantShift = 0.0f, size_t envelopeWidth = 10, size_t fftSize = 1024) 
+        : Spectral_Effect(mix, fftSize) { 
+            setFormantShift(formantShift); setEnvelopeWidth(envelopeWidth);
+            
+            // Allocate buffers
+            const size_t numBins = (fftSize / 2) + 1;
+            buf.resize(numBins); interp.resize(numBins); formants.resize(numBins);
+        }
+        
+        void setFormantShift(float formantShift) { this->formantShift = std::clamp(formantShift, -12.0f, 12.0f); } // semitones, [-12.0, 12.0]
+        void setEnvelopeWidth(size_t envelopeWidth) { 
+            this->envelopeWidth = std::clamp(envelopeWidth, (size_t)2, stft.getNumBins() / (size_t)4); 
+            // env_compensation
+            const size_t srComp = 1; // hardcoded for SAMPLE_RATE = 44.1 kHz
+            float scaled = 0.0f;
+            if (formantShift > 0) { 
+                scaled = scale((float)std::clamp(formantShift, 0.0f, 12.0f), 
+                0.0f, 12.0f, 10.0f, 5.0f, 2.5f); 
+            } else { 
+                scaled = scale((float)std::clamp(formantShift, -12.0f, 0.0f), 
+                -12.0f, 0.0f, 16.0f, 10.0f, 1.0f);    
+            }
+            width = (size_t)scaled + (envelopeWidth - (size_t)8);
+            width += srComp;
+            width = std::clamp(width, (size_t)2, (size_t)32);
+        }
+        inline void setParam(ParamID param, float value) override {
+            switch (param) {
+                case FORMANT_SHIFT: setFormantShift(value); break;
+                case ENVELOPE_WIDTH: setEnvelopeWidth((size_t)value); break;
+                default: Spectral_Effect::setParam(param, value);
+            }
+        }
+        
+    protected:
+        void processSpectrum(STFT::FFTFrame& frame) override {
+            const size_t len = stft.getNumBins(); // dim(buf)
+            const size_t num_regions = (len + width - 1) / width; // number of equidistant regions within the buffer to find peaks
+            const float shift = exp2f(formantShift / 12.0f);
+            
+            // Store magnitudes in buf
+            for (size_t k = 0; k < len; ++k) {
+                float re = frame.bins[k].r; float im = frame.bins[k].i;
+                buf[k] = sqrtf(re * re + im * im);
+            }
+            
+            /*————— INITIALIZE BUFFERS —————*/
+            std::fill(interp.begin(), interp.end(), 0.0f); // clear
+            
+            pk_info.clear();
+            pk_info.push_back({buf[0], 0}); // set first element in pk_info to the first element in "buf" buffer
+            
+            /*————— PEAK DETECTION MAIN LOOP —————*/
+            size_t local_len = width;
+            for (size_t j = 0; j < num_regions; ++j) {
+                float loc_max = 0.0f; float loc_sum = 0.0f; 
+                float loc_avg = 0.0f; size_t max_idx = 0;
+                
+                // calculate mean of local region
+                size_t start = (local_len > width) ? (local_len - width) : 0;
+                size_t end = std::min(local_len, len);
+                for (size_t i = start; i < end; ++i) {
+                    loc_sum += buf[i];
+                }
+                loc_avg = loc_sum / (end - start);
+
+                for (size_t i = start; i < end; ++i) {
+                    float current = buf[i];
+                    if (current > loc_avg && current >= loc_max) { // local maxima
+                        loc_max = current;
+                        max_idx = i;
+                    }
+                }
+                pk_info.push_back({loc_max, max_idx});
+                
+                local_len += width;
+            }
+            
+            pk_info.push_back({buf[len - 1], len - 1}); // set last element in pk_info to the last element in "buf"
+            
+            /*————— PEAK INTERPOLATION MAIN LOOP —————*/
+            for (size_t j = 1; j < pk_info.size(); ++j) { // start loop at j=1; 0th index was set to the first element in "buf"
+                size_t start_pos = pk_info[j - 1].second;
+                size_t distance = pk_info[j].second;
+                float previous_pk = pk_info[j - 1].first;
+                float current_pk = pk_info[j].first; // the literal value of the peak
+                
+                for (size_t i = start_pos; i < distance; ++i) {
+                    float val = scale((float)i, (float)start_pos, (float)distance, previous_pk, current_pk);
+                    interp[i] = val;
+                }
+            }
+            interp[len - 1] = pk_info.back().first;
+            
+            /*————— FORMANT SHIFT ROUTINE —————*/
+            for (size_t i = 0; i < len; ++i) {
+                float sourceIdx = (float)i / shift;
+                float valf; // valf = peek(interp, i / shift)
+                
+                // poke(formants, valf, i, boundmode="clip")
+                if (sourceIdx < 0.0f) { valf = interp[0];
+                } else if (sourceIdx >= (float)(len - 1)) { valf = interp[len - 1];
+                } else { valf = lerp(interp, sourceIdx, len); }
+                formants[i] = valf;
+            }
+            
+            /*————— CONVOLUTION —————*/
+            for (size_t i = 1; i < len; ++i) {
+                float det = (interp[i] > 1e-12f) ? (buf[i] / interp[i]) : 0.0f; // deconvolution to get spectral detail
+                float spectrum = det * formants[i]; // convolution of spectral detail & shifted spectral envelope
+                formants[i] = spectrum;
+                
+                // apply to complex FFT bins (preserve phase)
+                float mag = buf[i];
+                if (mag > 1e-12f) { // avoid division by 0
+                    float scaleFactor = spectrum / mag;
+                    frame.bins[i].r *= scaleFactor; frame.bins[i].i *= scaleFactor;
+                }
+            }
+        }
+};
+
 #endif // EFFECTS

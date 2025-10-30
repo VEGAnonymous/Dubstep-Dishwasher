@@ -79,6 +79,7 @@ class AudioChain {
                 {EffectName::GRANULATOR, [](){ return std::make_unique<Granulator>(); }},
                 {EffectName::FREEZER, [](){ return std::make_unique<Freezer>(); }},
                 {EffectName::SPECTRAL_GATE, [](){ return std::make_unique<SpectralGate>(); }},
+                {EffectName::FORMANT_SHIFTER, [](){ return std::make_unique<FormantShifter>(); }},
                 {EffectName::LIMITER, [](){ return std::make_unique<Compressor>(1.0f, dbAmp(-0.6f), 100.0f, 0.0f, 1.0f, 50.0f, dbAmp(-0.3f), false); }}
             };
 
@@ -95,6 +96,7 @@ class AudioChain {
             addEffect(EffectName::GRANULATOR);
             // addEffect(EffectName::FREEZER);
             addEffect(EffectName::SPECTRAL_GATE);
+            // addEffect(EffectName::FORMANT_SHIFTER);
 
             addEffect(EffectName::LIMITER); // DO NOT TOUCH
 

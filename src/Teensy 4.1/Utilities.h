@@ -59,6 +59,13 @@ inline float lerp(const T& buffer, float index, size_t size) { // Linearly inter
 
 inline float lerp(float a, float b, float t) { return a + (t * (b - a)); } // Linearly interpolate scalars
 
+inline float scale(float x, float inLow, float inHigh, float outLow, float outHigh, float exponent = 1.0f) { // Map value in input range to output range
+    // Normalize input value to [0, 1]
+    float t = std::clamp((x - inLow) / (inHigh - inLow), 0.0f, 1.0f); // [0, 1]
+    if (exponent != 1.0f) t = std::pow(t, exponent); // Apply exponential
+    return lerp(outLow, outHigh, t);
+}
+
 inline float dryWetMix(float dry, float wet, float mix, bool lin = true) {
     if (mix == 1.0f) return wet;
     else if (mix == 0.0f) return dry;
