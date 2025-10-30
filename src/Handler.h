@@ -6,11 +6,11 @@
 /* DATA */
 
 struct Command {
-    uint8_t cmd;        // Command type (0 = Add, 1 = Remove, 2 = Reorder, 3 = Set param, 4 = Bypass)
-    uint8_t id1;        // EffectID 1
-    uint8_t id2;        // ParamID
-    uint8_t checksum;   // Checksum (XOR)
-    float value;        // Command value
+    uint8_t cmd;      // Command type (0 = Add, 1 = Remove, 2 = Reorder, 3 = Set param, 4 = Bypass)
+    uint8_t id1;      // EffectID
+    uint8_t id2;      // ParamID
+    uint8_t checksum; // Checksum (XOR)
+    float value;      // Command value
 } __attribute__((packed));
 
 /* FUNCTIONS */
@@ -27,7 +27,5 @@ bool verifyChecksum(const Command& cmd) {
     Command tempCmd = cmd;
     return (storedChecksum == computeChecksum(tempCmd));
 }
-
-
 
 #endif // HANDLER

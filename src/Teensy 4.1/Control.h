@@ -1,8 +1,6 @@
 #ifndef CONTROL
 #define CONTROL
 
-#include <Audio.h>
-
 #include <map>
 #include <memory>
 #include <string>

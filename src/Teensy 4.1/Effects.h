@@ -9,7 +9,6 @@
 #include <cmath>
 #include <string>
 #include <vector>
-#include <iostream>
 
 /* EFFECTS */
 
@@ -540,7 +539,7 @@ class Compressor : public Effect {
                 const float x_i = in[i], x_L = inBuffer.read();
                 inBuffer.write(x_i); 
                 rms = sqrt((rms * rms) + (((x_i * x_i) - (x_L * x_L)) / L_samples));
-                float rmsDB = ampDB(max(rms, 1e-6f));
+                float rmsDB = ampDB(std::max(rms, 1e-6f));
 
                 // Gain computation
                 float gDB = computeReduction(rmsDB);
@@ -683,7 +682,7 @@ class Granulator : public Effect {
             if (grainStartPos < 0) grainStartPos += bufSize;
             
             float grainLength = std::clamp(length * (1.0f + (uniform() * lengthRand)), 5.0f, 1000.0f);
-            int grainLengthSamples = min((int)(grainLength * SAMPLE_RATE / 1000.0f), (int)bufSize - 1);
+            int grainLengthSamples = std::min((int)(grainLength * SAMPLE_RATE / 1000.0f), (int)bufSize - 1);
 
             float grainLevel = std::clamp(level + (uniform() * 0.25f * levelRand), 0.0f, 1.0f) * 0.5f;
             
@@ -1042,11 +1041,22 @@ class FormantShifter : public Spectral_Effect {
                 }
                 loc_avg = loc_sum / (end - start);
 
+                bool loc_avg_found = false;
                 for (size_t i = start; i < end; ++i) {
                     float current = buf[i];
                     if (current > loc_avg && current >= loc_max) { // local maxima
                         loc_max = current;
                         max_idx = i;
+                        loc_avg_found = true;
+                    }
+                }
+                if (!loc_avg_found) { // no local maxima found, just use absolute maximum
+                    loc_max = 0.0f;
+                    for (size_t i = start; i < end; ++i) {
+                        if (buf[i] > loc_max) {
+                            loc_max = buf[i];
+                            max_idx = i;
+                        }
                     }
                 }
                 pk_info.push_back({loc_max, max_idx});

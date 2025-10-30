@@ -117,35 +117,35 @@ class DelayLine { // Implements z^-N
         }
 };
 
-/* Vector version placeholder for testing
-class DelayLine { // Implements z^-N
-    private:
-        float delaySamples; 
-        size_t writeIndex;
-        std::vector<float> buffer;
-    public:
-        DelayLine(float delayTime, float maxDelayTime) : writeIndex((size_t)0) {
-            buffer.resize(((maxDelayTime * SAMPLE_RATE) / 1000.0f) + 1, 0.0f);
-            setDelayTime(delayTime);
-        }
+// Vector version placeholder for testing
+// class DelayLine { // Implements z^-N
+//     private:
+//         float delaySamples; 
+//         size_t writeIndex;
+//         std::vector<float> buffer;
+//     public:
+//         DelayLine(float delayTime, float maxDelayTime) : writeIndex((size_t)0) {
+//             buffer.resize(((maxDelayTime * SAMPLE_RATE) / 1000.0f) + 1, 0.0f);
+//             setDelayTime(delayTime);
+//         }
 
-        void setDelayTime(float delayTime) { delaySamples = (delayTime * SAMPLE_RATE) / 1000.0f; } // ms
-        void setDelaySamples(float delaySamples) { this->delaySamples = delaySamples; }
-        int getSize() const { return buffer.size(); }
+//         void setDelayTime(float delayTime) { delaySamples = (delayTime * SAMPLE_RATE) / 1000.0f; } // ms
+//         void setDelaySamples(float delaySamples) { this->delaySamples = delaySamples; }
+//         int getSize() const { return buffer.size(); }
 
-        inline float read(float offset = -1.0f) {
-            float readOffset = (offset >= 0.0f) ? offset : delaySamples;
-            float readIndex = (float)writeIndex - readOffset;
-            if (readIndex < 0) readIndex += buffer.size();
-            if (readOffset == floor(readOffset)) return buffer[(int)readIndex % buffer.size()];
-            return lerp(buffer, readIndex, buffer.size());
-        }
+//         inline float read(float offset = -1.0f) {
+//             float readOffset = (offset >= 0.0f) ? offset : delaySamples;
+//             float readIndex = (float)writeIndex - readOffset;
+//             if (readIndex < 0) readIndex += buffer.size();
+//             if (readOffset == floor(readOffset)) return buffer[(int)readIndex % buffer.size()];
+//             return lerp(buffer, readIndex, buffer.size());
+//         }
 
-        inline void write(float in) { 
-            buffer[writeIndex] = in;
-            if (++writeIndex >= buffer.size()) writeIndex = 0;
-        }
-}; */
+//         inline void write(float in) { 
+//             buffer[writeIndex] = in;
+//             if (++writeIndex >= buffer.size()) writeIndex = 0;
+//         }
+// };
 
 class FFT {
     private:
