@@ -85,15 +85,31 @@ Linearly interpolates between two scalar values.
 
 ---
 
+### `scale`
+**Description:**  
+Maps a scalar from an input range to an output range.
+
+**Parameters:**
+- **`x`** — Input to scale
+- **`inLow`** — Low bound of input range
+- **`inHigh`** — High bound of input range
+- **`outLow`** — Low bound of output range
+- **`outHigh`** — High bound of output range
+- **`exponent`** — Exponential mapping factor, defaults to `1.0`
+
+**Returns:** Rescaled value
+
+---
+
 ### `dryWetMix`
 **Description:**  
 Mixes dry and wet signals with optional equal-power crossfading.
 
 **Parameters:**
-- **dry** — Dry (unprocessed) signal
-- **wet** — Wet (processed) signal
-- **mix** — Mix amount `[0.0, 1.0]`
-- **lin** — Whether to use linear mixing or equal-power crossfade `true / false`
+- **`dry`** — Dry (unprocessed) signal
+- **`wet`** — Wet (processed) signal
+- **`mix`** — Mix amount `[0.0, 1.0]`
+- **`lin`** — Whether to use linear mixing or equal-power crossfade `true / false`
 
 **Returns:** Mixed output signal
 
@@ -108,10 +124,10 @@ Mixes dry and wet signals with optional equal-power crossfading.
 Adds a frame to a target buffer with envelope windowing, wrapping around for circular buffers.
 
 **Parameters:**
-- **target** — Target buffer to add into (modified in-place)
-- **frame** — Source frame to add
-- **type** — Envelope shape for windowing (`EnvelopeType` enum)
-- **startPos** — Starting position in target buffer
+- **`target`** — Target buffer to add into (modified in-place)
+- **`frame`** — Source frame to add
+- **`type`** — Envelope shape for windowing (`EnvelopeType` enum)
+- **`startPos`** — Starting position in target buffer
 
 ---
 
@@ -151,30 +167,26 @@ Circular buffer implementing `z^-N` delay with fractional delay support via line
 ### `FFT`
 
 **Description:**  
-Fast Fourier Transform using the [kissFFT](https://github.com/mborgerding/kissfft) library. Handles both forward and inverse **real-valued** FFTs with proper scaling.
+Fast Fourier Transform using [CMSIS-DSP](https://arm-software.github.io/CMSIS_5/DSP/html/index.html).
 
 **Constructor:**
-- **`fftSize`** — FFT size (default: `512`, must be power of 2) `[128, FFT_MAX_SIZE]`
+- **`fftSize`** — FFT size (default: `512`, must be a power of 2) `[128, FFT_MAX_SIZE]`
 
 **Methods:**
 
 **`setFFTSize(N)`**
-- Sets FFT size, must be power of 2 `[128, FFT_MAX_SIZE]`
+- Sets the FFT size and reinitializes the internal FFT instance
+- **`N`** — FFT length, must be power of 2 `[128, FFT_MAX_SIZE]`
 
 **`forward(in, out)`**
-- Performs forward FFT
-- **`in`** — Input time-domain buffer (`float` array, length = `fftSize`)
-- **`out`** — Output frequency-domain buffer (`kiss_fft_cpx` array, length = `fftSize/2 + 1`)
+- Performs a **forward real FFT**. Produces frequency-domain complex data in `fft_cpx`.
+- **`in`** — Pointer to input time-domain sample buffer
+- **`out`** — Pointer to complex frequency-domain buffer (`fft_cpx`)
 
 **`inverse(in, out)`**
-- Performs inverse FFT
-- **`in`** — Input frequency-domain buffer (`kiss_fft_cpx` array)
-- **`out`** — Output time-domain buffer (`float` array, length = `fftSize`)
-
-**Notes:**
-- Non-copyable
-- Automatically normalizes inverse FFT output by `fftSize`
-- Complex output has `fftSize/2 + 1` bins (DC to Nyquist)
+- Performs an **inverse real FFT**. Produces real-valued time-domain output.
+- **`in`** — Pointer to complex frequency-domain buffer (`fft_cpx`)
+- **`out`** — Pointer to output time-domain sample buffer
 
 ---
 
