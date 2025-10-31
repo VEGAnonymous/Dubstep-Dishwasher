@@ -44,7 +44,6 @@ Computes [envelope/window function](https://www.desmos.com/calculator/j7vhnwaylq
 
 **Parameters:**
 - **`t`** — Normalized time position `[0.0, 1.0]`
-- **`N`** — Total number of samples (for context)
 - **`type`** — Envelope shape (`EnvelopeType` enum)
 
 **Envelope Types:**

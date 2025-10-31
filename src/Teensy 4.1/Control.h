@@ -89,7 +89,7 @@ class AudioChain {
             addEffect(EffectName::PHASER);
             addEffect(EffectName::CHORUS);
             addEffect(EffectName::REVERB);
-            // addEffect(EffectName::COMPRESSOR);
+            addEffect(EffectName::COMPRESSOR);
             addEffect(EffectName::EQUALIZER);
             addEffect(EffectName::GRANULATOR);
             // addEffect(EffectName::FREEZER);

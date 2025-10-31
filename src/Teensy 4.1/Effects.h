@@ -703,7 +703,7 @@ class Granulator : public Effect {
             int offset = grain.reverse ? ((grain.length - 1) - grain.playhead) : grain.playhead;
             int readPos = (grain.startPos + offset) % bufSize;
             
-            float envelopeValue = getEnvelopeValue((float)grain.playhead / (float)grain.length, grain.length, envType);
+            float envelopeValue = getEnvelopeValue((float)grain.playhead / (float)grain.length, envType);
             
             ++grain.playhead;
             if (grain.playhead >= grain.length) grain.active = false; // Free if done
@@ -887,8 +887,7 @@ class Freezer : public Effect {
                             // IFFT
                             stft->getFFT().inverse(interpFrame.bins.data(), spectFrame.data());
                             // Window and OLA
-                            const float overlapGain = (float)hopFactor / 2.0f;
-                            overlapAdd(spectBuf, spectFrame, EnvelopeType::HANN, spectPos, overlapGain);
+                            overlapAdd(spectBuf, spectFrame, EnvelopeType::HANN, spectPos);
                         }
                     }
                     
@@ -907,10 +906,10 @@ class Freezer : public Effect {
                 if (rate != 0.0f) {
                     if (loopPos < smooth) { // Fade in
                         float t = loopPos / smooth;
-                        crossfade = getEnvelopeValue(t, 1, EnvelopeType::HANN);
+                        crossfade = getEnvelopeValue(t, EnvelopeType::HANN);
                     } else if (loopPos > (1.0f - smooth)) { // Fade out
                         float t = (loopPos - (1.0f - smooth)) / smooth;
-                        crossfade = getEnvelopeValue(1.0f - t, 1, EnvelopeType::HANN);
+                        crossfade = getEnvelopeValue(1.0f - t, EnvelopeType::HANN);
                     }
                 } wetSig *= crossfade;
             
@@ -978,7 +977,7 @@ class FormantShifter : public Spectral_Effect {
         std::vector<float> formants;
         
     public:
-        FormantShifter(float mix = 1.0f, float formantShift = 12.0f, size_t envelopeWidth = 16, size_t fftSize = 1024, size_t hopFactor = 8) 
+        FormantShifter(float mix = 1.0f, float formantShift = 0.0f, size_t envelopeWidth = 16, size_t fftSize = 1024, size_t hopFactor = 4) 
         : Spectral_Effect(mix, fftSize, hopFactor) { 
             setFormantShift(formantShift); setEnvelopeWidth(envelopeWidth);
             
@@ -1017,12 +1016,12 @@ class FormantShifter : public Spectral_Effect {
             if (formantShift == 0.0f) return;
 
             const size_t len = stft.getNumBins(); // dim(buf)
-            const size_t num_regions = (len + width - 1) / width; // number of equidistant regions within the buffer to find peaks
             const float shift = exp2f(formantShift / 12.0f);
             const float epsilon = 1e-6f;
-
-            const float cutoff = 10000.0f; // ignore bins above this frequency to save on compute
-            const size_t maxBin = std::min(len, static_cast<size_t>(cutoff * (fftSize / 2) / (SAMPLE_RATE * 0.5f)));
+            
+            const float cutoff = 8000.0f; // band limit to save compute
+            const size_t maxBin = std::min(len, static_cast<size_t>((cutoff / (SAMPLE_RATE * 0.5f)) * (float)(len - 1)));
+            const size_t num_regions = (maxBin + width - 1) / width; // number of equidistant regions within the buffer to find peaks
 
             // store magnitudes in "buf"
             for (size_t k = 0; k < maxBin; ++k) {
@@ -1031,9 +1030,10 @@ class FormantShifter : public Spectral_Effect {
             }
 
             /*————— INITIALIZE BUFFERS —————*/
-            std::fill(interp.begin(), interp.end(), 0.0f); // clear
+            // std::fill(interp.begin(), interp.end(), 0.0f); // clear
             
             pk_info.clear();
+            pk_info.reserve(num_regions + 2);
             pk_info.push_back({buf[0], 0}); // set first element in pk_info to the first element in "buf" buffer
             
             /*————— PEAK DETECTION MAIN LOOP —————*/
@@ -1056,7 +1056,7 @@ class FormantShifter : public Spectral_Effect {
                 float val = loc_max;
                 for (size_t i = start; i < end; ++i) {
                     const float v = buf[i];
-                    if (v > loc_avg) { idx = i; val = v; break; }
+                    if (v > loc_avg && v >= val) { idx = i; val = v; }
                 }
                 pk_info.push_back({val, idx});
                 
@@ -1072,8 +1072,7 @@ class FormantShifter : public Spectral_Effect {
                 float previous_pk = pk_info[j - 1].first;
                 float current_pk = pk_info[j].first; // the literal value of the peak
 
-                if (distance <= start_pos) { if (start_pos < len) interp[start_pos] = previous_pk; continue; } // same bin or reversed - just set single point
-                
+                if (distance <= start_pos) continue;
                 for (size_t i = start_pos; i < distance; ++i) {
                     float val = scale((float)i, (float)start_pos, (float)distance, previous_pk, current_pk);
                     interp[i] = val;
@@ -1099,11 +1098,14 @@ class FormantShifter : public Spectral_Effect {
 
                 float det = buf[i] / (interp[i] + epsilon); // deconvolution to get spectral detail
                 float spectrum = det * formants[i]; // convolution of spectral detail & shifted spectral envelope
+                if (spectrum > 10.0f * buf[i]) spectrum = 10.0f * buf[i]; // clamp extreme gains
                 formants[i] = spectrum;
                 
                 // apply to complex FFT bins (preserve phase)
-                const float scaleFactor = spectrum / buf[i];
-                frame.bins[i].r *= scaleFactor; frame.bins[i].i *= scaleFactor;
+                if (buf[i] > epsilon) {
+                    const float scaleFactor = spectrum / buf[i];
+                    frame.bins[i].r *= scaleFactor; frame.bins[i].i *= scaleFactor;
+                } else { frame.bins[i].r = 0.0f; frame.bins[i].i = 0.0f; }
             }
         }
 };
