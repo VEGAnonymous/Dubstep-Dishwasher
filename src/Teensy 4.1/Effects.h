@@ -887,7 +887,8 @@ class Freezer : public Effect {
                             // IFFT
                             stft->getFFT().inverse(interpFrame.bins.data(), spectFrame.data());
                             // Window and OLA
-                            overlapAdd(spectBuf, spectFrame, EnvelopeType::HANN, spectPos);
+                            const float overlapGain = (float)hopFactor / 2.0f;
+                            overlapAdd(spectBuf, spectFrame, EnvelopeType::HANN, spectPos, overlapGain);
                         }
                     }
                     
@@ -927,7 +928,8 @@ class SpectralGate : public Spectral_Effect {
         float threshold, tilt;
         
     public:
-        SpectralGate(float mix = 1.0f, float thresholdDB = -10.0f, float tilt = 0.5f, int fftSize = 512) : Spectral_Effect(mix, fftSize)
+        SpectralGate(float mix = 1.0f, float thresholdDB = -10.0f, float tilt = 0.5f, 
+            size_t fftSize = 512, size_t hopFactor = 4) : Spectral_Effect(mix, fftSize, hopFactor)
             { setThreshold(thresholdDB); setTilt(tilt); }
         
         void setThreshold(float thresholdDB) { threshold = dbAmp(std::clamp(thresholdDB, -100.0f, 0.0f)); } // dB, [-100.0, 0.0]
@@ -976,8 +978,8 @@ class FormantShifter : public Spectral_Effect {
         std::vector<float> formants;
         
     public:
-        FormantShifter(float mix = 1.0f, float formantShift = 12.0f, size_t envelopeWidth = 16, size_t fftSize = 2048) 
-        : Spectral_Effect(mix, fftSize) { 
+        FormantShifter(float mix = 1.0f, float formantShift = 12.0f, size_t envelopeWidth = 16, size_t fftSize = 1024, size_t hopFactor = 8) 
+        : Spectral_Effect(mix, fftSize, hopFactor) { 
             setFormantShift(formantShift); setEnvelopeWidth(envelopeWidth);
             
             // Allocate buffers
@@ -1019,8 +1021,11 @@ class FormantShifter : public Spectral_Effect {
             const float shift = exp2f(formantShift / 12.0f);
             const float epsilon = 1e-6f;
 
+            const float cutoff = 10000.0f; // ignore bins above this frequency to save on compute
+            const size_t maxBin = std::min(len, static_cast<size_t>(cutoff * (fftSize / 2) / (SAMPLE_RATE * 0.5f)));
+
             // store magnitudes in "buf"
-            for (size_t k = 0; k < len; ++k) {
+            for (size_t k = 0; k < maxBin; ++k) {
                 float re = frame.bins[k].r; float im = frame.bins[k].i;
                 arm_sqrt_f32(re * re + im * im, &buf[k]);
             }
@@ -1089,7 +1094,7 @@ class FormantShifter : public Spectral_Effect {
             }
             
             /*————— CONVOLUTION —————*/
-            for (size_t i = 1; i < len; ++i) {
+            for (size_t i = 1; i < maxBin; ++i) {
                 if (interp[i] <= epsilon) { formants[i] = 0.0f; continue; } // avoid divide-by-zero
 
                 float det = buf[i] / (interp[i] + epsilon); // deconvolution to get spectral detail

@@ -240,6 +240,6 @@ Short-Time Fourier Transform implementation with spectrogram storage. Provides s
 - Applies Hann windowing for analysis and synthesis
 - Maintains processing queue for accurate overlap-add timing
 - Spectrogram size determined by buffer duration and hop rate
-- **Very memory intensive**
+- **Very computationally and memory intensive**
 
 ---

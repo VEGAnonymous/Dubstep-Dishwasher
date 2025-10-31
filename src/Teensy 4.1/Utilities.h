@@ -25,9 +25,9 @@ float uniform() { return ((float)rand() / RAND_MAX) * 2.0f - 1.0f; } // Random f
 float getEnvelopeValue(float t, size_t N, EnvelopeType type) {
     // https://www.desmos.com/calculator/j7vhnwaylq
     switch (type) {
-        case EnvelopeType::HANN: return 0.5f * (1.0f - cosf(2.0f * static_cast<float>(M_PI) * t));
-        case EnvelopeType::HAMMING: return 0.54f - (0.46f * cosf(2.0f * static_cast<float>(M_PI) * t));
-        case EnvelopeType::SINE: return sinf(static_cast<float>(M_PI) * t);
+        case EnvelopeType::HANN: return 0.5f * (1.0f - arm_cos_f32(2.0f * static_cast<float>(M_PI) * t));
+        case EnvelopeType::HAMMING: return 0.54f - (0.46f * arm_cos_f32(2.0f * static_cast<float>(M_PI) * t));
+        case EnvelopeType::SINE: return arm_sin_f32(static_cast<float>(M_PI) * t);
         case EnvelopeType::TRI: return 1.0f - fabsf(2.0f * t - 1.0f);
         case EnvelopeType::PERC: {
             const float attack = 0.03f;
@@ -75,11 +75,12 @@ inline float dryWetMix(float dry, float wet, float mix, bool lin = true) {
     else return (dry * arm_cos_f32(mix * M_PI_2)) + (wet * arm_sin_f32(mix * M_PI_2)); // Equal power crossfade
 }
 
-inline void overlapAdd(std::vector<float>& target, const std::vector<float>& frame, EnvelopeType type, size_t startPos = 0) {
+inline void overlapAdd(std::vector<float>& target, const std::vector<float>& frame, 
+                       EnvelopeType type, size_t startPos = 0, float overlapGain = 1.0f) {
     const size_t N = frame.size();
     for (size_t i = 0; i < N; ++i) {
         size_t pos = (startPos + i) % target.size();
-        target[pos] += frame[i] * getEnvelopeValue((float)i / N, N, type);
+        target[pos] += frame[i] * getEnvelopeValue((float)i / N, N, type) * overlapGain;
     }
 }
 
@@ -336,7 +337,9 @@ class STFT {
                 size_t framePos = processingQueue.front();
                 
                 fft.inverse(spectrogram[framePos].bins.data(), inverseFrame.data());
-                overlapAdd(outBuf, inverseFrame, EnvelopeType::HANN, outPos);
+
+                const float overlapGain = (float)hopFactor / 2.0f;
+                overlapAdd(outBuf, inverseFrame, EnvelopeType::HANN, outPos, overlapGain);
                 
                 processingQueue.pop_front();
             }
