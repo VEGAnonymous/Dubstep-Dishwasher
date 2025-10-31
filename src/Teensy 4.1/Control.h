@@ -83,18 +83,18 @@ class AudioChain {
 
             // Build effects chain, initial order
             // BUG: DTCM memory issues - some effects disabled until PSRAM arrives
-            // addEffect(EffectName::DISTORTION);
-            // addEffect(EffectName::DELAY);
-            // addEffect(EffectName::FLANGER);
-            // addEffect(EffectName::PHASER);
-            // addEffect(EffectName::CHORUS);
-            // addEffect(EffectName::REVERB);
-            // addEffect(EffectName::COMPRESSOR);
-            // addEffect(EffectName::EQUALIZER);
-            // addEffect(EffectName::GRANULATOR);
+            addEffect(EffectName::DISTORTION);
+            addEffect(EffectName::DELAY);
+            addEffect(EffectName::FLANGER);
+            addEffect(EffectName::PHASER);
+            addEffect(EffectName::CHORUS);
+            addEffect(EffectName::REVERB);
+            addEffect(EffectName::COMPRESSOR);
+            addEffect(EffectName::EQUALIZER);
+            addEffect(EffectName::GRANULATOR);
             // addEffect(EffectName::FREEZER);
-            // addEffect(EffectName::SPECTRAL_GATE);
-            addEffect(EffectName::FORMANT_SHIFTER);
+            addEffect(EffectName::SPECTRAL_GATE);
+            // addEffect(EffectName::FORMANT_SHIFTER);
 
             // addEffect(EffectName::LIMITER); // DO NOT TOUCH
 

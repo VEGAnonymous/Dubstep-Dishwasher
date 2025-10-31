@@ -104,8 +104,7 @@ class Biquad : public IIR_Filter { // Generic SOS form, Direct Form II-Transpose
 class Spectral_Effect : public Effect {
     protected:
         enum Params : ParamID { MIX, FFT_SIZE };
-        
-        const size_t hopFactor = 4;
+
         float mix; size_t fftSize;
 
         STFT stft;
@@ -117,7 +116,7 @@ class Spectral_Effect : public Effect {
         virtual void processSpectrum(STFT::FFTFrame& frame) = 0; // Subclasses must implement
 
     public:
-        Spectral_Effect(float mix = 1.0f, size_t fftSize = 512) 
+        Spectral_Effect(float mix = 1.0f, size_t fftSize = 512, size_t hopFactor = 4) 
         : stft(fftSize, hopFactor, ((FFT_MAX_SIZE / (float)hopFactor) + 1.0f) / SAMPLE_RATE), 
           latencyComp(1.0f, ((FFT_MAX_SIZE + 1.0f) * 1000.0f) / SAMPLE_RATE) { 
             setMix(mix); setFFTSize(fftSize);

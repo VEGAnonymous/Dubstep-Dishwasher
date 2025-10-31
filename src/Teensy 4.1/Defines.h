@@ -16,6 +16,8 @@
 using EffectID = uint8_t;
 using ParamID = uint8_t;
 
+struct fft_cpx { float r; float i; };
+
 /* ENUMS */
 
 enum class CommandType : uint8_t { ADD, REMOVE, REORDER, SET, BYPASS };

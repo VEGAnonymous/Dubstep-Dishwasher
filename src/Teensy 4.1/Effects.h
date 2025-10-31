@@ -72,8 +72,8 @@ class Distortion : public Effect {
         }
         float diode(float in, float drive) {
             float x = in * (2.0f + (drive * 8.0f)); // d -> [2, 10]
-            if (x < 0) { x = exp(x) - 1.0f; } // Shockley diode equation, B=1
-            else if (x > 0) { x = 1.0 - exp(-x); }
+            if (x < 0) { x = expf(x) - 1.0f; } // Shockley diode equation, B=1
+            else if (x > 0) { x = 1.0 - expf(-x); }
             else { x = 0; }
             return x;
         }
@@ -89,7 +89,7 @@ class Distortion : public Effect {
         }
         float saturate(float in, float drive) {
             float x = in * (2.0f + (drive * 8.0f)); // d -> [2, 10]
-            return tanh(x);
+            return tanhf(x);
         }
 
     public:
@@ -325,6 +325,7 @@ class Chorus : public Effect {
         }
 
         void process(const float* in, float* out, size_t n) override {
+            float sqrt_vc; arm_sqrt_f32((float)voiceCount, &sqrt_vc);
             const float *in_ptr = in;
             float *out_ptr = out;
             for (size_t i = 0; i < n; i++) {
@@ -335,7 +336,7 @@ class Chorus : public Effect {
                 }
                 delayLine.write(*in_ptr + (feedback * wetSig));
 
-                wetSig *= sqrtf((float)voiceCount) * 1.2f;
+                wetSig *= sqrt_vc * 1.2f;
                 *out_ptr++ = dryWetMix(*in_ptr++, wetSig, mix); // Mix
             }
         }
@@ -538,7 +539,7 @@ class Compressor : public Effect {
                 // Compute RMS recursively
                 const float x_i = in[i], x_L = inBuffer.read();
                 inBuffer.write(x_i); 
-                rms = sqrt((rms * rms) + (((x_i * x_i) - (x_L * x_L)) / L_samples));
+                arm_sqrt_f32((rms * rms) + (((x_i * x_i) - (x_L * x_L)) / L_samples), &rms);
                 float rmsDB = ampDB(std::max(rms, 1e-6f));
 
                 // Gain computation
@@ -702,7 +703,7 @@ class Granulator : public Effect {
             int offset = grain.reverse ? ((grain.length - 1) - grain.playhead) : grain.playhead;
             int readPos = (grain.startPos + offset) % bufSize;
             
-            float envelopeValue = getEnvelopeValue((float)grain.playhead / (float)grain.length, grain.length, envType);
+            float envelopeValue = getEnvelopeValue((float)grain.playhead / (float)grain.length, envType);
             
             ++grain.playhead;
             if (grain.playhead >= grain.length) grain.active = false; // Free if done
@@ -905,10 +906,10 @@ class Freezer : public Effect {
                 if (rate != 0.0f) {
                     if (loopPos < smooth) { // Fade in
                         float t = loopPos / smooth;
-                        crossfade = getEnvelopeValue(t, 1, EnvelopeType::HANN);
+                        crossfade = getEnvelopeValue(t, EnvelopeType::HANN);
                     } else if (loopPos > (1.0f - smooth)) { // Fade out
                         float t = (loopPos - (1.0f - smooth)) / smooth;
-                        crossfade = getEnvelopeValue(1.0f - t, 1, EnvelopeType::HANN);
+                        crossfade = getEnvelopeValue(1.0f - t, EnvelopeType::HANN);
                     }
                 } wetSig *= crossfade;
             
@@ -926,7 +927,8 @@ class SpectralGate : public Spectral_Effect {
         float threshold, tilt;
         
     public:
-        SpectralGate(float mix = 1.0f, float thresholdDB = -10.0f, float tilt = 0.5f, int fftSize = 512) : Spectral_Effect(mix, fftSize)
+        SpectralGate(float mix = 1.0f, float thresholdDB = -10.0f, float tilt = 0.5f, 
+            size_t fftSize = 512, size_t hopFactor = 4) : Spectral_Effect(mix, fftSize, hopFactor)
             { setThreshold(thresholdDB); setTilt(tilt); }
         
         void setThreshold(float thresholdDB) { threshold = dbAmp(std::clamp(thresholdDB, -100.0f, 0.0f)); } // dB, [-100.0, 0.0]
@@ -975,8 +977,8 @@ class FormantShifter : public Spectral_Effect {
         std::vector<float> formants;
         
     public:
-        FormantShifter(float mix = 1.0f, float formantShift = 0.0f, size_t envelopeWidth = 10, size_t fftSize = 2048) 
-        : Spectral_Effect(mix, fftSize) { 
+        FormantShifter(float mix = 1.0f, float formantShift = 0.0f, size_t envelopeWidth = 16, size_t fftSize = 1024, size_t hopFactor = 4) 
+        : Spectral_Effect(mix, fftSize, hopFactor) { 
             setFormantShift(formantShift); setEnvelopeWidth(envelopeWidth);
             
             // Allocate buffers
@@ -1014,21 +1016,24 @@ class FormantShifter : public Spectral_Effect {
             if (formantShift == 0.0f) return;
 
             const size_t len = stft.getNumBins(); // dim(buf)
-            const size_t num_regions = (len + width - 1) / width; // number of equidistant regions within the buffer to find peaks
             const float shift = exp2f(formantShift / 12.0f);
             const float epsilon = 1e-6f;
+            
+            const float cutoff = 8000.0f; // band limit to save compute
+            const size_t maxBin = std::min(len, static_cast<size_t>((cutoff / (SAMPLE_RATE * 0.5f)) * (float)(len - 1)));
+            const size_t num_regions = (maxBin + width - 1) / width; // number of equidistant regions within the buffer to find peaks
 
             // store magnitudes in "buf"
-            for (size_t k = 0; k < len; ++k) {
+            for (size_t k = 0; k < maxBin; ++k) {
                 float re = frame.bins[k].r; float im = frame.bins[k].i;
-                buf[k] = (re * re) + (im * im);
-                // buf[k] = std::max(abs(re), abs(im)) + (0.5f * std::min(abs(re),abs(im))); // approximation
+                arm_sqrt_f32(re * re + im * im, &buf[k]);
             }
 
             /*————— INITIALIZE BUFFERS —————*/
-            std::fill(interp.begin(), interp.end(), 0.0f); // clear
+            // std::fill(interp.begin(), interp.end(), 0.0f); // clear
             
             pk_info.clear();
+            pk_info.reserve(num_regions + 2);
             pk_info.push_back({buf[0], 0}); // set first element in pk_info to the first element in "buf" buffer
             
             /*————— PEAK DETECTION MAIN LOOP —————*/
@@ -1051,7 +1056,7 @@ class FormantShifter : public Spectral_Effect {
                 float val = loc_max;
                 for (size_t i = start; i < end; ++i) {
                     const float v = buf[i];
-                    if (v > loc_avg) { idx = i; val = v; break; }
+                    if (v > loc_avg && v >= val) { idx = i; val = v; }
                 }
                 pk_info.push_back({val, idx});
                 
@@ -1067,8 +1072,7 @@ class FormantShifter : public Spectral_Effect {
                 float previous_pk = pk_info[j - 1].first;
                 float current_pk = pk_info[j].first; // the literal value of the peak
 
-                if (distance <= start_pos) { if (start_pos < len) interp[start_pos] = previous_pk; continue; } // same bin or reversed - just set single point
-                
+                if (distance <= start_pos) continue;
                 for (size_t i = start_pos; i < distance; ++i) {
                     float val = scale((float)i, (float)start_pos, (float)distance, previous_pk, current_pk);
                     interp[i] = val;
@@ -1089,16 +1093,19 @@ class FormantShifter : public Spectral_Effect {
             }
             
             /*————— CONVOLUTION —————*/
-            for (size_t i = 1; i < len; ++i) {
+            for (size_t i = 1; i < maxBin; ++i) {
                 if (interp[i] <= epsilon) { formants[i] = 0.0f; continue; } // avoid divide-by-zero
 
                 float det = buf[i] / (interp[i] + epsilon); // deconvolution to get spectral detail
                 float spectrum = det * formants[i]; // convolution of spectral detail & shifted spectral envelope
+                if (spectrum > 10.0f * buf[i]) spectrum = 10.0f * buf[i]; // clamp extreme gains
                 formants[i] = spectrum;
                 
                 // apply to complex FFT bins (preserve phase)
-                const float scaleFactor = spectrum / buf[i];
-                frame.bins[i].r *= scaleFactor; frame.bins[i].i *= scaleFactor;
+                if (buf[i] > epsilon) {
+                    const float scaleFactor = spectrum / buf[i];
+                    frame.bins[i].r *= scaleFactor; frame.bins[i].i *= scaleFactor;
+                } else { frame.bins[i].r = 0.0f; frame.bins[i].i = 0.0f; }
             }
         }
 };

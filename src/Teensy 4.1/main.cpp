@@ -85,7 +85,7 @@ void setup() {
         patch2 = std::make_unique<AudioConnection>(*stream, 0, usbOut, 0);
         // patch1 = std::make_unique<AudioConnection>(usbIn, 0, usbOut, 0);
     } else {
-        patch1 = std::make_unique<AudioConnection>(usbIn, 0, *stream, 0);
+        patch1 = std::make_unique<AudioConnection>(adcIn, 0, *stream, 0);
         patch2 = std::make_unique<AudioConnection>(*stream, 0, dacOut, 0);
     }
     

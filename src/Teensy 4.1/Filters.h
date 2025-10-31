@@ -177,7 +177,7 @@ class LPF_Biquad : public Biquad {
     private:
         void updateCoeffs() override {
             const float w0 = 2.0f * static_cast<float>(M_PI) * (cutoff / SAMPLE_RATE);
-            const float cos_w0 = cosf(w0), sin_w0 = sinf(w0);
+            const float cos_w0 = arm_cos_f32(w0), sin_w0 = arm_sin_f32(w0);
             const float a = sin_w0 / (2.0f * q);
 
             const float a0 = 1.0f + a;
@@ -194,7 +194,7 @@ class HPF_Biquad : public Biquad {
     private:
         void updateCoeffs() override {
             const float w0 = 2.0f * static_cast<float>(M_PI) * (cutoff / SAMPLE_RATE);
-            const float cos_w0 = cosf(w0), sin_w0 = sinf(w0);
+            const float cos_w0 = arm_cos_f32(w0), sin_w0 = arm_sin_f32(w0);
             const float a = sin_w0 / (2.0f * q);
 
             const float a0 = 1.0f + a;
@@ -211,9 +211,9 @@ class LowShelf_Biquad : public Biquad {
     private:
         void updateCoeffs() override {
             const float w0 = 2.0f * static_cast<float>(M_PI) * (cutoff / SAMPLE_RATE);
-            const float cos_w0 = cosf(w0), sin_w0 = sinf(w0);
+            const float cos_w0 = arm_cos_f32(w0), sin_w0 = arm_sin_f32(w0);
             const float A = exp10f(gainDB / 40.0f);
-            const float sqrt_A = sqrtf(A);
+            float sqrt_A; arm_sqrt_f32(A, &sqrt_A);
             const float a = sin_w0 / (2.0f * q);
 
             const float a0 = (A + 1.0f) + ((A - 1.0f) * cos_w0) + (2.0f * sqrt_A * a);
@@ -239,9 +239,9 @@ class HighShelf_Biquad : public Biquad {
     private:
         void updateCoeffs() override {
             const float w0 = 2.0f * static_cast<float>(M_PI) * (cutoff / SAMPLE_RATE);
-            const float cos_w0 = cosf(w0), sin_w0 = sinf(w0);
+            const float cos_w0 = arm_cos_f32(w0), sin_w0 = arm_sin_f32(w0);
             const float A = exp10f(gainDB / 40.0f);
-            const float sqrt_A = sqrtf(A);
+            float sqrt_A; arm_sqrt_f32(A, &sqrt_A);
             const float a = sin_w0 / (2.0f * q);
 
             const float a0 = (A + 1.0f) - ((A - 1.0f) * cos_w0) + (2.0f * sqrt_A * a);
@@ -267,7 +267,7 @@ class Peak_Biquad : public Biquad {
     private:
         void updateCoeffs() override {
             const float w0 = 2.0f * static_cast<float>(M_PI) * (cutoff / SAMPLE_RATE);
-            const float cos_w0 = cosf(w0), sin_w0 = sinf(w0);
+            const float cos_w0 = arm_cos_f32(w0), sin_w0 = arm_sin_f32(w0);
             const float A = exp10f(gainDB / 40.0f);
             const float a = sin_w0 / (2.0f * q);
 
@@ -291,7 +291,7 @@ class Notch_Biquad : public Biquad {
     private:
         void updateCoeffs() override {
             const float w0 = 2.0f * static_cast<float>(M_PI) * (cutoff / SAMPLE_RATE);
-            const float cos_w0 = cosf(w0), sin_w0 = sinf(w0);
+            const float cos_w0 = arm_cos_f32(w0), sin_w0 = arm_sin_f32(w0);
             const float a = sin_w0 / (2.0f * q);
 
             const float a0 = 1.0f + a;
