@@ -18,7 +18,7 @@
 
 /* Testing - Set flags here */
 const bool USB_IO = false, 
-           LOG_RSE = false,
+           LOG_RSE = true,
            LOG_CMD = true;
 
 AudioInputUSB usbIn; 

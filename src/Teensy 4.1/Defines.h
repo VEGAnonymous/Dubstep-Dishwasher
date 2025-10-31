@@ -5,7 +5,7 @@
 
 #define SAMPLE_RATE 44100.0f
 #define BUFFER_SIZE 128
-#define FFT_MAX_SIZE 1024.0f
+#define FFT_MAX_SIZE 2048.0f
 
 #ifndef M_PI
     #define M_PI 3.14159265358979323846
