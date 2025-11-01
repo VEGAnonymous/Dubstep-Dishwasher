@@ -12,8 +12,29 @@
 #include <BLEUtils.h>
 #include <BLEServer.h>
 
+// UUIDs
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+// #define CHARACTERISTIC_UUID2 "beb54832-36e1-4688-b7f5-ea07361b26a8"
+
+// variables for managing connection state
+bool deviceConnected = false;
+bool oldDeviceConnected = false;
+// pointer to BLE server
+BLEServer *pServer = NULL;
+
+// handle server callbacks (connect and disconnect)
+class MyServerCallbacks: public BLEServerCallbacks {
+    void onConnect(BLEServer* pServer) {
+        deviceConnected = true;
+        Serial.println("Device connected");
+    }
+
+    void onDisconnect(BLEServer* pServer) {
+        deviceConnected = false;
+        Serial.println("Device disconnected");
+    }
+};
 
 class MyCallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) {
@@ -33,24 +54,48 @@ void setup() {
 
     // BLE setup (I copied this from platformio setup tutorial)
     BLEDevice::init("Team 8 ESP32 BLE");
-    BLEServer *pServer = BLEDevice::createServer();
+    pServer = BLEDevice::createServer();
+    pServer->setCallbacks(new MyServerCallbacks());
+    
+    // create service and characteristic(s)
     BLEService *pService = pServer->createService(SERVICE_UUID);
     BLECharacteristic *pCharacteristic = pService->createCharacteristic(
                                           CHARACTERISTIC_UUID,
                                           BLECharacteristic::PROPERTY_READ |
                                           BLECharacteristic::PROPERTY_WRITE
                                         );
+    // BLECharacteristic *pCharacteristic2 = pService->createCharacteristic(
+    //                                       CHARACTERISTIC_UUID2,
+    //                                       BLECharacteristic::PROPERTY_WRITE
+    //                                     );
 
     pCharacteristic->setCallbacks(new MyCallbacks());
+    // pCharacteristic2->setCallbacks(new MyCallbacks());
 
+    // start service
     pService->start();
 
+    // set up advertising
     BLEAdvertising *pAdvertising = pServer->getAdvertising();
-    pAdvertising->start();
+    pAdvertising->addServiceUUID(SERVICE_UUID);
+    pAdvertising->setScanResponse(true);
+    pServer->startAdvertising();
     
 }
 
 void loop() {
+    // 
+    if (!deviceConnected && oldDeviceConnected) {
+        delay(1000); // wait a bit for bluetooth stack to clear
+        pServer->startAdvertising(); // restart advertising
+        Serial.println("Started advertising");
+        oldDeviceConnected = deviceConnected;
+    }
+    // connecting
+    if (deviceConnected && !oldDeviceConnected) {
+        oldDeviceConnected = deviceConnected;
+    }
+
     #if DEBUG
     // Debug: Read from Serial and process incoming bytes
     while (Serial.available()) {

@@ -57,4 +57,10 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    implementation("com.polidea.rxandroidble3:rxandroidble:1.19.1")
+    implementation("io.reactivex.rxjava3:rxandroid:3.0.2")
+    implementation("io.reactivex.rxjava3:rxjava:3.1.12")
+    implementation("androidx.compose.foundation:foundation:1.9.4")
+    implementation("androidx.compose.material3:material3:1.4.0")
+
 }
