@@ -23,6 +23,8 @@ struct fft_cpx { float r; float i; };
 enum class CommandType : uint8_t { ADD, REMOVE, REORDER, SET, BYPASS };
 
 enum class EffectName : uint8_t {
+    MODULATION,
+    WAH,
     DISTORTION,
     DELAY,
     FLANGER,
@@ -41,6 +43,7 @@ enum class EffectName : uint8_t {
 enum class EnvelopeType : uint8_t { HANN, HAMMING, SINE, TRI, PERC, SMOOTH_RECT };
 enum class WavetableType : uint8_t { SINE, TRI, SAW, SQUARE };
 enum class RandomMode : uint8_t { PERLIN, SAMPLE_HOLD, BINARY };
+enum class ModulationEffectMode : uint8_t { AM, RM };
 enum class DistortionMode : uint8_t { TUBE, SOFT_CLIP, HARD_CLIP, DIODE, BITCRUSH, RECTIFY, SATURATE };
 enum class BiquadType : uint8_t { LOW_PASS, HIGH_PASS, LOW_SHELF, HIGH_SHELF, PEAK, NOTCH };
 

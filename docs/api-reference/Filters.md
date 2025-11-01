@@ -110,7 +110,7 @@ z2 = z1, z1 = w[n]
 ### `LPF_Biquad`
 
 **Description:**  
-Second-order Butterworth low-pass filter. Attenuates frequencies above the cutoff.
+Second-order low-pass filter. Attenuates frequencies above the cutoff.
 
 **Parameters:**
 - **`CUTOFF`** — -3dB cutoff frequency in Hz `[20.0, 20000.0]`
@@ -121,11 +121,22 @@ Second-order Butterworth low-pass filter. Attenuates frequencies above the cutof
 ### `HPF_Biquad`
 
 **Description:**  
-Second-order Butterworth high-pass filter. Attenuates frequencies below the cutoff.
+Second-order high-pass filter. Attenuates frequencies below the cutoff.
 
 **Parameters:**
 - **`CUTOFF`** — -3dB cutoff frequency in Hz `[20.0, 20000.0]`
 - **`Q`** — Filter resonance `[0.02, 40.0]` (default: `0.707` for Butterworth response)
+
+---
+
+### `BPF_Biquad`
+
+**Description:**  
+Second-order band-pass filter. Attenuates frequencies around the center frequency band.
+
+**Parameters:**
+- **`CUTOFF`** — Center frequency in Hz `[20.0, 20000.0]`
+- **`Q`** — Bandwidth / peak gain `[0.02, 40.0]`
 
 ---
 

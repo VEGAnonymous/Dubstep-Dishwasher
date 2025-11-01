@@ -66,6 +66,8 @@ class AudioChain {
 
         AudioChain() { 
             effectInits = {
+                {EffectName::MODULATION, [](){ return std::make_unique<Modulation>(); }},
+                {EffectName::WAH, [](){ return std::make_unique<Wah>(); }},
                 {EffectName::DISTORTION, [](){ return std::make_unique<Distortion>(); }},
                 {EffectName::DELAY, [](){ return std::make_unique<Delay>(); }},
                 {EffectName::FLANGER, [](){ return std::make_unique<Flanger>(); }},
@@ -83,6 +85,8 @@ class AudioChain {
 
             // Build effects chain, initial order
             // BUG: DTCM memory issues - some effects disabled until PSRAM arrives
+            addEffect(EffectName::MODULATION);
+            addEffect(EffectName::WAH);
             addEffect(EffectName::DISTORTION);
             addEffect(EffectName::DELAY);
             addEffect(EffectName::FLANGER);
@@ -99,7 +103,7 @@ class AudioChain {
             // addEffect(EffectName::LIMITER); // DO NOT TOUCH
 
             // Bypass all except Limiter
-            // for (size_t i = 0; i < effects.size() - 1; ++i) effects[i]->setBypass(true);
+            for (size_t i = 0; i < effects.size() - 1; ++i) effects[i]->setBypass(true);
 
             Serial.println("Active effects:");
             for (auto &fx : effects) if (!fx->isBypassed()) Serial.printf("  ID %d active\n", fx->getID());

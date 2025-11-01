@@ -12,31 +12,96 @@
 
 /* EFFECTS */
 
-class Gain : public Effect { // Example, not for practical use
+class Modulation : public Effect {
     private:
-        enum Params : ParamID { GAIN };
+        enum Params : ParamID { MIX, MODE, MODULATOR, FREQ, DEPTH };
 
-        float gainFactor;
+        float mix, freq, depth;
+        ModulationEffectMode mode; 
+        Wavetable modulator;
 
     public:
-        Gain(float gainFactor = 1.0f) { setGain(gainFactor); }
+        Modulation(float mix = 1.0f, ModulationEffectMode mode = ModulationEffectMode::AM, WavetableType modulatorType = WavetableType::SINE, 
+                   float freq = 5.0f, float depth = 0.5f) : modulator(freq, modulatorType) {
+            setMix(mix); setMode(mode); setModulator(modulatorType); setFreq(freq); setDepth(depth);
+        }
 
-        void setGain(float gainFactor) { this->gainFactor = gainFactor; }
+        void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setMode(ModulationEffectMode mode) { this->mode = mode; }
+        void setModulator(WavetableType modulatorType) { modulator.setTable(modulatorType); }
+        void setFreq(float freq) { this->freq = std::clamp(freq, 1.0f, 2000.0f); modulator.setFreq(this->freq); } // [1.0, 2000.0]
+        void setDepth(float depth) { this->depth = std::clamp(depth, 0.0f, 1.0f); } // [0.0, 1.0]
         inline void setParam(ParamID param, float value) override {
             switch (param) {
-                case GAIN: setGain(value); break;
+                case MIX: setMix(value); break;
+                case MODE: setMode(static_cast<ModulationEffectMode>(value)); break;
+                case MODULATOR: setModulator(static_cast<WavetableType>(value)); break;
+                case FREQ: setFreq(value); break;
+                case DEPTH: setDepth(value); break;
             }
         }
 
         void process(const float* in, float* out, size_t n) override {
-            const float* in_ptr = in;
-            float* out_ptr = out;
-
             for (size_t i = 0; i < n; ++i) {
-                *out_ptr++ = *in_ptr++ * gainFactor;
-                // out[i] = in[i] * gainFactor; // Equivalent
+                const float modNext = modulator.next();
+                switch (mode) {
+                    case ModulationEffectMode::AM: out[i] = lerp(in[i], in[i] * (1.0f + (modNext * depth)) * 0.5f, mix); break;
+                    case ModulationEffectMode::RM: out[i] = lerp(in[i], in[i] * modNext, mix); break;
+                    default: out[i] = in[i];
+                }
             }
         };
+};
+
+class Wah : public Effect {
+    private:
+        enum Params : ParamID { MIX, MIN_FREQ, MAX_FREQ, Q };
+
+        float mix, minFreq, maxFreq, q;
+
+        const float L = 50.0f, L_samples = L * SAMPLE_RATE / 1000.0f; // RMS window size
+        float rms = 1e-6f; DelayLine inBuffer;
+        BPF_Biquad bpf;
+
+    public:
+        Wah(float mix = 1.0f, float minFreq = 350.0f, float maxFreq = 2500.0f, float q = 1.6f) 
+        : inBuffer(L, L + 1.0f), bpf(1000.0f, 1.6f, 0.0f) { 
+            setMix(mix); setMinFreq(minFreq); setMaxFreq(maxFreq); setQ(q);
+        }
+
+        void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setMinFreq(float minFreq) { this->minFreq = std::clamp(minFreq, 20.0f, 1000.0f); } // Hz, [20.0, 1000.0]
+        void setMaxFreq(float maxFreq) { this->maxFreq = std::clamp(maxFreq, 1000.0f, 8000.0f); } // Hz, [1000.0, 8000.0]
+        void setQ(float q) { this->q = std::clamp(q, 0.3f, 6.0f); bpf.setQ(this->q); } // [0.3, 6.0]
+        inline void setParam(ParamID param, float value) override { 
+            switch (param) {
+                case MIX: setMix(value); break;
+                case MIN_FREQ: setMinFreq(value); break;
+                case MAX_FREQ: setMaxFreq(value); break;
+                case Q: setQ(value); break;
+            }
+        }
+
+        void process(const float* in, float* out, size_t n) override {
+            for (size_t i = 0; i < n; ++i) {
+                const float x_i = in[i]; const float x_L = inBuffer.read();
+                inBuffer.write(x_i);
+
+                // Envelope follower
+                // Compute RMS recursively
+                rms = sqrtf((rms * rms) + (((x_i * x_i) - (x_L * x_L)) / L_samples));
+                float rmsDB = ampDB(std::max(rms, 1e-6f));
+
+                // Map envelope to BPF cutoff
+                float envNorm = std::clamp((rmsDB + 60.0f) / 60.0f, 0.0f, 1.0f); // 60->0 dB
+                float cutoff = lerp(minFreq, maxFreq, powf(envNorm, 1.5f));
+                bpf.setCutoff(cutoff);
+
+                // Process BPF
+                float wetSig = bpf.processSample(x_i);
+                out[i] = dryWetMix(x_i, wetSig, mix); // Mix
+            }
+        }
 };
 
 class Distortion : public Effect {
@@ -78,7 +143,7 @@ class Distortion : public Effect {
             return x;
         }
         float bitCrush(float in, float drive) {
-            int bitDepth = (int)(2 + ((1.0f - drive) * (1.0f - drive) * 22.0f)); // 24-bit to 2-bit depth
+            int bitDepth = (int)(2 + ((1.0f - drive) * (1.0f - drive) * 14.0f)); // 16-bit to 2-bit depth
             float levels = (float)(1 << bitDepth); // 2^bits discrete levels
             return round(in * levels) / levels; // Quantize
         }
@@ -771,12 +836,11 @@ class Granulator : public Effect {
 };
 
 class Freezer : public Effect {
-    // HACK: Works, except for negative rates for time-domain mode which produce silence
     private:
         enum Params : ParamID { MIX, RATE, SPECTRAL_MODE, FFT_SIZE, HOP_SIZE, LOOP_START, LOOP_END };
 
-        const size_t bufSize = 1 * (size_t)SAMPLE_RATE; // TEMP: Increase bufSize later
-        const float smooth = 0.2f;
+        const size_t bufSize = (size_t)2 * (size_t)SAMPLE_RATE;
+        const float smooth = 0.005f;
         
         float mix, rate; bool spectralMode;
         float loopStart, loopEnd;
@@ -790,7 +854,7 @@ class Freezer : public Effect {
         size_t spectPos = 0, spectHopCounter = 0;
 
         void allocateSTFT() {
-            stft = std::make_unique<STFT>(fftSize, hopFactor, 0.25f);
+            stft = std::make_unique<STFT>(fftSize, hopFactor, 0.5f);
             spectBuf.assign(fftSize, 0.0f); spectFrame.assign(fftSize, 0.0f);
             spectPos = 0; spectHopCounter = 0;
         }
@@ -800,10 +864,10 @@ class Freezer : public Effect {
         }
 
     public:
-        Freezer(float mix = 1.0f, float rate = 1.0f, bool spectralMode = false, size_t fftSize = 1024, size_t hopFactor = 4, 
-                float loopStart = 0.0f, float loopEnd = 1.0f) {
-            setMix(mix); setRate(rate); setSpectralMode(spectralMode);
-            setFFTSize(fftSize); setHopSize(hopFactor); setLoopRegion(loopStart, loopEnd); 
+        Freezer(float mix = 1.0f, float rate = 1.0f, bool spectralMode = true, size_t fftSize = 1024, size_t hopFactor = 4, 
+                float loopStart = 0.0f, float loopEnd = 1.0f) : fftSize(fftSize), hopFactor(hopFactor) {
+            setMix(mix); setRate(rate); setFFTSize(fftSize); setHopSize(hopFactor); 
+            setSpectralMode(spectralMode); setLoopRegion(loopStart, loopEnd); 
             inBuf.resize(bufSize, 0.0f);
         }
         
@@ -904,14 +968,16 @@ class Freezer : public Effect {
 
                 float crossfade = 1.0f;
                 if (rate != 0.0f) {
-                    if (loopPos < smooth) { // Fade in
-                        float t = loopPos / smooth;
-                        crossfade = getEnvelopeValue(t, EnvelopeType::HANN);
-                    } else if (loopPos > (1.0f - smooth)) { // Fade out
-                        float t = (loopPos - (1.0f - smooth)) / smooth;
-                        crossfade = getEnvelopeValue(1.0f - t, EnvelopeType::HANN);
+                    const float fadeLen = smooth;
+                    if (loopPos < fadeLen) { // Fade in
+                        float t = loopPos / fadeLen;
+                        crossfade = 0.5f * (1.0f - arm_cos_f32(M_PI * t)); 
+                    } else if (loopPos > 1.0f - fadeLen) { // Fade out
+                        float t = (loopPos - (1.0f - fadeLen)) / fadeLen;
+                        crossfade = 0.5f * (1.0f + arm_cos_f32(M_PI * t));
                     }
-                } wetSig *= crossfade;
+                }
+                wetSig *= crossfade;
             
                 out[i] = dryWetMix(in[i], wetSig, mix); // Mix
             }

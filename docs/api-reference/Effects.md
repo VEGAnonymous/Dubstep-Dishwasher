@@ -6,6 +6,35 @@ This document describes the functionality and parameter structure of all availab
 
 ---
 
+## `Modulation`
+
+**Description:**  
+AM / RM modulation. Use low frequency AM for a tremolo effect.
+
+**Parameters:**
+
+0. **`MIX`** — Dry/wet balance `[0.0, 1.0]`
+1. **`MODE`** — Type of modulation [`ModulationEffectMode` enum]
+2. **`MODULATOR`** — Modulator wavetable [`WavetableType` enum]
+3. **`FREQ`** — Modulator frequency in Hz `[1.0, 2000.0]`
+4. **`DEPTH`** — Modulator depth (AM only) `[0.0, 1.0]`
+
+---
+
+## `Wah`
+
+**Description:**  
+The classic Wah-Wah effect implemented with a resonant band-pass biquad. Automatically controlled by an envelope follower.
+
+**Parameters:**
+
+0. **`MIX`** — Dry/wet balance `[0.0, 1.0]`
+1. **`MIN_FREQ`** — BPF min frequency in Hz `[20.0, 1000.0]`
+2. **`MAX_FREQ`** — BPF max frequency in Hz `[1000.0, 8000.0]`
+3. **`Q`** — BPF quality factor `[0.3, 6.0]`
+
+---
+
 ## `Distortion`
 
 **Description:**  
@@ -23,7 +52,7 @@ Applies nonlinear distortion to an input signal. Includes several [algorithms](h
 ## `Delay`
 
 **Description:**  
-Implements a feedback delay line with adjustable delay time, feedback, and dry/wet mix.
+Implements a feedback delay line.
 
 **Parameters:**
 
