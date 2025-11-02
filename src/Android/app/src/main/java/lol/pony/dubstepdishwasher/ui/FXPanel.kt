@@ -5,23 +5,39 @@ import androidx.compose.foundation.lazy.*
 import androidx.compose.material.icons.*
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-
+import com.polidea.rxandroidble3.RxBleDevice
 import lol.pony.dubstepdishwasher.model.core.*
 import lol.pony.dubstepdishwasher.viewmodel.*
-import lol.pony.dubstepdishwasher.ui.theme.DubstepDishwasherTheme
 
 @Composable
-fun FXPanel(modifier: Modifier = Modifier, viewModel: EffectChainViewModel = viewModel()) {
+fun FXPanel(
+    modifier: Modifier = Modifier, bleManager: BleManager, device: RxBleDevice,
+    onDisconnect: () -> Unit
+) {
+    val viewModel: EffectChainViewModel = viewModel(factory = EffectChainViewModelFactory(bleManager))
     val effects by viewModel.effects.collectAsState()
+
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
-        AddEffectMenu(onAdd = { viewModel.addEffect(it) })
+        Row(modifier = Modifier.fillMaxWidth()) {
+            AddEffectMenu(onAdd = { viewModel.addEffect(it) })
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(device.name ?: "Unknown Device")
+                IconButton(onClick = onDisconnect) {
+                    Icon(Icons.Filled.Close, contentDescription = "Disconnect")
+                }
+            }
+        }
         Spacer(Modifier.height(8.dp))
         EffectList(
             effects = effects,
@@ -52,16 +68,18 @@ fun AddEffectMenu(onAdd: (EffectType) -> Unit) {
 }
 
 @Composable
-fun EffectList(effects: List<Effect>,
-               onToggleBypass: (Int) -> Unit,
-               onRemove: (Int) -> Unit,
-               onReorder: (Int, Int) -> Unit
+fun EffectList(
+    effects: List<Effect>,
+    onToggleBypass: (Int) -> Unit,
+    onRemove: (Int) -> Unit,
+    onReorder: (Int, Int) -> Unit
 ) {
     LazyColumn {
         items(items = effects, key = { it.effectId }) { fx ->
-            Row(modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp, horizontal = 4.dp),
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp, horizontal = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(fx.effectType.uiName, style = MaterialTheme.typography.titleMedium)
@@ -73,10 +91,21 @@ fun EffectList(effects: List<Effect>,
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun FXPanelPreview() {
-    DubstepDishwasherTheme {
-        FXPanel()
+class EffectChainViewModelFactory(private val bleManager: BleManager) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(EffectChainViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return EffectChainViewModel(bleManager) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
+
+
+//@Preview(showBackground = true)
+//@Composable
+//fun FXPanelPreview() {
+//    DubstepDishwasherTheme {
+//        FXPanel()
+//    }
+//}

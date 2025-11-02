@@ -1,5 +1,6 @@
 package lol.pony.dubstepdishwasher.model
 
+import androidx.compose.runtime.toMutableStateList
 import lol.pony.dubstepdishwasher.model.core.*
 import lol.pony.dubstepdishwasher.model.effects.*
 
@@ -20,7 +21,7 @@ class EffectChain {
     )
 
     fun get(effectId: Int): Effect? = effects.find { it.effectId == effectId }
-    fun getAll(): List<Effect> = effects.toList()
+    fun getAll(): List<Effect> = effects.toMutableStateList()
     fun indexOf(effectId: Int): Int = effects.indexOfFirst { it.effectId == effectId }
     fun reorder(posFrom: Int, posTo: Int) {
         val effect = effects.removeAt(posFrom)

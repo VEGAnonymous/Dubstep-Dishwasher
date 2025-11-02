@@ -1,39 +1,95 @@
 package lol.pony.dubstepdishwasher.viewmodel
 
-import lol.pony.dubstepdishwasher.model.*
-import lol.pony.dubstepdishwasher.model.core.*
-
 import androidx.lifecycle.ViewModel
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import lol.pony.dubstepdishwasher.model.EffectChain
+import lol.pony.dubstepdishwasher.model.core.BleManager
+import lol.pony.dubstepdishwasher.model.core.CommandType
+import lol.pony.dubstepdishwasher.model.core.CommandType.*
+import lol.pony.dubstepdishwasher.model.core.Effect
+import lol.pony.dubstepdishwasher.model.core.EffectType
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
-class EffectChainViewModel : ViewModel() {
+class EffectChainViewModel(private val bleManager: BleManager) : ViewModel() {
     private val chain = EffectChain()
     private val _effects = MutableStateFlow<List<Effect>>(emptyList())
-    val effects : StateFlow<List<Effect>> = _effects
+    val effects: StateFlow<List<Effect>> = _effects
 
     fun addEffect(type: EffectType) {
         chain.addEffect(type)
         _effects.value = chain.getAll()
+
+        // run command
+        sendCommand(ADD, type.ordinal, 0, 0.0f)
     }
 
     fun removeEffect(effectId: Int) {
         chain.removeEffect(effectId)
         _effects.value = chain.getAll()
+
+        // run command
+        sendCommand(REMOVE, effectId, 0, 0.0f)
     }
 
     fun reorderEffect(effectId: Int, toIndex: Int) {
         chain.reorderEffect(effectId, toIndex)
         _effects.value = chain.getAll()
+
+        // run command
+        sendCommand(REORDER, effectId, toIndex, 0.0f)
     }
 
-    fun setParam(effectId: Int, paramId: Int, value: Any) {
+    fun setParam(effectId: Int, paramId: Int, value: Float) {
         chain.setParam(effectId, paramId, value)
         _effects.value = chain.getAll() // FIXME: Probably also doesn't fucking update Compose
+
+        // run command
+        sendCommand(SET_PARAM, effectId, paramId, value)
     }
 
     fun toggleBypass(effectId: Int) {
         chain.setBypass(effectId, !chain.get(effectId)!!.isBypassed)
         _effects.value = chain.getAll() // FIXME: Doesn't fucking update Compose
+
+        // run command
+        val value = if (chain.get(effectId)!!.isBypassed) 0.0f else 1.0f
+        sendCommand(BYPASS, effectId, 0, value)
+    }
+
+    /**
+     * Converts byte array to string with space separator.
+     * @param bytes The byte array to convert to string.
+     * @return String representation of [bytes].
+     */
+    private fun bytesToHexString(bytes: ByteArray): String {
+        return bytes.joinToString(" ") { "%02X".format(it) }
+    }
+
+    /**
+     * Sends a command to the BLE device via a
+     * byte array produced by a buffer.
+     * @param cmd Command of type [CommandType] to send.
+     * @param id1 EffectID for command.
+     * @param id2 ParamID for setParam or 2nd EffectID for reorderEffect.
+     * @param value Float value for setParam/toggleBypass.
+     */
+    private fun sendCommand(cmd: CommandType, id1: Int, id2: Int, value: Float) {
+        // initialize buffer
+        val buffer = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN)
+        // write buffer values
+        buffer.put(cmd.value)       // cmd
+        buffer.put(id1.toByte())    // id1
+        buffer.put(id2.toByte())    // id2
+        buffer.put(0.toByte())      // checksum (always 0)
+        buffer.putFloat(value)          // value
+
+        // converts buffer to array and then hex string for writeCommand
+        // might just remove the hexString part later
+        val commandBytes = buffer.array()
+        val hexString = bytesToHexString(commandBytes)
+
+        bleManager.writeCharacteristic(hexString)
     }
 }
