@@ -12,31 +12,96 @@
 
 /* EFFECTS */
 
-class Gain : public Effect { // Example, not for practical use
+class Modulation : public Effect {
     private:
-        enum Params : ParamID { GAIN };
+        enum Params : ParamID { MIX, MODE, MODULATOR, FREQ, DEPTH };
 
-        float gainFactor;
+        float mix, freq, depth;
+        ModulationEffectMode mode; 
+        Wavetable modulator;
 
     public:
-        Gain(float gainFactor = 1.0f) { setGain(gainFactor); }
+        Modulation(float mix = 1.0f, ModulationEffectMode mode = ModulationEffectMode::AM, WavetableType modulatorType = WavetableType::SINE, 
+                   float freq = 5.0f, float depth = 0.5f) : modulator(freq, modulatorType) {
+            setMix(mix); setMode(mode); setModulator(modulatorType); setFreq(freq); setDepth(depth);
+        }
 
-        void setGain(float gainFactor) { this->gainFactor = gainFactor; }
+        void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setMode(ModulationEffectMode mode) { this->mode = mode; }
+        void setModulator(WavetableType modulatorType) { modulator.setTable(modulatorType); }
+        void setFreq(float freq) { this->freq = std::clamp(freq, 1.0f, 2000.0f); modulator.setFreq(this->freq); } // [1.0, 2000.0]
+        void setDepth(float depth) { this->depth = std::clamp(depth, 0.0f, 1.0f); } // [0.0, 1.0]
         inline void setParam(ParamID param, float value) override {
             switch (param) {
-                case GAIN: setGain(value); break;
+                case MIX: setMix(value); break;
+                case MODE: setMode(static_cast<ModulationEffectMode>(value)); break;
+                case MODULATOR: setModulator(static_cast<WavetableType>(value)); break;
+                case FREQ: setFreq(value); break;
+                case DEPTH: setDepth(value); break;
             }
         }
 
         void process(const float* in, float* out, size_t n) override {
-            const float* in_ptr = in;
-            float* out_ptr = out;
-
             for (size_t i = 0; i < n; ++i) {
-                *out_ptr++ = *in_ptr++ * gainFactor;
-                // out[i] = in[i] * gainFactor; // Equivalent
+                const float modNext = modulator.next();
+                switch (mode) {
+                    case ModulationEffectMode::AM: out[i] = lerp(in[i], in[i] * (1.0f + (modNext * depth)) * 0.5f, mix); break;
+                    case ModulationEffectMode::RM: out[i] = lerp(in[i], in[i] * modNext, mix); break;
+                    default: out[i] = in[i];
+                }
             }
         };
+};
+
+class Wah : public Effect {
+    private:
+        enum Params : ParamID { MIX, MIN_FREQ, MAX_FREQ, Q };
+
+        float mix, minFreq, maxFreq, q;
+
+        const float L = 50.0f, L_samples = L * SAMPLE_RATE / 1000.0f; // RMS window size
+        float rms = 1e-6f; DelayLine inBuffer;
+        BPF_Biquad bpf;
+
+    public:
+        Wah(float mix = 1.0f, float minFreq = 350.0f, float maxFreq = 2500.0f, float q = 1.6f) 
+        : inBuffer(L, L + 1.0f), bpf(1000.0f, 1.6f, 0.0f) { 
+            setMix(mix); setMinFreq(minFreq); setMaxFreq(maxFreq); setQ(q);
+        }
+
+        void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setMinFreq(float minFreq) { this->minFreq = std::clamp(minFreq, 20.0f, 1000.0f); } // Hz, [20.0, 1000.0]
+        void setMaxFreq(float maxFreq) { this->maxFreq = std::clamp(maxFreq, 1000.0f, 8000.0f); } // Hz, [1000.0, 8000.0]
+        void setQ(float q) { this->q = std::clamp(q, 0.3f, 6.0f); bpf.setQ(this->q); } // [0.3, 6.0]
+        inline void setParam(ParamID param, float value) override { 
+            switch (param) {
+                case MIX: setMix(value); break;
+                case MIN_FREQ: setMinFreq(value); break;
+                case MAX_FREQ: setMaxFreq(value); break;
+                case Q: setQ(value); break;
+            }
+        }
+
+        void process(const float* in, float* out, size_t n) override {
+            for (size_t i = 0; i < n; ++i) {
+                const float x_i = in[i]; const float x_L = inBuffer.read();
+                inBuffer.write(x_i);
+
+                // Envelope follower
+                // Compute RMS recursively
+                rms = sqrtf((rms * rms) + (((x_i * x_i) - (x_L * x_L)) / L_samples));
+                float rmsDB = ampDB(std::max(rms, 1e-6f));
+
+                // Map envelope to BPF cutoff
+                float envNorm = std::clamp((rmsDB + 60.0f) / 60.0f, 0.0f, 1.0f); // 60->0 dB
+                float cutoff = lerp(minFreq, maxFreq, powf(envNorm, 1.5f));
+                bpf.setCutoff(cutoff);
+
+                // Process BPF
+                float wetSig = bpf.processSample(x_i);
+                out[i] = dryWetMix(x_i, wetSig, mix); // Mix
+            }
+        }
 };
 
 class Distortion : public Effect {
@@ -72,13 +137,13 @@ class Distortion : public Effect {
         }
         float diode(float in, float drive) {
             float x = in * (2.0f + (drive * 8.0f)); // d -> [2, 10]
-            if (x < 0) { x = exp(x) - 1.0f; } // Shockley diode equation, B=1
-            else if (x > 0) { x = 1.0 - exp(-x); }
+            if (x < 0) { x = expf(x) - 1.0f; } // Shockley diode equation, B=1
+            else if (x > 0) { x = 1.0 - expf(-x); }
             else { x = 0; }
             return x;
         }
         float bitCrush(float in, float drive) {
-            int bitDepth = (int)(2 + ((1.0f - drive) * (1.0f - drive) * 22.0f)); // 24-bit to 2-bit depth
+            int bitDepth = (int)(2 + ((1.0f - drive) * (1.0f - drive) * 14.0f)); // 16-bit to 2-bit depth
             float levels = (float)(1 << bitDepth); // 2^bits discrete levels
             return round(in * levels) / levels; // Quantize
         }
@@ -89,7 +154,7 @@ class Distortion : public Effect {
         }
         float saturate(float in, float drive) {
             float x = in * (2.0f + (drive * 8.0f)); // d -> [2, 10]
-            return tanh(x);
+            return tanhf(x);
         }
 
     public:
@@ -325,6 +390,7 @@ class Chorus : public Effect {
         }
 
         void process(const float* in, float* out, size_t n) override {
+            float sqrt_vc; arm_sqrt_f32((float)voiceCount, &sqrt_vc);
             const float *in_ptr = in;
             float *out_ptr = out;
             for (size_t i = 0; i < n; i++) {
@@ -335,7 +401,7 @@ class Chorus : public Effect {
                 }
                 delayLine.write(*in_ptr + (feedback * wetSig));
 
-                wetSig *= sqrtf((float)voiceCount) * 1.2f;
+                wetSig *= sqrt_vc * 1.2f;
                 *out_ptr++ = dryWetMix(*in_ptr++, wetSig, mix); // Mix
             }
         }
@@ -538,7 +604,7 @@ class Compressor : public Effect {
                 // Compute RMS recursively
                 const float x_i = in[i], x_L = inBuffer.read();
                 inBuffer.write(x_i); 
-                rms = sqrt((rms * rms) + (((x_i * x_i) - (x_L * x_L)) / L_samples));
+                arm_sqrt_f32((rms * rms) + (((x_i * x_i) - (x_L * x_L)) / L_samples), &rms);
                 float rmsDB = ampDB(std::max(rms, 1e-6f));
 
                 // Gain computation
@@ -702,7 +768,7 @@ class Granulator : public Effect {
             int offset = grain.reverse ? ((grain.length - 1) - grain.playhead) : grain.playhead;
             int readPos = (grain.startPos + offset) % bufSize;
             
-            float envelopeValue = getEnvelopeValue((float)grain.playhead / (float)grain.length, grain.length, envType);
+            float envelopeValue = getEnvelopeValue((float)grain.playhead / (float)grain.length, envType);
             
             ++grain.playhead;
             if (grain.playhead >= grain.length) grain.active = false; // Free if done
@@ -770,12 +836,11 @@ class Granulator : public Effect {
 };
 
 class Freezer : public Effect {
-    // HACK: Works, except for negative rates for time-domain mode which produce silence
     private:
         enum Params : ParamID { MIX, RATE, SPECTRAL_MODE, FFT_SIZE, HOP_SIZE, LOOP_START, LOOP_END };
 
-        const size_t bufSize = 1 * (size_t)SAMPLE_RATE; // TEMP: Increase bufSize later
-        const float smooth = 0.2f;
+        const size_t bufSize = (size_t)2 * (size_t)SAMPLE_RATE;
+        const float smooth = 0.005f;
         
         float mix, rate; bool spectralMode;
         float loopStart, loopEnd;
@@ -789,7 +854,7 @@ class Freezer : public Effect {
         size_t spectPos = 0, spectHopCounter = 0;
 
         void allocateSTFT() {
-            stft = std::make_unique<STFT>(fftSize, hopFactor, 0.25f);
+            stft = std::make_unique<STFT>(fftSize, hopFactor, 0.5f);
             spectBuf.assign(fftSize, 0.0f); spectFrame.assign(fftSize, 0.0f);
             spectPos = 0; spectHopCounter = 0;
         }
@@ -799,10 +864,10 @@ class Freezer : public Effect {
         }
 
     public:
-        Freezer(float mix = 1.0f, float rate = 1.0f, bool spectralMode = false, size_t fftSize = 1024, size_t hopFactor = 4, 
-                float loopStart = 0.0f, float loopEnd = 1.0f) {
-            setMix(mix); setRate(rate); setSpectralMode(spectralMode);
-            setFFTSize(fftSize); setHopSize(hopFactor); setLoopRegion(loopStart, loopEnd); 
+        Freezer(float mix = 1.0f, float rate = 1.0f, bool spectralMode = true, size_t fftSize = 1024, size_t hopFactor = 4, 
+                float loopStart = 0.0f, float loopEnd = 1.0f) : fftSize(fftSize), hopFactor(hopFactor) {
+            setMix(mix); setRate(rate); setFFTSize(fftSize); setHopSize(hopFactor); 
+            setSpectralMode(spectralMode); setLoopRegion(loopStart, loopEnd); 
             inBuf.resize(bufSize, 0.0f);
         }
         
@@ -903,14 +968,16 @@ class Freezer : public Effect {
 
                 float crossfade = 1.0f;
                 if (rate != 0.0f) {
-                    if (loopPos < smooth) { // Fade in
-                        float t = loopPos / smooth;
-                        crossfade = getEnvelopeValue(t, 1, EnvelopeType::HANN);
-                    } else if (loopPos > (1.0f - smooth)) { // Fade out
-                        float t = (loopPos - (1.0f - smooth)) / smooth;
-                        crossfade = getEnvelopeValue(1.0f - t, 1, EnvelopeType::HANN);
+                    const float fadeLen = smooth;
+                    if (loopPos < fadeLen) { // Fade in
+                        float t = loopPos / fadeLen;
+                        crossfade = 0.5f * (1.0f - arm_cos_f32(M_PI * t)); 
+                    } else if (loopPos > 1.0f - fadeLen) { // Fade out
+                        float t = (loopPos - (1.0f - fadeLen)) / fadeLen;
+                        crossfade = 0.5f * (1.0f + arm_cos_f32(M_PI * t));
                     }
-                } wetSig *= crossfade;
+                }
+                wetSig *= crossfade;
             
                 out[i] = dryWetMix(in[i], wetSig, mix); // Mix
             }
@@ -926,7 +993,8 @@ class SpectralGate : public Spectral_Effect {
         float threshold, tilt;
         
     public:
-        SpectralGate(float mix = 1.0f, float thresholdDB = -10.0f, float tilt = 0.5f, int fftSize = 512) : Spectral_Effect(mix, fftSize)
+        SpectralGate(float mix = 1.0f, float thresholdDB = -10.0f, float tilt = 0.5f, 
+            size_t fftSize = 512, size_t hopFactor = 4) : Spectral_Effect(mix, fftSize, hopFactor)
             { setThreshold(thresholdDB); setTilt(tilt); }
         
         void setThreshold(float thresholdDB) { threshold = dbAmp(std::clamp(thresholdDB, -100.0f, 0.0f)); } // dB, [-100.0, 0.0]
@@ -975,8 +1043,8 @@ class FormantShifter : public Spectral_Effect {
         std::vector<float> formants;
         
     public:
-        FormantShifter(float mix = 1.0f, float formantShift = 0.0f, size_t envelopeWidth = 10, size_t fftSize = 1024) 
-        : Spectral_Effect(mix, fftSize) { 
+        FormantShifter(float mix = 1.0f, float formantShift = 0.0f, size_t envelopeWidth = 16, size_t fftSize = 1024, size_t hopFactor = 4) 
+        : Spectral_Effect(mix, fftSize, hopFactor) { 
             setFormantShift(formantShift); setEnvelopeWidth(envelopeWidth);
             
             // Allocate buffers
@@ -1011,55 +1079,52 @@ class FormantShifter : public Spectral_Effect {
         
     protected:
         void processSpectrum(STFT::FFTFrame& frame) override {
+            if (formantShift == 0.0f) return;
+
             const size_t len = stft.getNumBins(); // dim(buf)
-            const size_t num_regions = (len + width - 1) / width; // number of equidistant regions within the buffer to find peaks
             const float shift = exp2f(formantShift / 12.0f);
+            const float epsilon = 1e-6f;
             
-            // Store magnitudes in buf
-            for (size_t k = 0; k < len; ++k) {
+            const float cutoff = 8000.0f; // band limit to save compute
+            const size_t maxBin = std::min(len, static_cast<size_t>((cutoff / (SAMPLE_RATE * 0.5f)) * (float)(len - 1)));
+            const size_t num_regions = (maxBin + width - 1) / width; // number of equidistant regions within the buffer to find peaks
+
+            // store magnitudes in "buf"
+            for (size_t k = 0; k < maxBin; ++k) {
                 float re = frame.bins[k].r; float im = frame.bins[k].i;
-                buf[k] = sqrtf(re * re + im * im);
+                arm_sqrt_f32(re * re + im * im, &buf[k]);
             }
-            
+
             /*————— INITIALIZE BUFFERS —————*/
-            std::fill(interp.begin(), interp.end(), 0.0f); // clear
+            // std::fill(interp.begin(), interp.end(), 0.0f); // clear
             
             pk_info.clear();
+            pk_info.reserve(num_regions + 2);
             pk_info.push_back({buf[0], 0}); // set first element in pk_info to the first element in "buf" buffer
             
             /*————— PEAK DETECTION MAIN LOOP —————*/
             size_t local_len = width;
             for (size_t j = 0; j < num_regions; ++j) {
-                float loc_max = 0.0f; float loc_sum = 0.0f; 
-                float loc_avg = 0.0f; size_t max_idx = 0;
+                float loc_max = 0.0f; float loc_sum = 0.0f; size_t max_idx = 0;
                 
                 // calculate mean of local region
                 size_t start = (local_len > width) ? (local_len - width) : 0;
-                size_t end = std::min(local_len, len);
+                size_t end = std::min(start + width, len);
                 for (size_t i = start; i < end; ++i) {
-                    loc_sum += buf[i];
+                    const float v = buf[i];
+                    loc_sum += v;
+                    if (v > loc_max) { loc_max = v; max_idx = i; } // local maxima
                 }
-                loc_avg = loc_sum / (end - start);
+                const float loc_avg = loc_sum / ((end > start) ? (float)(end - start) : 1.0f);
 
-                bool loc_avg_found = false;
+                // use absolute maximum if no local maxima
+                size_t idx = max_idx;
+                float val = loc_max;
                 for (size_t i = start; i < end; ++i) {
-                    float current = buf[i];
-                    if (current > loc_avg && current >= loc_max) { // local maxima
-                        loc_max = current;
-                        max_idx = i;
-                        loc_avg_found = true;
-                    }
+                    const float v = buf[i];
+                    if (v > loc_avg && v >= val) { idx = i; val = v; }
                 }
-                if (!loc_avg_found) { // no local maxima found, just use absolute maximum
-                    loc_max = 0.0f;
-                    for (size_t i = start; i < end; ++i) {
-                        if (buf[i] > loc_max) {
-                            loc_max = buf[i];
-                            max_idx = i;
-                        }
-                    }
-                }
-                pk_info.push_back({loc_max, max_idx});
+                pk_info.push_back({val, idx});
                 
                 local_len += width;
             }
@@ -1072,7 +1137,8 @@ class FormantShifter : public Spectral_Effect {
                 size_t distance = pk_info[j].second;
                 float previous_pk = pk_info[j - 1].first;
                 float current_pk = pk_info[j].first; // the literal value of the peak
-                
+
+                if (distance <= start_pos) continue;
                 for (size_t i = start_pos; i < distance; ++i) {
                     float val = scale((float)i, (float)start_pos, (float)distance, previous_pk, current_pk);
                     interp[i] = val;
@@ -1081,29 +1147,31 @@ class FormantShifter : public Spectral_Effect {
             interp[len - 1] = pk_info.back().first;
             
             /*————— FORMANT SHIFT ROUTINE —————*/
+            const float maxIdx = (float)(len - 1);
+            const float inv_shift = 1.0f / shift;
             for (size_t i = 0; i < len; ++i) {
-                float sourceIdx = (float)i / shift;
-                float valf; // valf = peek(interp, i / shift)
+                float sourceIdx = (float)i * inv_shift;
                 
                 // poke(formants, valf, i, boundmode="clip")
-                if (sourceIdx < 0.0f) { valf = interp[0];
-                } else if (sourceIdx >= (float)(len - 1)) { valf = interp[len - 1];
-                } else { valf = lerp(interp, sourceIdx, len); }
-                formants[i] = valf;
+                if (sourceIdx <= 0.0f) { formants[i] = interp[0];
+                } else if (sourceIdx > maxIdx) { formants[i] = interp[len - 1];
+                } else { formants[i] = lerp(interp, sourceIdx, len); }
             }
             
             /*————— CONVOLUTION —————*/
-            for (size_t i = 1; i < len; ++i) {
-                float det = (interp[i] > 1e-12f) ? (buf[i] / interp[i]) : 0.0f; // deconvolution to get spectral detail
+            for (size_t i = 1; i < maxBin; ++i) {
+                if (interp[i] <= epsilon) { formants[i] = 0.0f; continue; } // avoid divide-by-zero
+
+                float det = buf[i] / (interp[i] + epsilon); // deconvolution to get spectral detail
                 float spectrum = det * formants[i]; // convolution of spectral detail & shifted spectral envelope
+                if (spectrum > 10.0f * buf[i]) spectrum = 10.0f * buf[i]; // clamp extreme gains
                 formants[i] = spectrum;
                 
                 // apply to complex FFT bins (preserve phase)
-                float mag = buf[i];
-                if (mag > 1e-12f) { // avoid division by 0
-                    float scaleFactor = spectrum / mag;
+                if (buf[i] > epsilon) {
+                    const float scaleFactor = spectrum / buf[i];
                     frame.bins[i].r *= scaleFactor; frame.bins[i].i *= scaleFactor;
-                }
+                } else { frame.bins[i].r = 0.0f; frame.bins[i].i = 0.0f; }
             }
         }
 };

@@ -5,6 +5,8 @@
 #include <kiss_fft.h>
 #include <kiss_fftr.h>
 
+#include "arm_math.h"
+
 #include <algorithm>
 #include <cmath>
 #include <deque>
@@ -20,12 +22,12 @@ float ampDB(float amp) { return 20.0f * log10(amp + 1e-12); }
 
 float uniform() { return ((float)rand() / RAND_MAX) * 2.0f - 1.0f; } // Random float between [-1, 1]
 
-float getEnvelopeValue(float t, size_t N, EnvelopeType type) {
+float getEnvelopeValue(float t, EnvelopeType type) {
     // https://www.desmos.com/calculator/j7vhnwaylq
     switch (type) {
-        case EnvelopeType::HANN: return 0.5f * (1.0f - cosf(2.0f * static_cast<float>(M_PI) * t));
-        case EnvelopeType::HAMMING: return 0.54f - (0.46f * cosf(2.0f * static_cast<float>(M_PI) * t));
-        case EnvelopeType::SINE: return sinf(static_cast<float>(M_PI) * t);
+        case EnvelopeType::HANN: return 0.5f * (1.0f - arm_cos_f32(2.0f * static_cast<float>(M_PI) * t));
+        case EnvelopeType::HAMMING: return 0.54f - (0.46f * arm_cos_f32(2.0f * static_cast<float>(M_PI) * t));
+        case EnvelopeType::SINE: return arm_sin_f32(static_cast<float>(M_PI) * t);
         case EnvelopeType::TRI: return 1.0f - fabsf(2.0f * t - 1.0f);
         case EnvelopeType::PERC: {
             const float attack = 0.03f;
@@ -39,9 +41,9 @@ float getEnvelopeValue(float t, size_t N, EnvelopeType type) {
         case EnvelopeType::SMOOTH_RECT: {
             const float smooth = 0.05f;
             if (t < smooth) { // Fade in
-                return 0.5f * (1.0f - cosf(static_cast<float>(M_PI) * t / smooth)); 
+                return 0.5f * (1.0f - arm_cos_f32(static_cast<float>(M_PI) * t / smooth)); 
             } else if (t >= (1.0f - smooth)) { // Fade out
-                return 0.5f * (1.0f - cosf(static_cast<float>(M_PI) * (1.0f - t) / smooth)); 
+                return 0.5f * (1.0f - arm_cos_f32(static_cast<float>(M_PI) * (1.0f - t) / smooth)); 
             } else { return 1.0f; }
         }
         default: return 1.0f;
@@ -62,7 +64,7 @@ inline float lerp(float a, float b, float t) { return a + (t * (b - a)); } // Li
 inline float scale(float x, float inLow, float inHigh, float outLow, float outHigh, float exponent = 1.0f) { // Map value in input range to output range
     // Normalize input value to [0, 1]
     float t = std::clamp((x - inLow) / (inHigh - inLow), 0.0f, 1.0f); // [0, 1]
-    if (exponent != 1.0f) t = std::pow(t, exponent); // Apply exponential
+    if (exponent != 1.0f) t = powf(t, exponent); // Apply exponential
     return lerp(outLow, outHigh, t);
 }
 
@@ -70,14 +72,14 @@ inline float dryWetMix(float dry, float wet, float mix, bool lin = true) {
     if (mix == 1.0f) return wet;
     else if (mix == 0.0f) return dry;
     else if (lin) return lerp(dry, wet, mix); // Linear mix
-    else return (dry * cosf(mix * M_PI_2)) + (wet * sinf(mix * M_PI_2)); // Equal power crossfade
+    else return (dry * arm_cos_f32(mix * M_PI_2)) + (wet * arm_sin_f32(mix * M_PI_2)); // Equal power crossfade
 }
 
 inline void overlapAdd(std::vector<float>& target, const std::vector<float>& frame, EnvelopeType type, size_t startPos = 0) {
     const size_t N = frame.size();
     for (size_t i = 0; i < N; ++i) {
         size_t pos = (startPos + i) % target.size();
-        target[pos] += frame[i] * getEnvelopeValue((float)i / N, N, type);
+        target[pos] += frame[i] * getEnvelopeValue((float)i / N, type);
     }
 }
 
@@ -150,42 +152,96 @@ class DelayLine { // Implements z^-N
 class FFT {
     private:
         size_t fftSize;
-        kiss_fftr_cfg cfgF = nullptr, cfgI = nullptr;
-        std::vector<kiss_fft_cpx> fftOut; // Complex output buffer
+        arm_rfft_fast_instance_f32 rfft;
+        std::vector<float32_t> fftBuffer; // Output buffer, real interleaved CMSIS form
 
         void allocateFFT() {
-            if(cfgF) { kiss_fft_free(cfgF); } if(cfgI) { kiss_fft_free(cfgI); }
-            cfgF = kiss_fftr_alloc(static_cast<int>(fftSize), 0, nullptr, nullptr); // Forward
-            cfgI = kiss_fftr_alloc(static_cast<int>(fftSize), 1, nullptr, nullptr); // Inverse
-            
-            fftOut.resize(fftSize/2 + 1);
+            fftSize = std::clamp(fftSize, (size_t)128, (size_t)FFT_MAX_SIZE);
+            arm_rfft_fast_init_f32(&rfft, static_cast<uint16_t>(fftSize));
+            fftBuffer.resize(fftSize);
         }
+
+        // Convert CMSIS interleaved -> fft_cpx bins
+        void deinterleave(const float32_t* interleaved, fft_cpx* outBins) const {
+            const size_t N = fftSize;
+            const size_t K = N / 2; // Highest bin index
+            
+            outBins[0].r = interleaved[0]; outBins[0].i = 0.0f; // Bin 0
+            outBins[K].r = interleaved[1]; outBins[K].i = 0.0f; // Bin N/2
+            for (size_t k = 1; k < K; ++k) { outBins[k].r = interleaved[2 * k]; outBins[k].i = interleaved[2 * k + 1]; } // Bins 1..K-1
+        }
+        // Convert fft_cpx bins -> CMSIS interleaved
+        void interleave(const fft_cpx* inBins, float32_t* interleaved) const {
+            const size_t N = fftSize;
+            const size_t K = N / 2; // Highest bin index
+            
+            interleaved[0] = inBins[0].r; // Bin 0
+            interleaved[1] = inBins[K].r; // Bin N/2
+            for (size_t k = 1; k < K; ++k) { interleaved[2 * k] = inBins[k].r; interleaved[2 * k + 1] = inBins[k].i; } // Bins 1..K-1
+        }
+
     public:
-        FFT(size_t fftSize = 512) { setFFTSize(fftSize); }
-        ~FFT() { if(cfgF) kiss_fft_free(cfgF); if(cfgI) kiss_fft_free(cfgI); }
+        FFT(size_t N = 512) : fftSize(N) { allocateFFT(); }
+        ~FFT() = default;
         FFT(const FFT&) = delete;
         FFT& operator=(const FFT&) = delete;
 
-        void setFFTSize(size_t N) { // [128, FFT_MAX_SIZE], MUST BE POWER OF 2
-            fftSize = std::clamp(N, (size_t)128, (size_t)FFT_MAX_SIZE);
-            allocateFFT();
+        void setFFTSize(size_t fftSize) { this->fftSize = fftSize; allocateFFT(); }
+        size_t getFFTSize() const { return fftSize; }
+        size_t getNumBins() const { return (fftSize / 2) + 1; }
+
+        void forward(const float32_t* in, fft_cpx* outBins) {
+            std::copy(in, in + fftSize, fftBuffer.begin()); // Prevent in-place modification
+            arm_rfft_fast_f32(&rfft, fftBuffer.data(), fftBuffer.data(), 0);
+            deinterleave(fftBuffer.data(), outBins);
         }
 
-        void forward(const float* in, kiss_fft_cpx* out) {
-            kiss_fftr(cfgF, in, out);
-        }
-
-        void inverse(kiss_fft_cpx* in, float* out) {
-            for(size_t k = 0; k < (fftSize/2 + 1); ++k) fftOut[k] = in[k];
-            kiss_fftri(cfgI, fftOut.data(), out);
-            for (size_t n = 0; n < fftSize; ++n) out[n] /= (float)fftSize;
+        void inverse(const fft_cpx* inBins, float32_t* out) {
+            interleave(inBins, fftBuffer.data());
+            arm_rfft_fast_f32(&rfft, fftBuffer.data(), out, 1);
         }
 };
+
+// kissFFT version
+// class FFT {
+//     private:
+//         size_t fftSize;
+//         kiss_fftr_cfg cfgF = nullptr, cfgI = nullptr;
+//         std::vector<kiss_fft_cpx> fftOut; // Complex output buffer
+
+//         void allocateFFT() {
+//             if(cfgF) { kiss_fft_free(cfgF); } if(cfgI) { kiss_fft_free(cfgI); }
+//             cfgF = kiss_fftr_alloc(static_cast<int>(fftSize), 0, nullptr, nullptr); // Forward
+//             cfgI = kiss_fftr_alloc(static_cast<int>(fftSize), 1, nullptr, nullptr); // Inverse
+            
+//             fftOut.resize(fftSize/2 + 1);
+//         }
+//     public:
+//         FFT(size_t fftSize = 512) { setFFTSize(fftSize); }
+//         ~FFT() { if(cfgF) kiss_fft_free(cfgF); if(cfgI) kiss_fft_free(cfgI); }
+//         FFT(const FFT&) = delete;
+//         FFT& operator=(const FFT&) = delete;
+
+//         void setFFTSize(size_t N) { // [128, FFT_MAX_SIZE], MUST BE POWER OF 2
+//             fftSize = std::clamp(N, (size_t)128, (size_t)FFT_MAX_SIZE);
+//             allocateFFT();
+//         }
+
+//         void forward(const float* in, kiss_fft_cpx* out) {
+//             kiss_fftr(cfgF, in, out);
+//         }
+
+//         void inverse(kiss_fft_cpx* in, float* out) {
+//             for(size_t k = 0; k < (fftSize/2 + 1); ++k) fftOut[k] = in[k];
+//             kiss_fftri(cfgI, fftOut.data(), out);
+//             for (size_t n = 0; n < fftSize; ++n) out[n] /= (float)fftSize;
+//         }
+// };
 
 class STFT {
     public:
         struct FFTFrame {
-            std::vector<kiss_fft_cpx> bins;
+            std::vector<fft_cpx> bins;
             FFTFrame(size_t numBins) : bins(numBins) {}
         };
     private:
@@ -255,7 +311,7 @@ class STFT {
                 // Extract full FFT frame from circular buffer
                 size_t readPos = inPos; // Start from oldest sample
                 for (size_t j = 0; j < fftN; ++j) {
-                    forwardFrame[j] = inBuf[readPos] * getEnvelopeValue((float)j / fftN, fftN, EnvelopeType::HANN);
+                    forwardFrame[j] = inBuf[readPos] * getEnvelopeValue((float)j / fftN, EnvelopeType::HANN);
                     ++readPos; if (readPos >= fftN) readPos = 0;
                 }
                 
