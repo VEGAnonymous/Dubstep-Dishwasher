@@ -84,7 +84,6 @@ class AudioChain {
             };
 
             // Build effects chain, initial order
-            // BUG: DTCM memory issues - some effects disabled until PSRAM arrives
             addEffect(EffectName::MODULATION);
             addEffect(EffectName::WAH);
             addEffect(EffectName::DISTORTION);
@@ -96,11 +95,11 @@ class AudioChain {
             addEffect(EffectName::COMPRESSOR);
             addEffect(EffectName::EQUALIZER);
             addEffect(EffectName::GRANULATOR);
-            // addEffect(EffectName::FREEZER);
+            addEffect(EffectName::FREEZER);
             addEffect(EffectName::SPECTRAL_GATE);
-            // addEffect(EffectName::FORMANT_SHIFTER);
+            addEffect(EffectName::FORMANT_SHIFTER);
 
-            // addEffect(EffectName::LIMITER); // DO NOT TOUCH
+            addEffect(EffectName::LIMITER); // DO NOT TOUCH
 
             // Bypass all except Limiter
             for (size_t i = 0; i < effects.size() - 1; ++i) effects[i]->setBypass(true);

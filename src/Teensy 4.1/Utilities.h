@@ -119,35 +119,35 @@ class DelayLine { // Implements z^-N
         }
 };
 
-// Vector version placeholder for testing
-// class DelayLine { // Implements z^-N
-//     private:
-//         float delaySamples; 
-//         size_t writeIndex;
-//         std::vector<float> buffer;
-//     public:
-//         DelayLine(float delayTime, float maxDelayTime) : writeIndex((size_t)0) {
-//             buffer.resize(((maxDelayTime * SAMPLE_RATE) / 1000.0f) + 1, 0.0f);
-//             setDelayTime(delayTime);
-//         }
+// HACK: Vector version; Reverb crashes for some fucking reason without it so it's staying
+class DelayLineVector { // Implements z^-N
+    private:
+        float delaySamples; 
+        size_t writeIndex;
+        std::vector<float> buffer;
+    public:
+        DelayLineVector(float delayTime, float maxDelayTime) : writeIndex((size_t)0) {
+            buffer.resize(((maxDelayTime * SAMPLE_RATE) / 1000.0f) + 1, 0.0f);
+            setDelayTime(delayTime);
+        }
 
-//         void setDelayTime(float delayTime) { delaySamples = (delayTime * SAMPLE_RATE) / 1000.0f; } // ms
-//         void setDelaySamples(float delaySamples) { this->delaySamples = delaySamples; }
-//         int getSize() const { return buffer.size(); }
+        void setDelayTime(float delayTime) { delaySamples = (delayTime * SAMPLE_RATE) / 1000.0f; } // ms
+        void setDelaySamples(float delaySamples) { this->delaySamples = delaySamples; }
+        int getSize() const { return buffer.size(); }
 
-//         inline float read(float offset = -1.0f) {
-//             float readOffset = (offset >= 0.0f) ? offset : delaySamples;
-//             float readIndex = (float)writeIndex - readOffset;
-//             if (readIndex < 0) readIndex += buffer.size();
-//             if (readOffset == floor(readOffset)) return buffer[(int)readIndex % buffer.size()];
-//             return lerp(buffer, readIndex, buffer.size());
-//         }
+        inline float read(float offset = -1.0f) {
+            float readOffset = (offset >= 0.0f) ? offset : delaySamples;
+            float readIndex = (float)writeIndex - readOffset;
+            if (readIndex < 0) readIndex += buffer.size();
+            if (readOffset == floor(readOffset)) return buffer[(int)readIndex % buffer.size()];
+            return lerp(buffer, readIndex, buffer.size());
+        }
 
-//         inline void write(float in) { 
-//             buffer[writeIndex] = in;
-//             if (++writeIndex >= buffer.size()) writeIndex = 0;
-//         }
-// };
+        inline void write(float in) { 
+            buffer[writeIndex] = in;
+            if (++writeIndex >= buffer.size()) writeIndex = 0;
+        }
+};
 
 class FFT {
     private:
@@ -201,42 +201,6 @@ class FFT {
             arm_rfft_fast_f32(&rfft, fftBuffer.data(), out, 1);
         }
 };
-
-// kissFFT version
-// class FFT {
-//     private:
-//         size_t fftSize;
-//         kiss_fftr_cfg cfgF = nullptr, cfgI = nullptr;
-//         std::vector<kiss_fft_cpx> fftOut; // Complex output buffer
-
-//         void allocateFFT() {
-//             if(cfgF) { kiss_fft_free(cfgF); } if(cfgI) { kiss_fft_free(cfgI); }
-//             cfgF = kiss_fftr_alloc(static_cast<int>(fftSize), 0, nullptr, nullptr); // Forward
-//             cfgI = kiss_fftr_alloc(static_cast<int>(fftSize), 1, nullptr, nullptr); // Inverse
-            
-//             fftOut.resize(fftSize/2 + 1);
-//         }
-//     public:
-//         FFT(size_t fftSize = 512) { setFFTSize(fftSize); }
-//         ~FFT() { if(cfgF) kiss_fft_free(cfgF); if(cfgI) kiss_fft_free(cfgI); }
-//         FFT(const FFT&) = delete;
-//         FFT& operator=(const FFT&) = delete;
-
-//         void setFFTSize(size_t N) { // [128, FFT_MAX_SIZE], MUST BE POWER OF 2
-//             fftSize = std::clamp(N, (size_t)128, (size_t)FFT_MAX_SIZE);
-//             allocateFFT();
-//         }
-
-//         void forward(const float* in, kiss_fft_cpx* out) {
-//             kiss_fftr(cfgF, in, out);
-//         }
-
-//         void inverse(kiss_fft_cpx* in, float* out) {
-//             for(size_t k = 0; k < (fftSize/2 + 1); ++k) fftOut[k] = in[k];
-//             kiss_fftri(cfgI, fftOut.data(), out);
-//             for (size_t n = 0; n < fftSize; ++n) out[n] /= (float)fftSize;
-//         }
-// };
 
 class STFT {
     public:

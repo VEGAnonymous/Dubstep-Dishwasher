@@ -416,7 +416,7 @@ class Reverb : public Effect {
         float mix, predelayTime, decayTime, decayGainL, decayGainR, modRate, modDepth;
         std::vector<APF> diffusers; // 8
         std::vector<OnePole> filters; // 3
-        std::vector<DelayLine> delayLines; // 5
+        std::vector<DelayLineVector> delayLines; // 5
         Wavetable LFO;
         float tankInSig, nodeSig, tankSig1 = 0, tankSig2 = 0;
 
@@ -432,11 +432,11 @@ class Reverb : public Effect {
             // Diffusers
             size_t apf_i = 0;
             for (float diff : inputDiffuse) {
-                for (size_t i = 0; i < 2; ++i) { diffusers.push_back(APF(1.0f, 0.0f, 0.0f, false, 10.0f, true)); 
+                for (size_t i = 0; i < 2; ++i) { diffusers.push_back(APF(1.0f, 0.0f, 0.0f, false, 10.0f, true, false)); 
                 diffusers.back().setDelay(apfDelays[apf_i++]); diffusers.back().setQ(1.0f / (1.0f - diff)); };
             }
             for (float diff : decayDiffuse) {
-                for (size_t i = 0; i < 2; ++i) { diffusers.push_back(APF(1.0f, 0.0f, 0.0f, false, 61.0f, true));
+                for (size_t i = 0; i < 2; ++i) { diffusers.push_back(APF(1.0f, 0.0f, 0.0f, false, 61.0f, true, false));
                 diffusers.back().setDelay(apfDelays[apf_i++]); diffusers.back().setQ(1.0f / (1.0f - diff)); };
             } diffusers[4].setInvert(true); diffusers[5].setInvert(true);
 
@@ -447,7 +447,7 @@ class Reverb : public Effect {
             }
 
             // Delays
-            for (float delay : delays) { delayLines.push_back(DelayLine(delay, 102.0f)); }
+            for (float delay : delays) { delayLines.push_back(DelayLineVector(delay, 102.0f)); }
 
             setMix(mix); setPredelayTime(predelayTime); setDecayTime(decayTime); setModRate(modRate); setModDepth(modDepth);
         }
@@ -712,14 +712,15 @@ class Granulator : public Effect {
         enum Params : ParamID { MIX, POSITION, POSITION_RAND, RATE, RATE_RAND, LENGTH, LENGTH_RAND, 
                                 LEVEL, LEVEL_RAND, REVERSE_CHANCE, ENVELOPE_TYPE };
 
-        const size_t bufSize = 1 * (size_t)SAMPLE_RATE;
+        const size_t bufSize = 3 * (size_t)SAMPLE_RATE;
         const int maxGrains = 32;
         
         float mix, position, rate, length, level, reverseChance;
         float positionRand, rateRand, lengthRand, levelRand;
         EnvelopeType envType;
         
-        std::vector<float> inBuf; size_t writePos = 0;
+        float* inBuf = nullptr;
+        size_t writePos = 0;
         float grainCounter = 0.0f;
         
         struct Grain {
@@ -783,8 +784,9 @@ class Granulator : public Effect {
             setMix(mix); setPosition(position); setPositionRand(positionRand); setRate(time); setRateRand(timeRand); setLength(length); 
             setLengthRand(lengthRand); setLevel(level); setLevelRand(levelRand); setReverseChance(reverseChance); setEnvelopeType(envType);
             grains.resize(maxGrains);
-            inBuf.resize(bufSize, 0.0f);
+            inBuf = (float*)extmem_malloc(bufSize * sizeof(float)); if (!inBuf) while(1){}; memset(inBuf, 0, bufSize * sizeof(float));
         }
+        ~Granulator() { if (inBuf) extmem_free(inBuf); }
 
         void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
         void setPosition(float position) { this->position = std::clamp(position, 0.0f, 1.0f); } // [0.0, 1.0]
@@ -839,13 +841,13 @@ class Freezer : public Effect {
     private:
         enum Params : ParamID { MIX, RATE, SPECTRAL_MODE, FFT_SIZE, HOP_SIZE, LOOP_START, LOOP_END };
 
-        const size_t bufSize = (size_t)2 * (size_t)SAMPLE_RATE;
+        const size_t bufSize = (size_t)3 * (size_t)SAMPLE_RATE;
         const float smooth = 0.005f;
         
         float mix, rate; bool spectralMode;
         float loopStart, loopEnd;
         
-        std::vector<float> inBuf; size_t writePos = 0; float readPos = 0.0f;
+        float* inBuf = nullptr; size_t writePos = 0; float readPos = 0.0f;
         
         // Spectral resythesis
         size_t fftSize, hopFactor;
@@ -864,12 +866,15 @@ class Freezer : public Effect {
         }
 
     public:
-        Freezer(float mix = 1.0f, float rate = 1.0f, bool spectralMode = true, size_t fftSize = 1024, size_t hopFactor = 4, 
+        Freezer(float mix = 1.0f, float rate = 1.0f, bool spectralMode = false, size_t fftSize = 1024, size_t hopFactor = 4, 
                 float loopStart = 0.0f, float loopEnd = 1.0f) : fftSize(fftSize), hopFactor(hopFactor) {
             setMix(mix); setRate(rate); setFFTSize(fftSize); setHopSize(hopFactor); 
             setSpectralMode(spectralMode); setLoopRegion(loopStart, loopEnd); 
-            inBuf.resize(bufSize, 0.0f);
+            inBuf = (float*)extmem_malloc(bufSize * sizeof(float));
+            if (!inBuf) while (1) { }
+            memset(inBuf, 0, bufSize * sizeof(float));
         }
+        ~Freezer() { if (inBuf) { extmem_free(inBuf); inBuf = nullptr; } }
         
         void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
         void setRate(float rate) { this->rate = std::clamp(rate, -4.0f, 4.0f); } // [-4.0, 4.0]
@@ -976,8 +981,7 @@ class Freezer : public Effect {
                         float t = (loopPos - (1.0f - fadeLen)) / fadeLen;
                         crossfade = 0.5f * (1.0f + arm_cos_f32(M_PI * t));
                     }
-                }
-                wetSig *= crossfade;
+                } wetSig *= crossfade;
             
                 out[i] = dryWetMix(in[i], wetSig, mix); // Mix
             }

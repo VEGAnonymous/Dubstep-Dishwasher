@@ -61,6 +61,7 @@ First-order all-pass filter available in Direct Form I or Direct Form II impleme
 - **`invert`** — Phase inversion flag `true / false`
 - **`maxDelayTime`** — Maximum delay time in ms (determines buffer size)
 - **`useDFII`** — Whether to implement Direct Form II instead of Direct Form I `true / false`
+- **`usePSRAM`** — Whether to use PSRAM buffers `true / false`
 
 **Transfer Functions:**
 

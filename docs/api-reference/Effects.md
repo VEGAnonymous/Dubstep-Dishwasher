@@ -125,7 +125,8 @@ Implements the [Dattorro reverb](https://ccrma.stanford.edu/~dattorro/EffectDesi
 ## `Compressor`
 
 **Description:**  
-Dynamic range compressor, RMS detection, [gain reduction](https://www.desmos.com/calculator/wkmkrmn9le), soft knee, and optional auto makeup gain.
+Dynamic range compressor: RMS detection, [gain reduction](https://www.desmos.com/calculator/wkmkrmn9le), soft knee, and optional auto makeup gain.
+
 **Parameters:**
 
 0. **`MIX`** — Dry/wet balance `[0.0, 1.0]`  
@@ -146,7 +147,7 @@ Two-band parametric EQ using `Biquad` filters. Supports multiple filter types pe
 
 **Parameters:**
 
-0. **`EQ_MIX`** — Dry/wet balance `[0.0, 1.0]`
+0. **`MIX`** — Dry/wet balance `[0.0, 1.0]`
 1. **`BAND1_TYPE`** — Filter type for band 1 (`BiquadType` enum)
 2. **`BAND1_CUTOFF`** — Cutoff frequency in Hz `[20.0, 20000.0]`
 3. **`BAND1_Q`** — Quality factor `[0.02, 40.0]`

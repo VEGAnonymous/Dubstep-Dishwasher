@@ -163,6 +163,14 @@ Circular buffer implementing `z^-N` delay with fractional delay support via line
 
 ---
 
+### `DelayLineVector`
+
+**Description:** 
+
+Exactly the same as DelayLine except for using DTCM vectors instead of PSRAM buffers.
+
+---
+
 ### `FFT`
 
 **Description:**  
