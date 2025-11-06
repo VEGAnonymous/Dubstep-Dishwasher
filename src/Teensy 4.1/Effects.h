@@ -12,18 +12,50 @@
 
 /* EFFECTS */
 
+class Gain : public Effect {
+    // Simple utility stage
+    private:
+        enum Params : ParamID { GAIN };
+
+        float gainFactor;
+
+    public:
+        Gain(float gainFactor = 0.0f) { setGain(gainFactor); }
+
+        void setGain(float gainDB) { this->gainFactor = ampDB(std::clamp(gainDB, -60.0f, 24.0f)); } // dB, [-60.0, 24.0]
+        inline void setParam(ParamID param, float value) override {
+            switch (param) {
+                case GAIN: setGain(value); break;
+            }
+        }
+
+        void process(const float* in, float* out, size_t n) override {
+            const float* in_ptr = in;
+            float* out_ptr = out;
+
+            for (size_t i = 0; i < n; ++i) {
+                float wetSig = *in_ptr * gainFactor;
+                // Hard clip just in case
+                if (wetSig > 1.0f) { wetSig = 1.0f; }
+                else if (wetSig < -1.0f) { wetSig = -1.0f; }
+
+                *out_ptr++ = wetSig;
+            } 
+        };
+};
+
 class Modulation : public Effect {
     private:
-        enum Params : ParamID { MIX, MODE, MODULATOR, FREQ, DEPTH };
+        enum Params : ParamID { MIX, MODE, MODULATOR, FREQ, DEPTH, BIAS, RECTIFY };
 
-        float mix, freq, depth;
+        float mix, freq, depth, bias, rectify;
         ModulationEffectMode mode; 
         Wavetable modulator;
 
     public:
         Modulation(float mix = 1.0f, ModulationEffectMode mode = ModulationEffectMode::AM, WavetableType modulatorType = WavetableType::SINE, 
-                   float freq = 5.0f, float depth = 0.5f) : modulator(freq, modulatorType) {
-            setMix(mix); setMode(mode); setModulator(modulatorType); setFreq(freq); setDepth(depth);
+                   float freq = 5.0f, float depth = 0.5f, float bias = 0.0f, float rectify = 0.0f) : modulator(freq, modulatorType) {
+            setMix(mix); setMode(mode); setModulator(modulatorType); setFreq(freq); setDepth(depth); setBias(bias); setRectify(rectify);
         }
 
         void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
@@ -31,6 +63,8 @@ class Modulation : public Effect {
         void setModulator(WavetableType modulatorType) { modulator.setTable(modulatorType); }
         void setFreq(float freq) { this->freq = std::clamp(freq, 1.0f, 2000.0f); modulator.setFreq(this->freq); } // [1.0, 2000.0]
         void setDepth(float depth) { this->depth = std::clamp(depth, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setBias(float bias) { this->bias = std::clamp(bias, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setRectify(float rectify) { this->rectify = std::clamp(rectify, -1.0f, 1.0f); } // [-1.0, 1.0]
         inline void setParam(ParamID param, float value) override {
             switch (param) {
                 case MIX: setMix(value); break;
@@ -38,12 +72,20 @@ class Modulation : public Effect {
                 case MODULATOR: setModulator(static_cast<WavetableType>(value)); break;
                 case FREQ: setFreq(value); break;
                 case DEPTH: setDepth(value); break;
+                case BIAS: setBias(value); break;
+                case RECTIFY: setRectify(value); break;
             }
         }
 
         void process(const float* in, float* out, size_t n) override {
             for (size_t i = 0; i < n; ++i) {
-                const float modNext = modulator.next();
+                float modNext = modulator.next();
+                if (rectify > 0.0f) modNext = lerp(modNext, fabs(modNext), rectify);
+                else if (rectify < 0.0f) modNext = lerp(modNext, -fabs(modNext), -rectify);
+
+                modNext += bias;
+                modNext = std::clamp(modNext, -1.0f, 1.0f);
+
                 switch (mode) {
                     case ModulationEffectMode::AM: out[i] = lerp(in[i], in[i] * (1.0f + (modNext * depth)) * 0.5f, mix); break;
                     case ModulationEffectMode::RM: out[i] = lerp(in[i], in[i] * modNext, mix); break;
@@ -543,6 +585,68 @@ class Reverb : public Effect {
         }
 };
 
+class Gate : public Effect {
+    private:
+        enum Params : ParamID { MIX, THRESHOLD, ATTACK_TIME, RELEASE_TIME, HOLD_TIME, INVERT };
+
+        float mix, threshold; bool invert;
+        const float L = 50.0f, L_samples = L * SAMPLE_RATE / 1000.0f; // RMS window size
+        float attackCoeff, releaseCoeff; 
+
+        float rms = 1e-6f; DelayLine inBuffer;  
+        float gainSmoothed = 0.0f;
+        size_t holdSamples; size_t holdCounter = 0;
+
+    public:
+        Gate(float mix = 1.0, float threshold = -18.0f, float attack = 25.0f, float release = 25.0f, float hold = 50.0f, bool invert = false)
+            : inBuffer(1.0f, L + 1.0f) {
+            setMix(mix); setThreshold(threshold); setAttackTime(attack); setReleaseTime(release); setHoldTime(hold); setInvert(invert); }
+
+        void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setThreshold(float threshold) { this->threshold = std::clamp(threshold, -100.0f, 0.0f); } // dB, [-100.0, 0.0]
+        void setAttackTime(float attackTime) { attackCoeff = exp(-2.2f / (std::clamp(attackTime, 0.01f, 250.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [0.01, 250.0]
+        void setReleaseTime(float releaseTime) { releaseCoeff = exp(-2.2f / (std::clamp(releaseTime, 0.01f, 1500.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [0.01, 1500.0]
+        void setHoldTime(float holdTime) { holdSamples = (size_t)(std::clamp(holdTime, 1.0f, 1500.0f) * SAMPLE_RATE / 1000.0f); } // ms, [1.0, 1500.0]
+        void setInvert(bool invert) { this->invert = invert; }
+        inline void setParam(ParamID param, float value) override {
+            switch (param) {
+                case MIX: setMix(value); break;
+                case THRESHOLD: setThreshold(value); break;
+                case ATTACK_TIME: setAttackTime(value); break;
+                case RELEASE_TIME: setReleaseTime(value); break;
+                case HOLD_TIME: setHoldTime(value); break;
+                case INVERT: setInvert(value > 0.5f); break;
+            }
+        }
+
+        void process(const float* in, float* out, size_t n) override {
+            for (size_t i = 0; i < n; ++i) {
+                // Compute RMS recursively
+                const float x_i = in[i], x_L = inBuffer.read();
+                inBuffer.write(x_i); 
+                arm_sqrt_f32((rms * rms) + (((x_i * x_i) - (x_L * x_L)) / L_samples), &rms);
+                float rmsDB = ampDB(std::max(rms, 1e-6f));
+
+                // To gate or not to gate
+                float staticGain = (rmsDB > threshold) ? 1.0f : 0.0f;
+                if (invert) staticGain = 1.0f - staticGain;
+
+                if (staticGain > 0.5f) { holdCounter = (size_t)holdSamples; // Reset hold when above threshold
+                } else {
+                    if (holdCounter > 0) holdCounter--;
+                    else staticGain = 0.0f; // Start releasing after hold expires
+                }
+
+                // Gain smoothing (one-pole IIR LPF)
+                if (staticGain > gainSmoothed) gainSmoothed += (1.0f - attackCoeff) * (staticGain - gainSmoothed); // Attack
+                else gainSmoothed += (1.0f - releaseCoeff) * (staticGain - gainSmoothed); // Release
+
+                float wetSig = x_i * gainSmoothed;
+                out[i] = dryWetMix(x_L, wetSig, mix); // Mix
+            }
+        }
+};
+
 class Compressor : public Effect {
     private:
         enum Params : ParamID { MIX, THRESHOLD, RATIO, KNEE, ATTACK_TIME, RELEASE_TIME, MAKEUP_GAIN, AUTO_MAKEUP };
@@ -576,7 +680,7 @@ class Compressor : public Effect {
         }
 
         void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
-        void setThreshold(float threshold) { this->threshold = std::clamp(threshold, -200.0f, 0.0f); } // dB, [-200.0, 0.0]
+        void setThreshold(float threshold) { this->threshold = std::clamp(threshold, -100.0f, 0.0f); } // dB, [-100.0, 0.0]
         void setRatio(float ratio) { this->ratio = std::clamp(ratio, 1.0f, 100.0f); } // [1.0, 100.0]
         void setKnee(float knee) { this->knee = std::clamp(knee, 0.0f, 40.0f); } // dB, [0.0, 40.0]
         void setAttackTime(float attackTime) { attackCoeff = exp(-2.2f / (std::clamp(attackTime, 0.01f, 250.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [0.01, 250.0]
@@ -984,6 +1088,127 @@ class Freezer : public Effect {
                 } wetSig *= crossfade;
             
                 out[i] = dryWetMix(in[i], wetSig, mix); // Mix
+            }
+        }
+};
+
+class PitchShifter : public Effect {
+    // Partially based on Kilohearts grain-based pitch shifter
+    // https://kilohearts.com/products/pitch_shifter
+    private:
+        enum Params : ParamID { MIX, PITCH_SHIFT, GRAIN_SIZE, GRAIN_OVERLAP, JITTER };
+        const float bufSize = 501.0f * SAMPLE_RATE / 1000.0f; // 200ms max
+        const size_t maxGrains = 16;
+
+        float mix, pitchShift, grainSize, grainOverlap, jitter;
+        float grainSizeSamples, grainInterval, pitchRatio, overlapGain;
+
+        float* inBuf = nullptr;
+        size_t writePos = 0;
+        float grainCounter = 0.0f;
+
+        struct Grain {
+            bool active = false;
+            float startPos;
+            float playhead;
+        };
+
+        std::vector<Grain> grains; // Grain pool
+
+        Random jitterer; // Jitter noise generator
+
+        void spawnGrain() {
+            Grain* freeGrain = nullptr;
+            for (auto& grain : grains) if (!grain.active) { freeGrain = &grain; break; }
+            // If none, steal oldest grain
+            if (freeGrain == nullptr) {
+                for (auto& grain : grains) if (grain.active) { freeGrain = &grain; break; }
+            }
+
+            // Calculate start position
+            float grainStartPos = (float)writePos - grainSizeSamples;
+            grainStartPos += jitterer.next() * ((grainSizeSamples * 0.25f) * (jitter * jitter)); // Add random start jitter
+            while (grainStartPos < 0.0f) grainStartPos += (float)bufSize;
+            if (grainStartPos >= bufSize) grainStartPos = fmodf(grainStartPos, bufSize);
+
+            // Init
+            freeGrain->active = true;
+            freeGrain->startPos = grainStartPos;
+            freeGrain->playhead = 0.0f;
+        }
+
+        float processGrain(Grain& grain) {
+            float readPos = grain.startPos + grain.playhead; // Current position in grain
+            if (readPos >= bufSize) readPos = fmodf(readPos, bufSize);
+            else if (readPos < 0.0f) readPos = fmodf(readPos + bufSize, bufSize);
+
+            float envelopeValue = getEnvelopeValue(grain.playhead / grainSizeSamples, EnvelopeType::HANN);
+
+            grain.playhead += pitchRatio * (1.0f + (0.02f * jitterer.next() * (jitter * jitter))); // Advance playhead at rate according to pitch shift
+            if (grain.playhead >= grainSizeSamples) grain.active = false; // Free if done
+            
+            return lerp(inBuf, readPos, bufSize) * envelopeValue;
+        }
+
+        inline void updateInterval() {
+            if (grainSizeSamples <= 0.0f) grainInterval = 1.0f;
+            else grainInterval = (grainSizeSamples * (1.0f - grainOverlap)) / pitchRatio;
+            arm_sqrt_f32(1.0f - grainOverlap, &overlapGain);
+        }
+
+    public:
+        PitchShifter(float mix = 1.0f, float pitchShift = 0.0f, float grainSize = 200.0f, float grainOverlap = 0.5f, float jitter = 0.2f) 
+        : jitterer(5.0f, RandomMode::PERLIN) {
+            setMix(mix); setPitchShift(pitchShift); setGrainSize(grainSize); setGrainOverlap(grainOverlap); setJitter(jitter);
+            grains.resize(maxGrains);
+            inBuf = (float*)extmem_malloc(bufSize * sizeof(float)); if (!inBuf) while(1){}; memset(inBuf, 0, bufSize * sizeof(float));
+        }
+        ~PitchShifter() { if (inBuf) extmem_free(inBuf); }
+
+        void setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
+        void setPitchShift(float pitchShift) { 
+            this->pitchShift = std::clamp(pitchShift, -24.0f, 24.0f); // semitones, [-24.0, 24.0]
+            pitchRatio = exp2f(pitchShift / 12.0f);
+            updateInterval();
+        }
+        void setGrainSize(float grainSize) { // ms, [20.0, 500.0]
+            this->grainSize = std::clamp(grainSize, 20.0f, 200.0f); 
+            grainSizeSamples = grainSize * SAMPLE_RATE / 1000.0f;
+            updateInterval();
+        }
+        void setGrainOverlap(float grainOverlap) { // [0.25, 0.75]
+            this->grainOverlap = std::clamp(grainOverlap, 0.25f, 0.75f);
+            updateInterval();
+        }
+        void setJitter(float jitter) { this->jitter = std::clamp(jitter, 0.0f, 1.0f); } // [0.0, 1.0]
+        inline void setParam(ParamID param, float value) override {
+            switch (param) {
+                case MIX: setMix(value); break;
+                case PITCH_SHIFT: setPitchShift(value); break;
+                case GRAIN_SIZE: setGrainSize(value); break;
+                case GRAIN_OVERLAP: setGrainOverlap(value); break;
+                case JITTER: setJitter(value); break;
+            }
+        }
+        
+        void process(const float* in, float* out, size_t n) override {
+            for (size_t i = 0; i < n; ++i) {
+                inBuf[writePos] = in[i]; // Write input to circular buffer
+                ++grainCounter;
+                
+                if (grainCounter >= grainInterval) { // Time to spawn a grain!
+                    spawnGrain();
+                    grainCounter = 0.0f;
+                }
+                
+                // Process active grains and accumulate output
+                float wetSig = 0.0f;
+                for (auto& grain : grains) if (grain.active) { wetSig += processGrain(grain); }
+                wetSig *= overlapGain;
+                out[i] = dryWetMix(in[i], wetSig, mix); // Mix
+
+                ++writePos;
+                if (writePos >= bufSize) writePos = 0;
             }
         }
 };

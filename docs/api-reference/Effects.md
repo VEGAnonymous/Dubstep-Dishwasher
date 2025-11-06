@@ -6,6 +6,17 @@ This document describes the functionality and parameter structure of all availab
 
 ---
 
+## `Gain`
+
+**Description:**  
+Simple gain stage utility. Hard-clips the output in case of emergencies.
+
+**Parameters:**
+
+0. **`GAIN`** — Gain in dB `[-60.0, 24.0]`
+
+---
+
 ## `Modulation`
 
 **Description:**  
@@ -18,6 +29,8 @@ AM / RM modulation. Use low frequency AM for a tremolo effect.
 2. **`MODULATOR`** — Modulator wavetable [`WavetableType` enum]
 3. **`FREQ`** — Modulator frequency in Hz `[1.0, 2000.0]`
 4. **`DEPTH`** — Modulator depth (AM only) `[0.0, 1.0]`
+5. **`BIAS`** — Modulator positive bias amount `[0.0, 1.0]`
+6. **`RECTIFY`** — Modulator ± rectification amount `[-1.0, 1.0]`
 
 ---
 
@@ -122,6 +135,22 @@ Implements the [Dattorro reverb](https://ccrma.stanford.edu/~dattorro/EffectDesi
 
 ---
 
+## `Gate`
+
+**Description:**  
+Noise gate that attenuates signals below the threshold. Uses RMS detection and simple gain smoothing.
+
+**Parameters:**
+
+0. **`MIX`** — Dry/wet balance `[0.0, 1.0]`  
+1. **`THRESHOLD`** — Threshold in dB `[-100.0, 0.0]`
+4. **`ATTACK_TIME`** — Attack time in ms `[0.01, 250.0]`
+5. **`RELEASE_TIME`** — Release time in ms `[0.01, 1500.0]`
+6. **`HOLD_TIME`** — Hold time in ms `[1.0, 1500.0]`
+7. **`INVERT`** — Inverts gate logic `true / false`
+
+---
+
 ## `Compressor`
 
 **Description:**  
@@ -130,7 +159,7 @@ Dynamic range compressor: RMS detection, [gain reduction](https://www.desmos.com
 **Parameters:**
 
 0. **`MIX`** — Dry/wet balance `[0.0, 1.0]`  
-1. **`THRESHOLD`** — Threshold in dB `[-200.0, 0.0]`
+1. **`THRESHOLD`** — Threshold in dB `[-100.0, 0.0]`
 2. **`RATIO`** — Compression ratio `[1.0, 100.0]`
 3. **`KNEE`** — Knee width in dB `[0.0, 40.0]`
 4. **`ATTACK_TIME`** — Attack time in ms `[0.01, 250.0]`
@@ -194,6 +223,26 @@ Audio freezing effect with both **time-domain** and **spectral** looping modes. 
 4. **`HOP_SIZE`** — (Spectral) Overlap hop factor `[2, 8]`
 5. **`LOOP_START`** — Normalized loop start position `[0.0, 1.0]`
 6. **`LOOP_END`** — Normalized loop end position `[0.0, 1.0]`
+
+---
+
+## `PitchShifter`
+
+**Description:**  
+Time-domain pitch shifter inspired by [Kilohearts' granular implementation](https://kilohearts.com/products/pitch_shifter). Uses vanilla OLA for resampling.
+
+**Parameters:**
+
+0. **`MIX`** — Dry/wet balance `[0.0, 1.0]`
+1. **`PITCH_SHIFT`** — Pitch shift in semitones `[-24.0, 24.0]`
+2. **`GRAIN_SIZE`** — Grain length in ms `[20.0, 500.0]`
+    - Smaller values may introduce / emphasize inharmonic pitch content
+    - Larger values work well for large shifts but have audible windowing artifacts
+3. **`GRAIN_OVERLAP`** — Fraction of grain lengths which overlap `[0.25, 0.75]`
+    - Smaller values may sound choppy and discontinuous
+    - Larger values may improve pitch quality but also smear transients
+4. **`JITTER`** — Amount of randomness to add to the pitch `[0.0, 1.0]`
+    - Produces a unison-like effect
 
 ---
 

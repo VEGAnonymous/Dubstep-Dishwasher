@@ -66,6 +66,7 @@ class AudioChain {
 
         AudioChain() { 
             effectInits = {
+                {EffectName::GAIN, [](){ return std::make_unique<Gain>(); }},
                 {EffectName::MODULATION, [](){ return std::make_unique<Modulation>(); }},
                 {EffectName::WAH, [](){ return std::make_unique<Wah>(); }},
                 {EffectName::DISTORTION, [](){ return std::make_unique<Distortion>(); }},
@@ -74,16 +75,19 @@ class AudioChain {
                 {EffectName::PHASER, [](){ return std::make_unique<Phaser>(); }},
                 {EffectName::CHORUS, [](){ return std::make_unique<Chorus>(); }},
                 {EffectName::REVERB, [](){ return std::make_unique<Reverb>(); }},
+                {EffectName::GATE, [](){ return std::make_unique<Gate>(); }},
                 {EffectName::COMPRESSOR, [](){ return std::make_unique<Compressor>(); }},
                 {EffectName::EQUALIZER, [](){ return std::make_unique<Equalizer>(); }},
                 {EffectName::GRANULATOR, [](){ return std::make_unique<Granulator>(); }},
                 {EffectName::FREEZER, [](){ return std::make_unique<Freezer>(); }},
+                {EffectName::PITCH_SHIFTER, [](){ return std::make_unique<PitchShifter>(); }},
                 {EffectName::SPECTRAL_GATE, [](){ return std::make_unique<SpectralGate>(); }},
                 {EffectName::FORMANT_SHIFTER, [](){ return std::make_unique<FormantShifter>(); }},
                 {EffectName::LIMITER, [](){ return std::make_unique<Compressor>(1.0f, dbAmp(-0.6f), 100.0f, 0.0f, 1.0f, 50.0f, dbAmp(-0.3f), false); }}
             };
 
             // Build effects chain, initial order
+            addEffect(EffectName::GAIN);
             addEffect(EffectName::MODULATION);
             addEffect(EffectName::WAH);
             addEffect(EffectName::DISTORTION);
@@ -92,10 +96,12 @@ class AudioChain {
             addEffect(EffectName::PHASER);
             addEffect(EffectName::CHORUS);
             addEffect(EffectName::REVERB);
+            addEffect(EffectName::GATE);
             addEffect(EffectName::COMPRESSOR);
             addEffect(EffectName::EQUALIZER);
             addEffect(EffectName::GRANULATOR);
             addEffect(EffectName::FREEZER);
+            addEffect(EffectName::PITCH_SHIFTER);
             addEffect(EffectName::SPECTRAL_GATE);
             addEffect(EffectName::FORMANT_SHIFTER);
 

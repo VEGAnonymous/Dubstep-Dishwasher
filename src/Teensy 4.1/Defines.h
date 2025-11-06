@@ -23,6 +23,7 @@ struct fft_cpx { float r; float i; };
 enum class CommandType : uint8_t { ADD, REMOVE, REORDER, SET, BYPASS };
 
 enum class EffectName : uint8_t {
+    GAIN,
     MODULATION,
     WAH,
     DISTORTION,
@@ -31,10 +32,12 @@ enum class EffectName : uint8_t {
     PHASER,
     CHORUS,
     REVERB,
+    GATE,
     COMPRESSOR,
     EQUALIZER,
     GRANULATOR,
     FREEZER,
+    PITCH_SHIFTER,
     SPECTRAL_GATE,
     FORMANT_SHIFTER,
     LIMITER
