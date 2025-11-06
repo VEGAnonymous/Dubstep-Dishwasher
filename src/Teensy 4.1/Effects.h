@@ -22,7 +22,7 @@ class Gain : public Effect {
     public:
         Gain(float gainFactor = 0.0f) { setGain(gainFactor); }
 
-        void setGain(float gainDB) { this->gainFactor = ampDB(std::clamp(gainDB, -60.0f, 24.0f)); } // dB, [-60.0, 24.0]
+        void setGain(float gainDB) { this->gainFactor = dbAmp(std::clamp(gainDB, -60.0f, 24.0f)); } // dB, [-60.0, 24.0]
         inline void setParam(ParamID param, float value) override {
             switch (param) {
                 case GAIN: setGain(value); break;
@@ -34,7 +34,7 @@ class Gain : public Effect {
             float* out_ptr = out;
 
             for (size_t i = 0; i < n; ++i) {
-                float wetSig = *in_ptr * gainFactor;
+                float wetSig = *in_ptr++ * gainFactor;
                 // Hard clip just in case
                 if (wetSig > 1.0f) { wetSig = 1.0f; }
                 else if (wetSig < -1.0f) { wetSig = -1.0f; }
@@ -628,21 +628,19 @@ class Gate : public Effect {
                 float rmsDB = ampDB(std::max(rms, 1e-6f));
 
                 // To gate or not to gate
-                float staticGain = (rmsDB > threshold) ? 1.0f : 0.0f;
-                if (invert) staticGain = 1.0f - staticGain;
+                bool gateOpen = (rmsDB > threshold);
+                if (gateOpen) holdCounter = holdSamples;
+                else if (holdCounter > 0) { holdCounter--; gateOpen = true; }
 
-                if (staticGain > 0.5f) { holdCounter = (size_t)holdSamples; // Reset hold when above threshold
-                } else {
-                    if (holdCounter > 0) holdCounter--;
-                    else staticGain = 0.0f; // Start releasing after hold expires
-                }
+                float staticGain = gateOpen ? 1.0f : 0.0f;
+                if (invert) staticGain = 1.0f - staticGain;
 
                 // Gain smoothing (one-pole IIR LPF)
                 if (staticGain > gainSmoothed) gainSmoothed += (1.0f - attackCoeff) * (staticGain - gainSmoothed); // Attack
                 else gainSmoothed += (1.0f - releaseCoeff) * (staticGain - gainSmoothed); // Release
 
                 float wetSig = x_i * gainSmoothed;
-                out[i] = dryWetMix(x_L, wetSig, mix); // Mix
+                out[i] = dryWetMix(x_i, wetSig, mix); // Mix
             }
         }
 };
@@ -731,7 +729,7 @@ class Compressor : public Effect {
                 if (y_i > 1.0f) { y_i = 1.0f; }
                 else if (y_i < -1.0f) { y_i = -1.0f; }
 
-                out[i] = dryWetMix(x_L, y_i, mix); // Mix
+                out[i] = dryWetMix(x_i, y_i, mix); // Mix
             }
         }
 };
