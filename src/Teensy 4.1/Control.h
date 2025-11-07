@@ -80,6 +80,7 @@ class AudioChain {
                 {EffectName::EQUALIZER, [](){ return std::make_unique<Equalizer>(); }},
                 {EffectName::GRANULATOR, [](){ return std::make_unique<Granulator>(); }},
                 {EffectName::FREEZER, [](){ return std::make_unique<Freezer>(); }},
+                {EffectName::SCRUBBY, [](){ return std::make_unique<Scrubby>(); }},
                 {EffectName::PITCH_SHIFTER, [](){ return std::make_unique<PitchShifter>(); }},
                 {EffectName::SPECTRAL_GATE, [](){ return std::make_unique<SpectralGate>(); }},
                 {EffectName::FORMANT_SHIFTER, [](){ return std::make_unique<FormantShifter>(); }},
@@ -101,6 +102,7 @@ class AudioChain {
             addEffect(EffectName::EQUALIZER);
             addEffect(EffectName::GRANULATOR);
             addEffect(EffectName::FREEZER);
+            addEffect(EffectName::SCRUBBY);
             addEffect(EffectName::PITCH_SHIFTER);
             addEffect(EffectName::SPECTRAL_GATE);
             addEffect(EffectName::FORMANT_SHIFTER);

@@ -212,7 +212,7 @@ Granular synthesis engine that generates small overlapping audio grains from a c
 ## `Freezer`
 
 **Description:**  
-Audio freezing effect with both **time-domain** and **spectral** looping modes. Loops over or spectrally re-synthesizes a section from a continuously running audio buffer.
+Audio buffer looper with both **time-domain** and **spectral** modes. Loops over or spectrally re-synthesizes a section from a continuously running audio buffer.
 
 **Parameters:**
 
@@ -223,6 +223,24 @@ Audio freezing effect with both **time-domain** and **spectral** looping modes. 
 4. **`HOP_SIZE`** — (Spectral) Overlap hop factor `[2, 8]`
 5. **`LOOP_START`** — Normalized loop start position `[0.0, 1.0]`
 6. **`LOOP_END`** — Normalized loop end position `[0.0, 1.0]`
+
+---
+
+## `Scrubby`
+
+**Description:**  
+Audio buffer scrubber; playback by zipping around to random points within a continuously running audio buffer. Heavily inspired by [dFX Scrubby](http://destroyfx.org/docs/scrubby.html).
+
+**Parameters:**
+
+0. **`MIX`** — Dry/wet balance `[0.0, 1.0]`
+1. **`SEEK_RATE_LOW`** — Low bound of the random seek rate in Hz `[0.3, 810.0]`
+2. **`SEEK_RATE_HIGH`** — High bound of the random seek rate in Hz `[0.3, 810.0]`
+3. **`SEEK_RANGE`** — Maximum distance the scrubber can jump back into the buffer in ms `[0.3, 6000.0]`
+4. **`SEEK_DUR_LOW`** — Low bound of the duration of the seek jump (as a ratio of the current seek interval) `[0.03, 1.0]`
+5. **`SEEK_DUR_HIGH`** — High bound of the duration of the seek jump (as a ratio of the current seek interval) `[0.03, 1.0]`
+6. **`OCTAVES_DOWN`** — Maximum pitch shift downward during a seek in octaves `[-4, 0]`
+7. **`OCTAVES_UP`** — Maximum pitch shift upward during a seek in octaves `[0, 8]`
 
 ---
 

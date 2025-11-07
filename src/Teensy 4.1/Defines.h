@@ -37,6 +37,7 @@ enum class EffectName : uint8_t {
     EQUALIZER,
     GRANULATOR,
     FREEZER,
+    SCRUBBY,
     PITCH_SHIFTER,
     SPECTRAL_GATE,
     FORMANT_SHIFTER,
