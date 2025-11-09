@@ -14,6 +14,7 @@ Simple gain stage utility. Hard-clips the output in case of emergencies.
 **Parameters:**
 
 0. **`GAIN`** — Gain in dB `[-60.0, 24.0]`
+1. **`CLIP`** — Whether to hard-clip the output to 0 dB `true / false`
 
 ---
 
@@ -202,17 +203,19 @@ Granular synthesis engine that generates small overlapping audio grains from a c
 4. **`RATE_RAND`** — Amount of spawn rate randomization `[0.0, 1.0]`
 5. **`LENGTH`** — Grain length in ms `[5.0, 500.0]`
 6. **`LENGTH_RAND`** — Amount of length randomization `[0.0, 1.0]`
-7. **`LEVEL`** — Grain level `[0.0, 1.0]`
-8. **`LEVEL_RAND`** — Amount of level randomization `[0.0, 1.0]`
-9. **`REVERSE_CHANCE`** — Probability of reversed grain `[0.0, 1.0]`
-10. **`ENVELOPE_TYPE`** — Grain envelope shape (`EnvelopeType` enum)
+7. **`TUNE`** — Grain tune (via resampling) in semitones `[-24.0, 24.0]`
+8. **`TUNE_RAND`** — Amount of tune randomization `[0.0, 1.0]`
+9. **`LEVEL`** — Grain level `[0.0, 1.0]`
+10. **`LEVEL_RAND`** — Amount of level randomization `[0.0, 1.0]`
+11. **`REVERSE_CHANCE`** — Probability of reversed grain `[0.0, 1.0]`
+12. **`ENVELOPE_TYPE`** — Grain envelope shape (`EnvelopeType` enum)
 
 ---
 
 ## `Freezer`
 
 **Description:**  
-Audio buffer looper with both **time-domain** and **spectral** modes. Loops over or spectrally re-synthesizes a section from a continuously running audio buffer.
+Audio buffer looper with both time-domain and spectral modes. Loops over or spectrally re-synthesizes a section from a continuously running audio buffer.
 
 **Parameters:**
 
@@ -229,7 +232,7 @@ Audio buffer looper with both **time-domain** and **spectral** modes. Loops over
 ## `Scrubby`
 
 **Description:**  
-Audio buffer scrubber; playback by zipping around to random points within a continuously running audio buffer. Heavily inspired by [dFX Scrubby](http://destroyfx.org/docs/scrubby.html).
+Audio buffer scrubber; playback by zipping around to random points within a continuously running audio buffer. Based on [dFX Scrubby](http://destroyfx.org/docs/scrubby.html).
 
 **Parameters:**
 
@@ -247,7 +250,7 @@ Audio buffer scrubber; playback by zipping around to random points within a cont
 ## `PitchShifter`
 
 **Description:**  
-Time-domain pitch shifter inspired by [Kilohearts' granular implementation](https://kilohearts.com/products/pitch_shifter). Uses vanilla OLA for resampling.
+Time-domain pitch shifter inspired by [Kilohearts' granular implementation](https://kilohearts.com/products/pitch_shifter). Uses vanilla OLA, artifacts and all, for resampling.
 
 **Parameters:**
 
@@ -261,6 +264,24 @@ Time-domain pitch shifter inspired by [Kilohearts' granular implementation](http
     - Larger values may improve pitch quality but also smear transients
 4. **`JITTER`** — Amount of randomness to add to the pitch `[0.0, 1.0]`
     - Produces a unison-like effect
+
+---
+
+## `Vocoder`
+
+**Description:**  
+Rough and ready vocoder effect. Only supports "self-modulation"; that is, the carrier is a phase-shifted version of the modulator (input). Supplies some gain compensation, but not reliably so. Loosely inspired by [IL Vocodex](https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/plugins/Vocodex.htm) and Ableton's Vocoder.
+
+**Parameters:**
+
+0. **`MIX`** — Dry/wet balance `[0.0, 1.0]`
+1. **`N_BANDS`** — Number of bands `[4, 40]`
+2. **`LOW_FREQ`** — Frequency of the lowest filter in the filterbank in Hz `[10.0, 16000.0]`
+3. **`HIGH_FREQ`** — Frequency of the highest filter in the filterbank in Hz `[10.0, 16000.0]`
+4. **`BANDWIDTH`** — Filterbank bandwidth factor; lower values result in narrower bands and vice versa `[0.05, 4.0]`
+5. **`DEPTH`** — How much the spectral envelope of the modulator is imparted onto the carrier `[0.0, 2.0]`
+6. **`ATTACK_TIME`** — Attack time in ms `[10.0, 1000.0]`
+7. **`RELEASE_TIME`** — Release time in ms `[10.0, 2000.0]`
 
 ---
 

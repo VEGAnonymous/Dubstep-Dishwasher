@@ -14,7 +14,8 @@ Finite Impulse Response filter implementing convolution with a provided kernel. 
 **Parameters:**
 
 0. **`MIX`** — Dry/wet balance `[0.0, 1.0]`
-1. **`h`** — Filter kernel vector (impulse response coefficients)
+1. **`h`** — Filter kernel (impulse response coefficients) *stored in PROGMEM array*
+2. **`M`** — Filter order
 
 **Notes:**
 - Convolution implemented via inner product over kernel and double-buffered state
@@ -134,6 +135,10 @@ Second-order high-pass filter. Attenuates frequencies below the cutoff.
 
 **Description:**  
 Second-order band-pass filter. Attenuates frequencies around the center frequency band.
+
+**Constructor:**
+- ...
+- **`flatGain`** — Whether to use 0 dB constant gain or constant skirt gain with peak gain set by `Q` `true / false`
 
 **Parameters:**
 - **`CUTOFF`** — Center frequency in Hz `[20.0, 20000.0]`

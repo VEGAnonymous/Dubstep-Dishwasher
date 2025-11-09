@@ -1,11 +1,9 @@
 #include <Arduino.h>
-#include "../Handler.h"
-#include "espdefs.h"
+#include "Handler.h"
+#include "ESP32/espdefs.h"
 
 #define RX_PIN 18
 #define TX_PIN 17
-
-
 
 // BLE stuff
 #include <BLEDevice.h>
