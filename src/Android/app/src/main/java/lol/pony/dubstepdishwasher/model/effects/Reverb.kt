@@ -4,7 +4,7 @@ import lol.pony.dubstepdishwasher.model.core.*
 
 class Reverb(id: Int) : Effect() {
     override val effectId = id
-    override val effectType = EffectType.CHORUS
+    override val effectType = EffectType.REVERB
     override val parameters = mutableListOf<EffectParameter<*>>(
         EffectParameter.Range(id = 0, name = "Mix", unit = ParamUnit.PERCENT, range = 0.0f to 1.0f, exp = 1f, step = 0.01f, value = 0.2f),
         EffectParameter.Range(id = 1, name = "Predelay Time", unit = ParamUnit.MS, range = 0.0f to 100.0f, exp = 2f, step = 0.1f, value = 0.0f),

@@ -4,20 +4,37 @@ package lol.pony.dubstepdishwasher.model.core
 /* ENUMS */
 
 enum class EffectType(val uiName: String) {
-    DISTORTION("Distortion"),
-    DELAY("Delay"),
-    FLANGER("Flanger"),
-    PHASER("Phaser"),
     CHORUS("Chorus"),
-    REVERB("Reverb"),
     COMPRESSOR("Compressor"),
+    DELAY("Delay"),
+    DISTORTION("Distortion"),
     EQUALIZER("Equalizer"),
+    FLANGER("Flanger"),
+    FORMANT_SHIFTER("Formant Shifter"),
+    FREEZER("Freezer"),
+    GAIN("Gain"),
+    GATE("Gate"),
     GRANULATOR("Granulator"),
-    SPECTRAL_GATE("Spectral Gate")
+    MODULATION("Modulation"),
+    PARALLEL("Parallel"),
+    PHASER("Phaser"),
+    PITCH_SHIFTER("Pitch Shifter"),
+    REVERB("Reverb"),
+    SCRUBBY("Scrubby"),
+    SPECTRAL_GATE("Spectral Gate"),
+    VOCODER("Vocoder"),
+    WAH("Wah")
 }
 
+enum class ParamUnit { PERCENT, ENUM, MS, HZ, DB, SEMITONES, DIMENSIONLESS }
+
 enum class EnvelopeType { HANN, HAMMING, SINE, TRI, PERC, SMOOTH_RECT }
+
+enum class WavetableType { SINE, TRI, SAW, SQUARE };
+enum class RandomMode { PERLIN, SAMPLE_HOLD, BINARY };
+
+enum class ParallelMode { SUM, CROSSFADE };
+
+enum class ModulationEffectMode { AM, RM }
 enum class DistortionMode { TUBE, SOFT_CLIP, HARD_CLIP, DIODE, BITCRUSH, RECTIFY, SATURATE }
 enum class BiquadType { LOW_PASS, HIGH_PASS, LOW_SHELF, HIGH_SHELF, PEAK, NOTCH }
-
-enum class ParamUnit { PERCENT, ENUM, MS, HZ, DB, DIMENSIONLESS }

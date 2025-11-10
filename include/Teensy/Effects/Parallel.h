@@ -11,16 +11,16 @@ class Parallel : public Effect {
     private:
         enum Params : ParamID { MIX = 254, MODE = 255 }; // Meta parameters
         enum LocalCommand : uint8_t { // Command slots per block
-            ADD = 12,
-            REMOVE = 13,
-            REORDER = 14,
-            BYPASS = 15
+            ADD = 13,
+            REMOVE = 14,
+            REORDER = 15,
+            BYPASS = 16
         };
 
         static constexpr uint8_t MAX_CHAIN_EFFECTS = 5; // For the preservation of my sanity
-        static constexpr uint8_t PARAMS_PER_EFFECT = 16; // Max 12 parameters + 4 command slots
-        static constexpr uint8_t CHAIN_BLOCK = MAX_CHAIN_EFFECTS * PARAMS_PER_EFFECT; // = 80
-        // Total addressing space = 2 * CHAIN_BLOCK = 160 (< 255)
+        static constexpr uint8_t PARAMS_PER_EFFECT = 17; // Max 13 parameters + 4 command slots
+        static constexpr uint8_t CHAIN_BLOCK = MAX_CHAIN_EFFECTS * PARAMS_PER_EFFECT; // = 85
+        // Total addressing space = 2 * CHAIN_BLOCK = 170 (< 255)
 
         float mix; ParallelMode mode;
 

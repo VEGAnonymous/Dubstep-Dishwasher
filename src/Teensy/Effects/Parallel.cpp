@@ -2,17 +2,16 @@
 
 /*  ADDRESSING SCHEME
     CHAIN A
-    0-11:    Effect 1 parameter space
-    12-15:   Effect 1 command space
-    16-27:   Effect 2 parameter space
-    28-31:   Effect 2 command space
+    0-12:    Effect 1 parameter space
+    13-16:   Effect 1 command space
+    17-29:   Effect 2 parameter space
+    30-33:   Effect 2 command space
     ...
     CHAIN B
-    (Starts from CHAIN_BLOCK, assume = 80 for this example)
-    80-91:   Effect 1 parameter space
-    92-95:   Effect 1 command space
-    96-107:  Effect 2 parameter space
-    108-111: Effect 2 command space
+    85-97:   Effect 1 parameter space
+    98-101:   Effect 1 command space
+    102-114:  Effect 2 parameter space
+    115-118: Effect 2 command space
     ...
     254: Mix
     255: Mode
@@ -24,16 +23,16 @@
 
 enum Params : ParamID { MIX = 254, MODE = 255 }; // Meta parameters
 enum LocalCommand : uint8_t { // Command slots per block
-    ADD = 12,
-    REMOVE = 13,
-    REORDER = 14,
-    BYPASS = 15
+    ADD = 13,
+    REMOVE = 14,
+    REORDER = 15,
+    BYPASS = 16
 };
 
 static constexpr uint8_t MAX_CHAIN_EFFECTS = 5; // For the preservation of my sanity
-static constexpr uint8_t PARAMS_PER_EFFECT = 16; // Max 12 parameters + 4 command slots
-static constexpr uint8_t CHAIN_BLOCK = MAX_CHAIN_EFFECTS * PARAMS_PER_EFFECT; // = 80
-// Total addressing space = 2 * CHAIN_BLOCK = 160 (< 255)
+static constexpr uint8_t PARAMS_PER_EFFECT = 17; // Max 13 parameters + 4 command slots
+static constexpr uint8_t CHAIN_BLOCK = MAX_CHAIN_EFFECTS * PARAMS_PER_EFFECT; // = 85
+// Total addressing space = 2 * CHAIN_BLOCK = 170 (< 255)
 
 float mix; ParallelMode mode;
 
