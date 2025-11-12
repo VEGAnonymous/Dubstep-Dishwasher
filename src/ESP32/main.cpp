@@ -13,11 +13,12 @@
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
+Handler<Command, MelFrame> handler(Serial1); // Packet handler (send commands / receive frames)
+
 class MyCallbacks: public BLECharacteristicCallbacks {
-    void onWrite(BLECharacteristic *pCharacteristic) {
+    void onWrite(BLECharacteristic *pCharacteristic) override {
         std::string value = pCharacteristic->getValue();
-        // return on empty writes
-        if (value.length() == 0) return;
+        if (value.length() == 0) return; // return on empty writes
 
         // sends written bytes to helper function
         processIncomingBytes((const uint8_t*)value.data(), value.length());
@@ -27,10 +28,18 @@ class MyCallbacks: public BLECharacteristicCallbacks {
 void setup() {
     // Serial port setup
     Serial.begin(115200);
-    Serial1.begin(115200, SERIAL_8N1, RX_PIN, TX_PIN);
+    Serial1.begin(230400, SERIAL_8N1, RX_PIN, TX_PIN);
 
-    // BLE setup (I copied this from platformio setup tutorial)
-    BLEDevice::init("Team 8 ESP32 BLE");
+    /* Setup handler */
+    handler.setCallback([](const MelFrame& frame) {
+        #if DEBUG 
+            Serial.printf("frameCounter: %d | numMels: %d | checksum: 0x%02X (valid)\n", frame.frameCounter, frame.numMels, frame.checksum);
+        #endif
+        // TODO: Define a function to buffer the frames eventually for TinyML inference
+    });
+
+    // BLE setup
+    BLEDevice::init("ESP32 BLE");
     BLEServer *pServer = BLEDevice::createServer();
     BLEService *pService = pServer->createService(SERVICE_UUID);
     BLECharacteristic *pCharacteristic = pService->createCharacteristic(
@@ -55,24 +64,7 @@ void loop() {
       uint8_t serialData = Serial.read();
       processIncomingBytes(&serialData, 1);  
     }
-
-    // Debug: Echo back any received commands
-    // not needed atm since no data is being received from the teensy
-    if (Serial1.available()) {
-        Command rcvCmd;
-        size_t rcvBytes = 0;
-
-        while (Serial1.available() && rcvBytes < sizeof(Command)) {
-            uint8_t* buf = (uint8_t*)&rcvCmd;
-            buf[rcvBytes++] = Serial1.read();
-        }
-
-        if (rcvBytes == sizeof(Command)) {
-            if (verifyChecksum(rcvCmd)) {
-                Serial.printf("cmd: %d | id1: %d | id2: %d | value: %.3f | checksum: 0x%02X (valid)\n", 
-                    rcvCmd.cmd, rcvCmd.id1, rcvCmd.id2, rcvCmd.value, rcvCmd.checksum);
-            } else return; // Drop invalid packets
-        }
-    }
     #endif
+
+    handler.listen();
 }
