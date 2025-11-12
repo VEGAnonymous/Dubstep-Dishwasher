@@ -4,11 +4,15 @@ import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import lol.pony.dubstepdishwasher.model.EffectChain
+import lol.pony.dubstepdishwasher.model.core.BiquadType
 import lol.pony.dubstepdishwasher.model.core.BleManager
 import lol.pony.dubstepdishwasher.model.core.CommandType
 import lol.pony.dubstepdishwasher.model.core.CommandType.*
+import lol.pony.dubstepdishwasher.model.core.DistortionMode
 import lol.pony.dubstepdishwasher.model.core.Effect
 import lol.pony.dubstepdishwasher.model.core.EffectType
+import lol.pony.dubstepdishwasher.model.core.EnvelopeType
+import lol.pony.dubstepdishwasher.model.core.ParamUnit
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -41,12 +45,24 @@ class EffectChainViewModel(private val bleManager: BleManager) : ViewModel() {
         sendCommand(REORDER, effectId, toIndex, 0.0f)
     }
 
-    fun setParam(effectId: Int, paramId: Int, value: Float) {
+    fun setParam(effectId: Int, paramId: Int, value: Any) {
         chain.setParam(effectId, paramId, value)
         _effects.value = chain.getAll()
 
+        // casting to float for value
+        val sendValue = when (value) {
+            is Float -> value
+            is Int -> value.toFloat()
+            is Boolean -> if (value) 1.0f else 0.0f
+            is EnvelopeType -> value.ordinal.toFloat()
+            is DistortionMode -> value.ordinal.toFloat()
+            is BiquadType -> value.ordinal.toFloat()
+            is ParamUnit -> value.ordinal.toFloat()
+            else -> throw IllegalArgumentException("Unsupported value type")
+        }
+
         // run command
-        sendCommand(SET_PARAM, effectId, paramId, value)
+        sendCommand(SET_PARAM, effectId, paramId, sendValue)
     }
 
     fun toggleBypass(effectId: Int) {

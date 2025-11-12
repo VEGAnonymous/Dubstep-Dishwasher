@@ -1,11 +1,16 @@
 package lol.pony.dubstepdishwasher.model.core
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import kotlin.math.pow
 
 sealed class EffectParameter<T> (
     open val id: Int,
     open val name: String
 ) {
+    abstract var value: T
+
     data class Range<T : Number>(
         override val id: Int,
         override val name: String,
@@ -13,8 +18,9 @@ sealed class EffectParameter<T> (
         val range: Pair<T, T>,
         val exp: Float,
         val step: T,
-        var value: T
+        val initialValue: T
     ) : EffectParameter<T>(id, name), NumericParam, NormalizableParam {
+        override var value by mutableStateOf(initialValue)
         override fun normalized() : Float {
             val lin = value.mapRange(range.first.toFloat()..range.second.toFloat(), 0.0f..1.0f)
             return lin.pow(1 / exp)
@@ -31,12 +37,16 @@ sealed class EffectParameter<T> (
         override val name: String,
         override val unit: ParamUnit,
         val possibleValues: List<T>,
-        var value: T
-    ) : EffectParameter<T>(id, name), NumericParam
+        val initialValue: T
+    ) : EffectParameter<T>(id, name), NumericParam {
+        override var value by mutableStateOf(initialValue)
+    }
 
     data class Toggle(
         override val id: Int,
         override val name: String,
-        var value: Boolean
-    ) : EffectParameter<Boolean>(id, name)
+        val initialValue: Boolean
+    ) : EffectParameter<Boolean>(id, name) {
+        override var value by mutableStateOf(initialValue)
+    }
 }
