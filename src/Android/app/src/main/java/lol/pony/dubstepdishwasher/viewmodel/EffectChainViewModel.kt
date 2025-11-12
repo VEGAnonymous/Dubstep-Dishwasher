@@ -43,7 +43,7 @@ class EffectChainViewModel(private val bleManager: BleManager) : ViewModel() {
 
     fun setParam(effectId: Int, paramId: Int, value: Float) {
         chain.setParam(effectId, paramId, value)
-        _effects.value = chain.getAll() // FIXME: Probably also doesn't fucking update Compose
+        _effects.value = chain.getAll()
 
         // run command
         sendCommand(SET_PARAM, effectId, paramId, value)
@@ -51,7 +51,7 @@ class EffectChainViewModel(private val bleManager: BleManager) : ViewModel() {
 
     fun toggleBypass(effectId: Int) {
         chain.setBypass(effectId, !chain.get(effectId)!!.isBypassed)
-        _effects.value = chain.getAll() // FIXME: Doesn't fucking update Compose
+        _effects.value = chain.getAll()
 
         // run command
         val value = if (chain.get(effectId)!!.isBypassed) 0.0f else 1.0f

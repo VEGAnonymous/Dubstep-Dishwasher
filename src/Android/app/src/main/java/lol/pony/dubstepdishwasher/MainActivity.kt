@@ -48,7 +48,7 @@ class MainActivity : ComponentActivity() {
                     BleScannerApp(
                         modifier = Modifier
                             .fillMaxHeight()
-                            .width(280.dp)
+                            .fillMaxWidth()
                             .padding(16.dp),
                         bleManager = bleManager,
                         requestPermissions = { requestPermissionLauncher.launch(bleManager.requiredPermissions) }
