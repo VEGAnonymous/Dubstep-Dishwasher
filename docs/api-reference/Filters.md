@@ -2,7 +2,7 @@
 
 # Filters
 
-This document describes the functionality and parameter structure of all available filters implemented in `Filters.h`. See `Modules.h` for base class definitions.
+This document describes the functionality and parameter structure of all available filters. All filters (except for `FIR_Filter` which inherits directly from `Effect`) currently inherit from the `IIR_Filter` abstract base class or its subclass `Biquad`.
 
 ---
 
@@ -138,7 +138,7 @@ Second-order band-pass filter. Attenuates frequencies around the center frequenc
 
 **Constructor:**
 - ...
-- **`flatGain`** — Whether to use 0 dB constant gain or constant skirt gain with peak gain set by `Q` `true / false`
+- **`flatGain`** — Whether to use 0 dB constant passband gain *or* constant skirt gain with peak gain set by `Q` `true / false`
 
 **Parameters:**
 - **`CUTOFF`** — Center frequency in Hz `[20.0, 20000.0]`
@@ -190,5 +190,3 @@ Notch/band-reject filter that cuts a narrow band of frequencies around the cente
 **Parameters:**
 - **`CUTOFF`** — Center frequency to reject in Hz `[20.0, 20000.0]`
 - **`Q`** — Notch width (higher Q = narrower notch) `[0.02, 40.0]`
-
----

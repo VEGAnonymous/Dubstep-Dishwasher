@@ -2,7 +2,7 @@
 
 # Effects
 
-This document describes the functionality and parameter structure of all available effects implemented in `Effects.h`. See `Defines.h` for enum definitions.
+This document describes the functionality and parameter structure of all available effects. All effects inherit from the `Effect` abstract base class or its `Phase_Vocoder` subclass. See `Defines.h` for enum definitions.
 
 ---
 
@@ -102,7 +102,7 @@ Combines a short modulated delay line with the dry signal to produce a sweeping 
 ## `FormantShifter`
 
 **Description:**  
-Alexander Panos' **GOATed** [formant shifter device](https://alexanderpanos.com/software) faithfully ported from Max/MSP (Gen) to C++! Because this processing is done in the frequency domain, it is possible to formant shift polyphonic audio.
+Alexander Panos' **GOATed** [formant shifter device](https://alexanderpanos.com/software) faithfully ported from Max/MSP (Gen) to C++! Because this processing is done in the frequency domain, it is possible to formant shift polyphonic audio. Inherits from `Phase_Vocoder`.
 
 **Parameters:**
 
@@ -309,7 +309,7 @@ Audio buffer scrubber; playback by zipping around to random points within a cont
 ## `SpectralGate`
 
 **Description:**  
-Spectral-domain gate that removes frequency bins below a certain magnitude threshold.
+Spectral-domain gate that removes frequency bins below a certain magnitude threshold. Inherits from `Phase_Vocoder`.
 
 **Parameters:**
 

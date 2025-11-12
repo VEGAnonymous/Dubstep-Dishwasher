@@ -2,7 +2,7 @@
 
 # Utilities
 
-This document describes the functionality and parameter structure of all utility functions and classes implemented in `Utilities.h`. These provide fundamental DSP building blocks prolific in this codebase.
+This document describes the functionality and parameter structure of all utility functions and classes. These provide fundamental DSP building blocks prolific in this codebase.
 
 ---
 
@@ -236,17 +236,19 @@ Short-Time Fourier Transform implementation with spectrogram storage. Provides s
 
 
 **`getSpectSize()`** — Returns number of frames in spectrogram buffer
+
 **`getFFTSize()`** — Returns current FFT size
+
 **`getHopSize()`** — Returns hop size in samples
+
 **`getNumBins()`** — Returns number of frequency bins (fftSize/2 + 1)
+
 **`getFFT()`** — Returns reference to internal FFT object
+
 **`getFrame()`** — Returns reference to most recent FFT frame
 
 **Notes:**
-- Uses circular buffers for continuous streaming
 - Applies Hann windowing for analysis and synthesis
 - Maintains processing queue for accurate overlap-add timing
 - Spectrogram size determined by buffer duration and hop rate
 - **Very computationally and memory intensive**
-
----
