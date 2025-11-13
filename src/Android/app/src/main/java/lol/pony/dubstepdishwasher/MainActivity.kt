@@ -112,6 +112,11 @@ fun ScanScreen(modifier: Modifier = Modifier, bleManager: BleManager, requestPer
                 Text("Stop Scan")
             }
         }
+        // DEBUG: auto connect to device
+        val targetMacAddress = "FC:01:2C:DB:F5:49"
+        bleManager.scannedDevices.value.find { it.bleDevice.macAddress == targetMacAddress }?.let {
+            bleManager.connectToDevice(it.bleDevice)
+        }
         // displays scanned devices
         ScannedDevicesList(devices = bleManager.scannedDevices.value, onConnect = { bleManager.connectToDevice(it) })
     }
