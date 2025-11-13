@@ -1,6 +1,5 @@
 package lol.pony.dubstepdishwasher.model
 
-import androidx.compose.ui.text.Paragraph
 import androidx.compose.runtime.toMutableStateList
 import lol.pony.dubstepdishwasher.model.core.*
 import lol.pony.dubstepdishwasher.model.effects.*
@@ -8,6 +7,7 @@ import lol.pony.dubstepdishwasher.model.effects.*
 class EffectChain {
     private var nextIdx = 0
     private val effects = mutableListOf<Effect>()
+    private val freeIds = ArrayDeque<Int>()
     private val effectInits = mapOf(
         EffectType.CHORUS to { id: Int -> Chorus(id) },
         EffectType.COMPRESSOR to { id: Int -> Compressor(id) },
@@ -39,8 +39,15 @@ class EffectChain {
         effects.add(posTo.coerceIn(0, effects.size), effect)
     }
 
-    fun addEffect(type: EffectType) { effectInits[type]?.invoke(nextIdx++)?.let { effects.add(it) } }
-    fun removeEffect(effectId: Int) = effects.removeIf { it.effectId == effectId }
+    fun addEffect(type: EffectType) {
+        val assignedId = if (freeIds.isNotEmpty()) freeIds.removeFirst() else nextIdx++
+        effectInits[type]?.invoke(assignedId)?.let { effects.add(it) }
+    }
+    fun removeEffect(effectId: Int) {
+        val removed = effects.removeIf { it.effectId == effectId }
+        if (removed) freeIds.addLast(effectId)
+    }
+
     fun reorderEffect(effectId: Int, toIndex: Int) { reorder(indexOf(effectId), toIndex) }
     fun setParam(effectId: Int, paramId: Int, value: Any) { effects.find { it.effectId == effectId }?.setParam(paramId, value) }
     fun setBypass(effectId: Int, state: Boolean) { effects.find { it.effectId == effectId }?.setBypass(state) }
