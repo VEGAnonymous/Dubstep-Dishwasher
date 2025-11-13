@@ -1,6 +1,8 @@
 #include <Arduino.h>
+
 #include "Handler.h"
-#include "ESP32/espdefs.h"
+#include "ESP32/Utilities.h"
+#include "ESP32/InferenceBuffer.h"
 
 #define RX_PIN 18
 #define TX_PIN 17
@@ -14,8 +16,9 @@
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
 Handler<Command, MelFrame> handler(Serial1); // Packet handler (send commands / receive frames)
+InferenceBuffer inferenceBuffer; // Buffer and process incoming mel frames for RT inference 
 
-class MyCallbacks: public BLECharacteristicCallbacks {
+class Callbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) override {
         std::string value = pCharacteristic->getValue();
         if (value.length() == 0) return; // return on empty writes
@@ -26,19 +29,13 @@ class MyCallbacks: public BLECharacteristicCallbacks {
 };
 
 void setup() {
-    // Serial port setup
     Serial.begin(115200);
     Serial1.begin(230400, SERIAL_8N1, RX_PIN, TX_PIN);
 
-    /* Setup handler */
-    handler.setCallback([](const MelFrame& frame) {
-        #if DEBUG 
-            Serial.printf("frameCounter: %d | numMels: %d | checksum: 0x%02X (valid)\n", frame.frameCounter, frame.numMels, frame.checksum);
-        #endif
-        // TODO: Define a function to buffer the frames eventually for TinyML inference
-    });
+    /* Setup UART handler */
+    handler.setCallback([](const MelFrame& frame) { inferenceBuffer.addFrame(frame); });
 
-    // BLE setup
+    /* Setup BLE */
     BLEDevice::init("ESP32 BLE");
     BLEServer *pServer = BLEDevice::createServer();
     BLEService *pService = pServer->createService(SERVICE_UUID);
@@ -48,13 +45,15 @@ void setup() {
                                           BLECharacteristic::PROPERTY_WRITE
                                         );
 
-    pCharacteristic->setCallbacks(new MyCallbacks());
+    pCharacteristic->setCallbacks(new Callbacks());
 
     pService->start();
 
     BLEAdvertising *pAdvertising = pServer->getAdvertising();
     pAdvertising->start();
-    
+
+    delay(2000);
+    Serial.println("SETUP OK");
 }
 
 void loop() {
