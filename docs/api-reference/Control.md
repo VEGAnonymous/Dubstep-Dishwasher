@@ -2,7 +2,7 @@
 
 # Control
 
-This document describes the functionality and structure of the control classes implemented in `Control.h`. These classes manage audio effect chains and integration with the [Teensy Audio Library](https://www.pjrc.com/teensy/td_libs_Audio.html).
+This document describes the functionality and structure of the control classes. These classes manage audio effect chains and integration with the [Teensy Audio Library](https://www.pjrc.com/teensy/td_libs_Audio.html).
 
 ---
 
@@ -81,5 +81,3 @@ patch2 = std::make_unique<AudioConnection>(*stream, 0, dacOut, 0);
 
 }
 ```
-
----

@@ -8,6 +8,7 @@ class Distortion(id: Int) : Effect() {
     override val parameters = mutableListOf<EffectParameter<*>>(
         EffectParameter.Range(id = 0, name = "Mix", unit = ParamUnit.PERCENT, range = 0.0f to 1.0f, exp = 1f, step = 0.01f, initialValue = 1.0f),
         EffectParameter.Discrete(id = 1, name = "Mode", unit = ParamUnit.ENUM, possibleValues = DistortionMode.entries.toList(), initialValue = DistortionMode.TUBE),
-        EffectParameter.Range(id = 2, name = "Drive", unit = ParamUnit.PERCENT, range = 0.0 to 1.0f, exp = 1f, step = 0.01f, initialValue = 1.0f)
+        EffectParameter.Range(id = 2, name = "Drive", unit = ParamUnit.PERCENT, range = 0.0 to 1.0f, exp = 1f, step = 0.01f, initialValue = 1.0f),
+        EffectParameter.Toggle(id = 3, name = "AAF", value = initialValue)
     )
 }

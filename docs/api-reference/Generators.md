@@ -2,7 +2,7 @@
 
 # Generators
 
-This document describes the functionality and parameter structure of all available generators implemented in `Generators.h`. See `Defines.h` for enum definitions and `LUTs.h` for wavetable lookup tables.
+This document describes the functionality and parameter structure of all available generators. All generators inherit from the `Generator` abstract base class. See `Defines.h` for enum definitions and `LUTs.h` for wavetable lookup tables.
 
 ---
 
@@ -41,5 +41,3 @@ Random signal generator with multiple noise algorithms. Produces pseudo-random v
 - **`BINARY`** — Random binary signal alternating between `-1.0` and `+1.0`
 
 **Notes:** Output range is `[-1.0, 1.0]` for all modes
-
----

@@ -13,14 +13,9 @@ This document serves as an index to the API reference for the **Dubstep Dishwash
 - **[Utilities](api-reference/Utilities.md)** — Utility functions and classes
 
 - Additionally, see:
-    - `Modules.h` for base class definitions
     - `Defines.h` for enum definitions and constants
     - `LUTs.h` for lookup tables
 
 ---
 
-### ESP32
-
-- *TODO*
-
----
+*Written by LYRAnonymous.*
