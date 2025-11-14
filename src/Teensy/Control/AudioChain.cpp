@@ -112,38 +112,6 @@ AudioChain::AudioChain() {
         
         {EffectName::LIMITER, [](){ return std::make_unique<Compressor>(1.0f, dbAmp(-0.6f), 100.0f, 0.0f, 1.0f, 50.0f, dbAmp(-0.3f), false); }}
     };
-
-    // Build effects chain, initial order
-    // TEMP: Should be empty on release
-    addEffect(EffectName::GAIN);
-    // addEffect(EffectName::PARALLEL);
-    addEffect(EffectName::MODULATION);
-    addEffect(EffectName::WAH);
-    addEffect(EffectName::DISTORTION);
-    addEffect(EffectName::DELAY);
-    addEffect(EffectName::FLANGER);
-    addEffect(EffectName::PHASER);
-    addEffect(EffectName::CHORUS);
-    addEffect(EffectName::REVERB);
-    addEffect(EffectName::GATE);
-    addEffect(EffectName::COMPRESSOR);
-    addEffect(EffectName::EQUALIZER);
-    addEffect(EffectName::GRANULATOR);
-    addEffect(EffectName::FREEZER);
-    addEffect(EffectName::SCRUBBY);
-    addEffect(EffectName::PITCH_SHIFTER);
-    addEffect(EffectName::VOCODER);
-    addEffect(EffectName::SPECTRAL_GATE);
-    addEffect(EffectName::FORMANT_SHIFTER);
-
-    addEffect(EffectName::LIMITER); // DO NOT TOUCH
-
-    // Bypass all except Limiter
-    for (size_t i = 0; i < effects.size() - 1; ++i) effects[i]->setBypass(true);
-
-    // TEMP
-    Serial.println("Active effects:");
-    for (auto &fx : effects) if (!fx->isBypassed()) Serial.printf("  ID %d active\n", fx->getID());
 }
 
 void AudioChain::processChain(const float* input, float* output, size_t n = BUFFER_SIZE) { // Process effect chain serially

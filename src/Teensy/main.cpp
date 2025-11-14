@@ -96,24 +96,25 @@ void setup() {
     AudioInterrupts();
 }
 
+Command cmd;
+size_t rcvBytes = 0;
+
 void loop() {
 
     /* Parse received commands */
-    if (Serial1.available()) {
-        Command cmd;
-        size_t rcvBytes = 0;
-        
-        while (Serial1.available() && rcvBytes < sizeof(Command)) {
-            uint8_t* buf = (uint8_t*)&cmd;
-            buf[rcvBytes++] = Serial1.read();
-        }
-        
+    while (Serial1.available()) {
+        uint8_t* buf = (uint8_t*)&cmd;
+        buf[rcvBytes++] = Serial1.read();
+
         if (rcvBytes == sizeof(Command)) {
+            // Full packet received
             if (verifyChecksum(cmd)) {
                 if (LOG_CMD) Serial.printf("cmd: %d | id1: %d | id2: %d | value: %.3f | checksum: 0x%02X (valid)\n", 
                 cmd.cmd, cmd.id1, cmd.id2, cmd.value, cmd.checksum);
                 processCommand(cmd, *chain);
-            } else return; // Drop invalid packets
+            }
+            // Reset for next packet
+            rcvBytes = 0;
         }
     }
     
