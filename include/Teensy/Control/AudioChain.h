@@ -16,6 +16,8 @@ class AudioChain {
 
         std::map<EffectName, std::function<std::unique_ptr<Effect>()>> effectInits; // Function pointers (factories) to instantiate effects
     public:
+        AudioChain();
+
         Effect* addEffect(EffectName id);
 
         void removeEffect(EffectID id);
@@ -24,7 +26,7 @@ class AudioChain {
 
         void reorderEffect(EffectID id, size_t pos);
 
-        AudioChain();
+        void clear();
 
         void processChain(const float* input, float* output, size_t n);
 };

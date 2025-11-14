@@ -54,6 +54,9 @@ void processCommand(Command& cmd, AudioChain& chain) {
             chain.getEffect(cmd.id1)->setBypass(cmd.value > 0.5f);
             if (LOG_CMD) Serial.printf("Set bypass at effect %d to %f\n", cmd.id1, cmd.value);
             break;
+        case CommandType::CLEAR: // Clear chain
+            chain.clear();
+            if (LOG_CMD) Serial.println("Cleared effect chain");
     }
 }
 

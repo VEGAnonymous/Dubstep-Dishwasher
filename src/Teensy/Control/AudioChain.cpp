@@ -35,6 +35,33 @@ std::map<EffectName, std::function<std::unique_ptr<Effect>()>> effectInits; // F
 
 /* PUBLIC */
 
+AudioChain::AudioChain() { 
+    effectInits = { // Factories
+        {EffectName::CHORUS, [](){ return std::make_unique<Chorus>(); }},
+        {EffectName::COMPRESSOR, [](){ return std::make_unique<Compressor>(); }},
+        {EffectName::DELAY, [](){ return std::make_unique<Delay>(); }},
+        {EffectName::DISTORTION, [](){ return std::make_unique<Distortion>(); }},
+        {EffectName::EQUALIZER, [](){ return std::make_unique<Equalizer>(); }},
+        {EffectName::FLANGER, [](){ return std::make_unique<Flanger>(); }},
+        {EffectName::FORMANT_SHIFTER, [](){ return std::make_unique<FormantShifter>(); }},
+        {EffectName::FREEZER, [](){ return std::make_unique<Freezer>(); }},
+        {EffectName::GAIN, [](){ return std::make_unique<Gain>(); }},
+        {EffectName::GATE, [](){ return std::make_unique<Gate>(); }},
+        {EffectName::GRANULATOR, [](){ return std::make_unique<Granulator>(); }},
+        {EffectName::MODULATION, [](){ return std::make_unique<Modulation>(); }},
+        {EffectName::PARALLEL, [](){ return std::make_unique<Parallel>(); }},
+        {EffectName::PHASER, [](){ return std::make_unique<Phaser>(); }},
+        {EffectName::PITCH_SHIFTER, [](){ return std::make_unique<PitchShifter>(); }},
+        {EffectName::REVERB, [](){ return std::make_unique<Reverb>(); }},
+        {EffectName::SCRUBBY, [](){ return std::make_unique<Scrubby>(); }},
+        {EffectName::SPECTRAL_GATE, [](){ return std::make_unique<SpectralGate>(); }},
+        {EffectName::VOCODER, [](){ return std::make_unique<Vocoder>(); }},
+        {EffectName::WAH, [](){ return std::make_unique<Wah>(); }},
+        
+        {EffectName::LIMITER, [](){ return std::make_unique<Compressor>(1.0f, dbAmp(-0.6f), 100.0f, 0.0f, 1.0f, 50.0f, dbAmp(-0.3f), false); }}
+    };
+}
+
 Effect* AudioChain::addEffect(EffectName id) {
     // Search for effect initializer via EffectName mapping
     auto it = effectInits.find(id);
@@ -87,31 +114,11 @@ void AudioChain::reorderEffect(EffectID id, size_t pos) {
     effects.insert(effects.begin() + pos, std::move(effectPtr));
 }
 
-AudioChain::AudioChain() { 
-    effectInits = { // Factories
-        {EffectName::CHORUS, [](){ return std::make_unique<Chorus>(); }},
-        {EffectName::COMPRESSOR, [](){ return std::make_unique<Compressor>(); }},
-        {EffectName::DELAY, [](){ return std::make_unique<Delay>(); }},
-        {EffectName::DISTORTION, [](){ return std::make_unique<Distortion>(); }},
-        {EffectName::EQUALIZER, [](){ return std::make_unique<Equalizer>(); }},
-        {EffectName::FLANGER, [](){ return std::make_unique<Flanger>(); }},
-        {EffectName::FORMANT_SHIFTER, [](){ return std::make_unique<FormantShifter>(); }},
-        {EffectName::FREEZER, [](){ return std::make_unique<Freezer>(); }},
-        {EffectName::GAIN, [](){ return std::make_unique<Gain>(); }},
-        {EffectName::GATE, [](){ return std::make_unique<Gate>(); }},
-        {EffectName::GRANULATOR, [](){ return std::make_unique<Granulator>(); }},
-        {EffectName::MODULATION, [](){ return std::make_unique<Modulation>(); }},
-        {EffectName::PARALLEL, [](){ return std::make_unique<Parallel>(); }},
-        {EffectName::PHASER, [](){ return std::make_unique<Phaser>(); }},
-        {EffectName::PITCH_SHIFTER, [](){ return std::make_unique<PitchShifter>(); }},
-        {EffectName::REVERB, [](){ return std::make_unique<Reverb>(); }},
-        {EffectName::SCRUBBY, [](){ return std::make_unique<Scrubby>(); }},
-        {EffectName::SPECTRAL_GATE, [](){ return std::make_unique<SpectralGate>(); }},
-        {EffectName::VOCODER, [](){ return std::make_unique<Vocoder>(); }},
-        {EffectName::WAH, [](){ return std::make_unique<Wah>(); }},
-        
-        {EffectName::LIMITER, [](){ return std::make_unique<Compressor>(1.0f, dbAmp(-0.6f), 100.0f, 0.0f, 1.0f, 50.0f, dbAmp(-0.3f), false); }}
-    };
+void AudioChain::clear() {
+    fxMap.clear();
+    effects.clear();
+    nextID = 0;
+    std::queue<EffectID> empty; std::swap(freeIDs, empty);
 }
 
 void AudioChain::processChain(const float* input, float* output, size_t n = BUFFER_SIZE) { // Process effect chain serially

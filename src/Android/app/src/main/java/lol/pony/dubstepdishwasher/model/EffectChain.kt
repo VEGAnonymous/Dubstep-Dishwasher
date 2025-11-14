@@ -51,4 +51,9 @@ class EffectChain {
     fun reorderEffect(effectId: Int, toIndex: Int) { reorder(indexOf(effectId), toIndex) }
     fun setParam(effectId: Int, paramId: Int, value: Any) { effects.find { it.effectId == effectId }?.setParam(paramId, value) }
     fun setBypass(effectId: Int, state: Boolean) { effects.find { it.effectId == effectId }?.setBypass(state) }
+    fun clear() {
+        effects.clear()
+        freeIds.clear()
+        nextIdx = 0
+    }
 }

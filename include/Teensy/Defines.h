@@ -21,7 +21,7 @@ struct fft_cpx { float r; float i; };
 
 /* ENUMS */
 
-enum class CommandType : uint8_t { ADD, REMOVE, REORDER, SET, BYPASS };
+enum class CommandType : uint8_t { ADD, REMOVE, REORDER, SET, BYPASS, CLEAR };
 
 enum class EffectName : uint8_t {
     CHORUS,

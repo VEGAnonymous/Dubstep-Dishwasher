@@ -31,7 +31,8 @@ enum class CommandType(val value: Byte) {
     REMOVE(1),
     REORDER(2),
     SET_PARAM(3),
-    BYPASS(4)
+    BYPASS(4),
+    CLEAR(5)
 }
 
 enum class ParamUnit { PERCENT, ENUM, MS, HZ, DB, SEMITONES, DIMENSIONLESS }

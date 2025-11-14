@@ -74,6 +74,14 @@ class EffectChainViewModel(private val bleManager: BleManager) : ViewModel() {
         sendCommand(BYPASS, effectId, 0, value)
     }
 
+    fun clearChain() {
+        chain.clear()
+        _effects.value = chain.getAll()
+
+        // run command
+        sendCommand(CLEAR, 0, 0, 0.0f)
+    }
+
     /**
      * Converts byte array to string with space separator.
      * @param bytes The byte array to convert to string.
