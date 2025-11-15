@@ -1,4 +1,4 @@
-package lol.pony.dubstepdishwasher.model.core
+package lol.pony.dubstepdishwasher.model
 
 import android.Manifest
 import android.bluetooth.BluetoothGattCharacteristic
@@ -16,7 +16,7 @@ import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import java.util.UUID
 
-class BleManager(private val context: Context) {
+class BLEManager(private val context: Context) {
     private val rxBleClient: RxBleClient = RxBleClient.create(context)
     // composite disposable for managing multiple disposables
     private val compositeDisposable = CompositeDisposable()

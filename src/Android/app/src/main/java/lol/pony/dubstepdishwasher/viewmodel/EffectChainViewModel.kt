@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import lol.pony.dubstepdishwasher.model.ControlQueue
 import lol.pony.dubstepdishwasher.model.EffectChain
 import lol.pony.dubstepdishwasher.model.core.BiquadType
-import lol.pony.dubstepdishwasher.model.core.BleManager
+import lol.pony.dubstepdishwasher.model.BLEManager
 import lol.pony.dubstepdishwasher.model.core.CommandType
 import lol.pony.dubstepdishwasher.model.core.CommandType.*
 import lol.pony.dubstepdishwasher.model.core.DistortionMode
@@ -21,7 +21,7 @@ import lol.pony.dubstepdishwasher.model.core.WavetableType
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-class EffectChainViewModel(private val bleManager: BleManager) : ViewModel() {
+class EffectChainViewModel(private val bleManager: BLEManager) : ViewModel() {
     private val chain = EffectChain()
     private val _effects = MutableStateFlow<List<Effect>>(emptyList())
     val effects: StateFlow<List<Effect>> = _effects

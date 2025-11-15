@@ -17,23 +17,24 @@ import androidx.compose.ui.unit.dp
 import com.polidea.rxandroidble3.RxBleConnection
 import com.polidea.rxandroidble3.RxBleDevice
 import com.polidea.rxandroidble3.scan.ScanResult
-import lol.pony.dubstepdishwasher.model.core.BleManager
+import lol.pony.dubstepdishwasher.model.BLEManager
 
 import lol.pony.dubstepdishwasher.ui.*
 import lol.pony.dubstepdishwasher.ui.theme.DubstepDishwasherTheme
 
+/* SET THIS FLAG TO SKIP BLE - FOR DEVELOPMENT ONLY */
 const val SKIP_BLE = true
 
 class MainActivity : ComponentActivity() {
 
-    private lateinit var bleManager: BleManager
+    private lateinit var bleManager: BLEManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        bleManager = BleManager(this)
+        bleManager = BLEManager(this)
 
-        // request permissions and scans if valid
+        // Request permissions and scans if valid
         val requestPermissionLauncher =
             registerForActivityResult(
                 ActivityResultContracts.RequestMultiplePermissions()
@@ -68,18 +69,25 @@ class MainActivity : ComponentActivity() {
  * @param requestPermissions function to request permissions
  */
 @Composable
-fun BleScannerApp(modifier: Modifier = Modifier, bleManager: BleManager, requestPermissions: () -> Unit) {
-    // gets connection state and connection device
+fun BleScannerApp(modifier: Modifier = Modifier, bleManager: BLEManager, requestPermissions: () -> Unit) {
+    // Gets connection state and connection device
     val connectedDevice = bleManager.connectedDevice.value
     val connectionState = bleManager.connectionState.value
 
     // Scan for devices if no device is connected
-    if ((connectedDevice != null && connectionState == RxBleConnection.RxBleConnectionState.CONNECTED) || SKIP_BLE) {
-        FXPanel(
-            modifier = modifier,
-            bleManager = bleManager,
-            device = if (SKIP_BLE) null else connectedDevice,
-            onDisconnect = { bleManager.disconnect() })
+    if ((connectedDevice != null && connectionState == RxBleConnection.RxBleConnectionState.CONNECTED) || SKIP_BLE /* SET FLAG ABOVE TO SKIP BLE */) {
+        Column(modifier = Modifier.fillMaxHeight()) {
+            TopBar(
+                device = if (SKIP_BLE) null else connectedDevice,
+                onDisconnect = { bleManager.disconnect() }
+            )
+
+            HorizontalDivider()
+
+            FXPanel(bleManager = bleManager)
+
+            // TODO: Add modulation panel at bottom
+        }
     } else {
         ScanScreen(
             modifier = modifier,
@@ -96,7 +104,7 @@ fun BleScannerApp(modifier: Modifier = Modifier, bleManager: BleManager, request
  * @param requestPermissions function to request permissions
  */
 @Composable
-fun ScanScreen(modifier: Modifier = Modifier, bleManager: BleManager, requestPermissions: () -> Unit) {
+fun ScanScreen(modifier: Modifier = Modifier, bleManager: BLEManager, requestPermissions: () -> Unit) {
     Column(modifier = modifier.padding(16.dp)) {
         Row {
             // Scan buttons
@@ -114,12 +122,7 @@ fun ScanScreen(modifier: Modifier = Modifier, bleManager: BleManager, requestPer
                 Text("Stop Scan")
             }
         }
-        // DEBUG: auto connect to device
-        val targetMacAddress = "FC:01:2C:DB:F5:49"
-        bleManager.scannedDevices.value.find { it.bleDevice.macAddress == targetMacAddress }?.let {
-            bleManager.connectToDevice(it.bleDevice)
-        }
-        // displays scanned devices
+        // Displays scanned devices
         ScannedDevicesList(devices = bleManager.scannedDevices.value, onConnect = { bleManager.connectToDevice(it) })
     }
 }
