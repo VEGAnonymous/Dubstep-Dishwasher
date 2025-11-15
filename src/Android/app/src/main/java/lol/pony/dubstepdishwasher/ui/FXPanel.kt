@@ -1,5 +1,6 @@
 package lol.pony.dubstepdishwasher.ui
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -10,15 +11,18 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Button
@@ -37,7 +41,8 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -45,6 +50,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -55,14 +63,14 @@ import lol.pony.dubstepdishwasher.model.core.BleManager
 import lol.pony.dubstepdishwasher.model.core.Effect
 import lol.pony.dubstepdishwasher.model.core.EffectParameter
 import lol.pony.dubstepdishwasher.model.core.EffectType
+import lol.pony.dubstepdishwasher.model.core.UIEnum
+import lol.pony.dubstepdishwasher.model.core.mapRange
 import lol.pony.dubstepdishwasher.viewmodel.EffectChainViewModel
-import java.math.BigDecimal
-import java.math.RoundingMode
-import kotlin.math.roundToInt
+import kotlin.math.pow
 
 @Composable
 fun FXPanel(
-    modifier: Modifier = Modifier, bleManager: BleManager, device: RxBleDevice,
+    modifier: Modifier = Modifier, bleManager: BleManager, device: RxBleDevice?,
     onDisconnect: () -> Unit
 ) {
     val viewModel: EffectChainViewModel = viewModel(factory = EffectChainViewModelFactory(bleManager))
@@ -70,9 +78,12 @@ fun FXPanel(
 
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
         Row(modifier = Modifier.fillMaxWidth()) {
-            AddEffectMenu(onAdd = { viewModel.addEffect(it) })
+            EffectChainControls(
+                onAdd = { viewModel.addEffect(it) },
+                onClear = { viewModel.clearChain() }
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(device.name ?: "Unknown Device")
+                Text(device?.name ?: "Unknown Device")
                 IconButton(onClick = onDisconnect) {
                     Icon(Icons.Filled.Close, contentDescription = "Disconnect")
                 }
@@ -91,20 +102,31 @@ fun FXPanel(
 }
 
 @Composable
-fun AddEffectMenu(onAdd: (EffectType) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { expanded = !expanded }) { Icon(Icons.Filled.Add, contentDescription = "Add FX") }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            EffectType.entries.forEach { type ->
-                DropdownMenuItem(
-                    text = { Text(type.uiName) },
-                    onClick = {
-                        onAdd(type)
-                        expanded = false
-                    }
-                )
+fun EffectChainControls(onAdd: (EffectType) -> Unit, onClear: () -> Unit) {
+    Row {
+        var expanded by remember { mutableStateOf(false) }
+
+        // Add effect button + dropdown
+        Box {
+            IconButton(onClick = { expanded = !expanded }) {
+                Icon(Icons.Filled.Add, contentDescription = "Add FX")
             }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                EffectType.entries.forEach { type ->
+                    DropdownMenuItem(
+                        text = { Text(type.uiName) },
+                        onClick = {
+                            onAdd(type)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+
+        // Clear button
+        IconButton(onClick = onClear) {
+            Icon(Icons.Filled.Delete, contentDescription = "Clear")
         }
     }
 }
@@ -126,17 +148,23 @@ fun EffectList(
                     .padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+
+                // Effect name
                 Column {
                     Text(fx.effectType.uiName, style = MaterialTheme.typography.titleMedium, modifier = Modifier.width(120.dp))
-                    Text("Id: ${fx.effectId}")
-                    Text("Index: $index")
+                    // TEMP: Remove in release
+                    // Text("Id: ${fx.effectId}")
+                    // Text("Index: $index")
                 }
 
+                // Bypass switch
                 Switch(
                     modifier = Modifier.scale(0.8f),
                     checked = !fx.isBypassed,
                     onCheckedChange = { onToggleBypass(fx.effectId) })
-                // reorder buttons
+
+                // Reorder effect buttons
+                // TEMP: Potentially switch to drag and drop
                 Column {
                     IconButton(
                         onClick = { onReorder(fx.effectId, index - 1) },
@@ -147,10 +175,12 @@ fun EffectList(
                         enabled = index < effects.size - 1
                     ) { Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Move Down") }
                 }
-                // effect remove button
+
+                // Remove effect button
                 IconButton(onClick = { onRemove(fx.effectId) }) {
                     Icon(Icons.Filled.Close, contentDescription = "Remove") }
-                // parameter list
+
+                // Parameter list
                 VerticalDivider(
                     thickness = 2.dp,
                     modifier = Modifier
@@ -161,16 +191,6 @@ fun EffectList(
             }
             HorizontalDivider()
         }
-    }
-}
-
-class EffectChainViewModelFactory(private val bleManager: BleManager) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(EffectChainViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return EffectChainViewModel(bleManager) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
 
@@ -185,57 +205,110 @@ fun ParamList(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .padding(horizontal = 2.dp)
+                    .padding(horizontal = 10.dp)
                     .width(IntrinsicSize.Max)
                     .defaultMinSize(minWidth = 100.dp)
             ) {
-                // param name
+                /* Parameter name */
                 Text(
                     text = param.name,
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center,
                     maxLines = 1
                 )
-                // param value
+
+                // Dialog state for Range parameters
+                var showDialog by remember { mutableStateOf(false) }
+                var textValue by remember { mutableStateOf("") }
+
+                /* Parameter value */
                 Text(
-                    text = if (param is EffectParameter.Toggle) {
-                        if (param.value) "On" else "Off"
-                    }
-                    else {
-                        param.value.toString()
-                    }
-                )
-                // different value inputs based on parameter type
-                when(param) {
-                    // sliders for range parameters
-                    is EffectParameter.Range -> {
-                        var paramValue by remember { mutableStateOf(param.value) }
-                        var lastUpdateTime by remember { mutableLongStateOf(0L) }
-
-                        Slider(
-                            value = paramValue.toFloat(),
-                            onValueChange = {
-                                paramValue = it
-
-                                // only sends update every 250ms to not overload BLE (could probably just write to a 2nd characteristic)
-                                // issue: if you stop dragging the timer doesn't tick
-                                val currentTime = System.currentTimeMillis()
-                                if (currentTime - lastUpdateTime > 250) {
-                                    // big decimal to avoid weird rounding errors
-                                    val preciseValue = BigDecimal(it.toDouble()).setScale(2, RoundingMode.HALF_UP).toFloat()
-                                    onSetParam(effect.effectId, param.id, preciseValue)
-                                    lastUpdateTime = currentTime
+                    text = param.formatValue(),
+                    modifier = Modifier.pointerInput(Unit) {
+                        detectTapGestures(
+                            // Edit value (dialog) on tap
+                            onTap = {
+                                if (param is EffectParameter.Range) {
+                                    textValue = param.value.toString()
+                                    showDialog = true
                                 }
                             },
-                            onValueChangeFinished = {
-                                val preciseValue = BigDecimal(paramValue.toDouble())
-                                    .setScale(2, RoundingMode.HALF_UP)
-                                    .toFloat()
-                                onSetParam(effect.effectId, param.id, preciseValue)
-                            },
-                            valueRange = param.range.first.toFloat()..param.range.second.toFloat(),
-                            steps = (((param.range.second.toFloat() - param.range.first.toFloat()) /
-                                    param.step.toFloat()).roundToInt() - 1).coerceAtLeast(0),
+                            // Reset to init value on long press
+                            onLongPress = {
+                                if (param is EffectParameter.Range<*>) {
+                                    @Suppress("UNCHECKED_CAST")
+                                    (param as EffectParameter.Range<Any>).value = param.initialValue
+                                    onSetParam(effect.effectId, param.id, param.initialValue)
+                                }
+                            }
+                        )
+                    }
+                )
+
+                /* Parameter input */
+                when(param) {
+                    is EffectParameter.Range -> {
+                        var normalizedValue by remember {
+                            mutableFloatStateOf(param.normalized().let { if (it.isNaN() || it.isInfinite()) 0f else it })
+                        }
+                        // Update normalized value when param value changes externally
+                        LaunchedEffect(param.value) {
+                            normalizedValue = param.normalized().let { if (it.isNaN() || it.isInfinite()) 0f else it }
+                        }
+
+                        /* Text input dialog */
+                        if (showDialog) {
+                            androidx.compose.material3.AlertDialog(
+                                onDismissRequest = {
+                                    showDialog = false
+                                    textValue = param.value.toString()
+                                },
+                                title = { Text(param.name, style = MaterialTheme.typography.titleSmall) },
+                                text = {
+                                    androidx.compose.material3.OutlinedTextField(
+                                        value = textValue,
+                                        onValueChange = { textValue = it },
+                                        label = { Text("Value") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        keyboardOptions = KeyboardOptions(
+                                            keyboardType = KeyboardType.Decimal,
+                                            imeAction = ImeAction.Done
+                                        )
+                                    )
+                                },
+                                confirmButton = {
+                                    androidx.compose.material3.TextButton(
+                                        onClick = {
+                                            textValue.toFloatOrNull()?.let { newValue ->
+                                                val clamped = newValue.coerceIn( // Clamp user input
+                                                    param.range.first.toFloat(),
+                                                    param.range.second.toFloat()
+                                                )
+                                                param.fromNormalized( // Set internal value from normalized position
+                                                    clamped.mapRange(
+                                                        inRange = param.range.first.toFloat()..param.range.second.toFloat(),
+                                                        outRange = 0f..1f
+                                                    ).pow(1 / param.exp)
+                                                )
+                                                normalizedValue = param.normalized() // Update slider position
+                                                onSetParam(effect.effectId, param.id, param.value)
+                                            }
+                                            showDialog = false
+                                        }
+                                    ) { Text("OK") }
+                                },
+                                dismissButton = null,
+                                modifier = Modifier
+                                    .fillMaxWidth(0.8f)
+                                    .padding(horizontal = 32.dp)
+                                    .imePadding()
+                            )
+                        }
+
+                        // Sliders for range parameters
+                        // TEMP: Switch to knobs
+                        Slider(
                             modifier = Modifier.fillMaxWidth(),
                             track = { sliderState ->
                                 SliderDefaults.Track(sliderState = sliderState, thumbTrackGapSize = 0.dp)
@@ -245,17 +318,30 @@ fun ParamList(
                                 activeTrackColor = MaterialTheme.colorScheme.primary,
                                 inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
 
-                            )
+                            ),
 
+                            value = normalizedValue,
+                            onValueChange = {
+                                normalizedValue = it // Sync slider position
+                                param.fromNormalized(it) // Set internal value
+                                normalizedValue = param.normalized().let { norm -> // Update slider pos to reflect rounded actual
+                                    if (norm.isNaN() || norm.isInfinite()) 0f else norm
+                                }
+                                onSetParam(effect.effectId, param.id, param.value)
+                            },
+                            onValueChangeFinished = {},
+                            valueRange = 0f..1f,
+                            steps = 0
                         )
                     }
 
-                    // dropdown for discrete parameters
+                    // Dropdown for discrete parameters
                     is EffectParameter.Discrete<*> -> {
                         var expanded by remember { mutableStateOf(false) }
                         Box {
                             Button(onClick = { expanded = true }) {
-                                Text(param.value.toString())
+                                val paramVal = param.value
+                                Text(if (paramVal is UIEnum) paramVal.uiName else paramVal.toString())
                                 Icon(
                                     Icons.Filled.KeyboardArrowDown,
                                     contentDescription = "Select"
@@ -267,7 +353,7 @@ fun ParamList(
                             ) {
                                 param.possibleValues.forEach { option ->
                                     DropdownMenuItem(
-                                        text = { Text(option.toString()) },
+                                        text = { Text(text = if (option is UIEnum) option.uiName else option.toString())},
                                         onClick = {
                                             onSetParam(effect.effectId, param.id, option!!)
                                             expanded = false
@@ -276,38 +362,34 @@ fun ParamList(
                             }
                         }
                     }
-                    // switch for toggle parameters
+
+                    // Switch for toggle parameters
                     is EffectParameter.Toggle -> {
                         Switch(
                             modifier = Modifier.scale(0.8f),
                             checked = param.value,
                             onCheckedChange = { onSetParam(effect.effectId, param.id, !param.value) })
                     }
-                    // text field for other possible parameters
-//                    else -> {
-//                        var paramValue by remember { mutableStateOf("") }
-//                        TextField(
-//                            value = paramValue,
-//                            onValueChange = { paramValue = it },
-//                            label = { Text(text = "Value", modifier = Modifier.fillMaxWidth(), fontSize = 10.sp, textAlign = TextAlign.Center) },
-//                            modifier = Modifier
-//                                .widthIn(
-//                                    min = 100.dp,
-//                                    max = with(density) { paramNameWidth.toDp() }.coerceAtLeast(100.dp)
-//                                )
-//                        )
-//                        Button(onClick = { paramValue.toFloatOrNull()?.let { onSetParam(effect.effectId, param.id, it) }}) {
-//                            Text("Set")
-//                        }
-//                    }
                 }
             }
+
             VerticalDivider(
-                thickness = 2.dp,
+                thickness = 1.dp,
                 modifier = Modifier
                     .fillMaxHeight()
                     .padding(horizontal = 10.dp)
             )
+
         }
+    }
+}
+
+class EffectChainViewModelFactory(private val bleManager: BleManager) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(EffectChainViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return EffectChainViewModel(bleManager) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }

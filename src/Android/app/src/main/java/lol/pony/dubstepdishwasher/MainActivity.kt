@@ -22,6 +22,8 @@ import lol.pony.dubstepdishwasher.model.core.BleManager
 import lol.pony.dubstepdishwasher.ui.*
 import lol.pony.dubstepdishwasher.ui.theme.DubstepDishwasherTheme
 
+const val SKIP_BLE = true
+
 class MainActivity : ComponentActivity() {
 
     private lateinit var bleManager: BleManager
@@ -72,11 +74,11 @@ fun BleScannerApp(modifier: Modifier = Modifier, bleManager: BleManager, request
     val connectionState = bleManager.connectionState.value
 
     // Scan for devices if no device is connected
-    if (connectedDevice != null && connectionState == RxBleConnection.RxBleConnectionState.CONNECTED) {
+    if ((connectedDevice != null && connectionState == RxBleConnection.RxBleConnectionState.CONNECTED) || SKIP_BLE) {
         FXPanel(
             modifier = modifier,
             bleManager = bleManager,
-            device = connectedDevice,
+            device = if (SKIP_BLE) null else connectedDevice,
             onDisconnect = { bleManager.disconnect() })
     } else {
         ScanScreen(

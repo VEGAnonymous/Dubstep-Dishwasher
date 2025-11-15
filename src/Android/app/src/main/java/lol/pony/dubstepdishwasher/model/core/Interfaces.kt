@@ -2,6 +2,8 @@ package lol.pony.dubstepdishwasher.model.core
 
 /* INTERFACES */
 
+interface UIEnum { val uiName: String }
+
 interface NumericParam { val unit: ParamUnit }
 
 interface NormalizableParam {

@@ -7,7 +7,7 @@
 
 class Freezer : public Effect {
     private:
-        enum Params : ParamID { MIX, RATE, SPECTRAL_MODE, FFT_SIZE, HOP_SIZE, LOOP_START, LOOP_END };
+        enum Params : ParamID { MIX, RATE, SPECTRAL_MODE, FFT_SIZE, LOOP_START, LOOP_END };
 
         static constexpr size_t bufSize = (size_t)3 * (size_t)SAMPLE_RATE; // 3s running buffer
         static constexpr float smooth = 0.005f; // Smoothing factor at loop boundaries
@@ -19,7 +19,8 @@ class Freezer : public Effect {
         float* inBuf = nullptr; size_t writePos = 0; float readPos = 0.0f;
         
         // Spectral resythesis
-        size_t fftSize, hopFactor;
+        size_t fftSize; 
+        static constexpr size_t hopFactor = 4;
         std::unique_ptr<STFT> stft;
         std::vector<float> spectBuf, spectFrame;
         size_t spectPos = 0, spectHopCounter = 0;
@@ -28,7 +29,7 @@ class Freezer : public Effect {
         void freeSTFT();
 
     public:
-        Freezer(float mix = 1.0f, float rate = 1.0f, bool spectralMode = false, size_t fftSize = 1024, size_t hopFactor = 4, 
+        Freezer(float mix = 1.0f, float rate = 1.0f, bool spectralMode = false, size_t fftSize = 1024, 
                 float loopStart = 0.0f, float loopEnd = 1.0f);
         ~Freezer();
         
@@ -36,7 +37,6 @@ class Freezer : public Effect {
         void setRate(float rate); // [-4.0, 4.0]
         void setSpectralMode(bool mode);
         void setFFTSize(size_t N); // [128, FFT_MAX_SIZE], MUST BE POWER OF 2 (I'm not going to ask you again)
-        void setHopSize(size_t hopFactor); // [2, 8]
         void setLoopRegion(float start, float end); // [0.0, 1.0] for both
         void setParam(ParamID param, float value) override;
         

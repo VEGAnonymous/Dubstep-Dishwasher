@@ -13,6 +13,7 @@ lifecycleViewmodelCompose = "2.9.4"
 rxandroid = "3.0.2"
 rxandroidble = "1.19.1"
 rxjava = "3.1.12"
+uiText = "1.9.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -34,6 +35,7 @@ androidx-compose-foundation = { group = "androidx.compose.foundation", name = "f
 rxandroid = { module = "io.reactivex.rxjava3:rxandroid", version.ref = "rxandroid" }
 rxandroidble = { module = "com.polidea.rxandroidble3:rxandroidble", version.ref = "rxandroidble" }
 rxjava = { module = "io.reactivex.rxjava3:rxjava", version.ref = "rxjava" }
+androidx-compose-ui-text = { group = "androidx.compose.ui", name = "ui-text", version.ref = "uiText" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

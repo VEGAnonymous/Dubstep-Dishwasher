@@ -5,7 +5,7 @@
 
 /*
 
-enum Params : ParamID { MIX, RATE, SPECTRAL_MODE, FFT_SIZE, HOP_SIZE, LOOP_START, LOOP_END };
+enum Params : ParamID { MIX, RATE, SPECTRAL_MODE, FFT_SIZE, LOOP_START, LOOP_END };
 
 static constexpr size_t bufSize = (size_t)3 * (size_t)SAMPLE_RATE; // 3s running buffer
 static constexpr float smooth = 0.005f; // Smoothing factor at loop boundaries
@@ -17,7 +17,8 @@ float loopStart, loopEnd;
 float* inBuf = nullptr; size_t writePos = 0; float readPos = 0.0f;
 
 // Spectral resythesis
-size_t fftSize, hopFactor;
+size_t fftSize;
+static constexpr size_t hopFactor = 4;
 std::unique_ptr<STFT> stft;
 std::vector<float> spectBuf, spectFrame;
 size_t spectPos = 0, spectHopCounter = 0;
@@ -25,7 +26,7 @@ size_t spectPos = 0, spectHopCounter = 0;
 */
 
 void Freezer::allocateSTFT() {
-    stft = std::make_unique<STFT>(fftSize, hopFactor, 0.5f);
+    stft = std::make_unique<STFT>(fftSize, hopFactor, 0.25f);
     spectBuf.assign(fftSize, 0.0f); spectFrame.assign(fftSize, 0.0f);
     spectPos = 0; spectHopCounter = 0;
 }
@@ -36,9 +37,9 @@ void Freezer::freeSTFT() {
 
 /* PUBLIC */
 
-Freezer::Freezer(float mix, float rate, bool spectralMode, size_t fftSize, size_t hopFactor, 
-        float loopStart, float loopEnd) : fftSize(fftSize), hopFactor(hopFactor) {
-    setMix(mix); setRate(rate); setFFTSize(fftSize); setHopSize(hopFactor); 
+Freezer::Freezer(float mix, float rate, bool spectralMode, size_t fftSize, 
+        float loopStart, float loopEnd) : fftSize(fftSize) {
+    setMix(mix); setRate(rate); setFFTSize(fftSize);
     setSpectralMode(spectralMode); setLoopRegion(loopStart, loopEnd); 
     inBuf = (float*)extmem_malloc(bufSize * sizeof(float));
     if (!inBuf) while (1) { }
@@ -65,10 +66,6 @@ void Freezer::setFFTSize(size_t N) { // [128, FFT_MAX_SIZE], MUST BE POWER OF 2 
     }
 
 }
-void Freezer::setHopSize(size_t hopFactor) { // [2, 8]
-    this->hopFactor = std::clamp(hopFactor, (size_t)2, (size_t)8);
-    if (stft) stft->setHopSize(hopFactor);
-} 
 void Freezer::setLoopRegion(float start, float end) { // [0.0, 1.0] for both
     loopStart = std::clamp(start, 0.0f, 1.0f);
     loopEnd = std::clamp(end, 0.0f, 1.0f);
@@ -84,7 +81,6 @@ void Freezer::setParam(ParamID param, float value) {
         case RATE: setRate(value); break;
         case SPECTRAL_MODE: setSpectralMode(value > 0.5f); break;
         case FFT_SIZE: setFFTSize((size_t)value); break;
-        case HOP_SIZE: setHopSize((size_t)value); break;
         case LOOP_START: setLoopRegion(value, loopEnd); break;
         case LOOP_END: setLoopRegion(loopStart, value); break;
     }

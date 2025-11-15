@@ -1,9 +1,11 @@
 package lol.pony.dubstepdishwasher.model.core
 
+import androidx.compose.ui.tooling.preview.UiMode
+
 /* DEFINES */
 /* ENUMS */
 
-enum class EffectType(val uiName: String) {
+enum class EffectType(override val uiName: String) : UIEnum {
     CHORUS("Chorus"),
     COMPRESSOR("Compressor"),
     DELAY("Delay"),
@@ -37,13 +39,49 @@ enum class CommandType(val value: Byte) {
 
 enum class ParamUnit { PERCENT, ENUM, MS, HZ, DB, SEMITONES, DIMENSIONLESS }
 
-enum class EnvelopeType { HANN, HAMMING, SINE, TRI, PERC, SMOOTH_RECT }
+enum class EnvelopeType(override val uiName: String) : UIEnum {
+    HANN("Hann"),
+    HAMMING("Hamming"),
+    SINE("Sine"),
+    TRI("Triangle"),
+    PERC("Perc"),
+    SMOOTH_RECT("Smooth Rect") }
 
-enum class WavetableType { SINE, TRI, SAW, SQUARE };
-enum class RandomMode { PERLIN, SAMPLE_HOLD, BINARY };
+enum class WavetableType(override val uiName: String) : UIEnum {
+    SINE("Sine"),
+    TRI("Triangle"),
+    SAW("Saw"),
+    SQUARE("Square")
+}
+enum class RandomMode(override val uiName: String) : UIEnum {
+    PERLIN("Perlin"),
+    SAMPLE_HOLD("Sample & Hold"),
+    BINARY("Binary")
+}
 
-enum class ParallelMode { SUM, CROSSFADE };
+enum class ParallelMode(override val uiName: String) : UIEnum {
+    SUM("Sum"),
+    CROSSFADE("Crossfade")
+}
 
-enum class ModulationEffectMode { AM, RM }
-enum class DistortionMode { TUBE, SOFT_CLIP, HARD_CLIP, DIODE, BITCRUSH, RECTIFY, SATURATE }
-enum class BiquadType { LOW_PASS, HIGH_PASS, LOW_SHELF, HIGH_SHELF, PEAK, NOTCH }
+enum class ModulationEffectMode(override val uiName: String) : UIEnum {
+    AM("AM"),
+    RM("RM")
+}
+enum class DistortionMode(override val uiName: String) : UIEnum {
+    TUBE("Tube"),
+    SOFT_CLIP("Soft Clip"),
+    HARD_CLIP("Hard Clip"),
+    DIODE("Diode"),
+    BITCRUSH("Bitcrush"),
+    RECTIFY("Rectify"),
+    SATURATE("Saturate")
+}
+enum class BiquadType(override val uiName: String) : UIEnum {
+    LOW_PASS("Low Pass"),
+    HIGH_PASS("High Pass"),
+    LOW_SHELF("Low Shelf"),
+    HIGH_SHELF("High Shelf"),
+    PEAK("Peak"),
+    NOTCH("Notch")
+}

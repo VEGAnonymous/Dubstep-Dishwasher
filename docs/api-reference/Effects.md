@@ -126,7 +126,6 @@ Audio buffer looper with both time-domain and spectral modes. Loops over or spec
 1. **`RATE`** — Playback rate `[-4.0, 4.0]`
 2. **`SPECTRAL_MODE`** — Toggles spectral re-synthesis mode `true / false`
 3. **`FFT_SIZE`** — (Spectral) Size of FFT window (power of 2) `[128, FFT_MAX_SIZE]`
-4. **`HOP_SIZE`** — (Spectral) Overlap hop factor `[2, 8]`
 5. **`LOOP_START`** — Normalized loop start position `[0.0, 1.0]`
 6. **`LOOP_END`** — Normalized loop end position `[0.0, 1.0]`
 
