@@ -4,6 +4,7 @@
       <w>biquad</w>
       <w>hann</w>
       <w>inits</w>
+      <w>lerp</w>
     </words>
   </dictionary>
 </component>

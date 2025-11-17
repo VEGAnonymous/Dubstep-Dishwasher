@@ -76,6 +76,7 @@ fun BleScannerApp(modifier: Modifier = Modifier, bleManager: BLEManager, request
 
     // Scan for devices if no device is connected
     if ((connectedDevice != null && connectionState == RxBleConnection.RxBleConnectionState.CONNECTED) || SKIP_BLE /* SET FLAG ABOVE TO SKIP BLE */) {
+        /* MAIN GUI */
         Column(modifier = Modifier.fillMaxHeight()) {
             TopBar(
                 device = if (SKIP_BLE) null else connectedDevice,
@@ -84,9 +85,7 @@ fun BleScannerApp(modifier: Modifier = Modifier, bleManager: BLEManager, request
 
             HorizontalDivider()
 
-            FXPanel(bleManager = bleManager)
-
-            // TODO: Add modulation panel at bottom
+            MainPanel(bleManager = bleManager)
         }
     } else {
         ScanScreen(

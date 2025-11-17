@@ -1,48 +1,31 @@
-package lol.pony.dubstepdishwasher.ui
+package lol.pony.dubstepdishwasher.ui.components
 
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.Row
-// import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-// import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-// import androidx.compose.material3.Slider
-// import androidx.compose.material3.SliderDefaults
-// import androidx.compose.material3.Switch
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-// import androidx.compose.runtime.LaunchedEffect
-// import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -54,207 +37,40 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
-import lol.pony.dubstepdishwasher.model.BLEManager
+import lol.pony.dubstepdishwasher.R
 import lol.pony.dubstepdishwasher.model.core.Effect
 import lol.pony.dubstepdishwasher.model.core.EffectParameter
-import lol.pony.dubstepdishwasher.model.core.EffectType
+import lol.pony.dubstepdishwasher.model.core.ModAssignment
+import lol.pony.dubstepdishwasher.model.core.Modulator
+import lol.pony.dubstepdishwasher.model.core.ParamKey
 import lol.pony.dubstepdishwasher.model.core.UIEnum
 import lol.pony.dubstepdishwasher.model.core.mapRange
-import lol.pony.dubstepdishwasher.R
-import lol.pony.dubstepdishwasher.ui.controls.*
-import lol.pony.dubstepdishwasher.viewmodel.EffectChainViewModel
+import lol.pony.dubstepdishwasher.ui.controls.DDKnob
+import lol.pony.dubstepdishwasher.ui.controls.DDSwitch
 import kotlin.math.pow
-
-class EffectChainViewModelFactory(private val bleManager: BLEManager) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(EffectChainViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return EffectChainViewModel(bleManager) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
-    }
-}
-
-@Composable
-fun FXPanel(bleManager: BLEManager) {
-    val viewModel: EffectChainViewModel = viewModel(factory = EffectChainViewModelFactory(bleManager))
-    val effects by viewModel.effects.collectAsState()
-
-    Row(Modifier.fillMaxSize()) {
-
-        // Chain controls + effect list
-        Column(
-            Modifier.width(250.dp)
-                    .fillMaxHeight()
-        ) {
-            EffectChainControls(
-                onAdd = { viewModel.addEffect(it) },
-                onClear = { viewModel.clearChain() } )
-
-            HorizontalDivider()
-
-            EffectList(
-                effects = effects,
-                onToggleBypass = { id -> viewModel.toggleBypass(id) },
-                onRemove = { id -> viewModel.removeEffect(id) },
-                onReorder = { id, toIndex -> viewModel.reorderEffect(id, toIndex) }
-            )
-        }
-
-        VerticalDivider()
-
-        // Chain parameter lists
-        ParameterColumn(
-            effects = effects,
-            onSetParam = { id, param, value -> viewModel.setParam(id, param, value) }
-        )
-    }
-}
-
-@Composable
-fun EffectChainControls(onAdd: (EffectType) -> Unit, onClear: () -> Unit) {
-    Row (modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
-        var expanded by remember { mutableStateOf(false) }
-
-        // Add effect button + dropdown
-        Box {
-            IconButton(onClick = { expanded = !expanded }) {
-                Icon(Icons.Filled.Add, contentDescription = "Add FX")
-            }
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                EffectType.entries.forEach { type ->
-                    DropdownMenuItem(
-                        text = { Text(
-                            text = type.uiName,
-                            style = MaterialTheme.typography.bodyMedium
-                        )},
-                        onClick = {
-                            onAdd(type)
-                            expanded = false
-                        }
-                    )
-                }
-            }
-        }
-
-        // Clear button
-        Button(onClick = onClear, modifier = Modifier.padding(horizontal = 16.dp).scale(0.8f)) {
-            Text("Clear", style = MaterialTheme.typography.bodyMedium)
-        }
-    }
-}
-
-@Composable
-fun EffectList(
-    effects: List<Effect>,
-    onToggleBypass: (Int) -> Unit,
-    onRemove: (Int) -> Unit,
-    onReorder: (Int, Int) -> Unit,
-) {
-    LazyColumn {
-        itemsIndexed(items = effects, key = { _, fx -> fx.effectId }) { index, fx ->
-            Row (
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(40.dp)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
-                // Effect name
-                Column {
-                    Text(fx.effectType.uiName, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.width(130.dp))
-                    // Text("Id: ${fx.effectId}")
-                    // Text("Index: $index")
-                }
-
-                // Reorder effect buttons
-                // Doesn't show the down arrow currently but I don't care lol
-                // TEMP: Potentially switch to drag and drop
-                Column (modifier = Modifier.fillMaxHeight()) {
-                    IconButton(
-                        onClick = { onReorder(fx.effectId, index - 1) },
-                        enabled = index > 0
-                    ) { Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "Move Up") }
-
-                    IconButton(
-                        onClick = { onReorder(fx.effectId, index + 1) },
-                        enabled = index < effects.size - 1
-                    ) { Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Move Down") }
-                }
-
-                // Spacer(modifier = Modifier.width(40.dp))
-
-                // Bypass switch
-                DDSwitch(
-                    modifier = Modifier.scale(1f),
-                    checked = fx.isBypassed,
-                    onCheckedChange = { onToggleBypass(fx.effectId) },
-                    imageRes = R.drawable.control_bypass
-                )
-
-                // Remove effect button
-                IconButton(onClick = { onRemove(fx.effectId) }) {
-                    Icon(Icons.Filled.Close, contentDescription = "Remove") }
-            }
-
-            HorizontalDivider()
-
-        }
-    }
-}
-
-@Composable
-fun ParameterColumn(
-    effects: List<Effect>,
-    onSetParam: (Int, Int, Any) -> Unit
-) {
-    LazyColumn {
-        items(effects, key = { it.effectId }) { fx ->
-            Row (
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp)
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
-                // TEMP: Generic text label per row; replace with cooler graphic later
-                Text(
-                    text = fx.effectType.uiName,
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.width(100.dp)
-                )
-
-                // Rest of param list
-                ParameterList(
-                    modifier = Modifier.fillMaxWidth(),
-                    effect = fx,
-                    onSetParam = onSetParam
-                )
-            }
-
-            HorizontalDivider()
-        }
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ParameterList(
     modifier: Modifier = Modifier,
     effect: Effect,
-    onSetParam: (Int, Int, Any) -> Unit
+    assignments: List<ModAssignment>,
+    selectedModulator: Modulator?,
+    currentModOffsets: Map<ParamKey, Float>,
+    // Callbacks
+    onSetParam: (Int, Int, Any) -> Unit,
+    onAssignMod: (String, Int, Int) -> Unit,
+    onRemoveMod: (String, Int, Int) -> Unit,
+    onModAmountChange: (String, Int, Int, Float) -> Unit,
+    onTogglePolarity: (String, Int, Int) -> Unit
 ) {
+    // HOORAY FOR CODE DUPLICATION
     LazyRow(modifier.fillMaxWidth()) {
         items(items = effect.parameters.toList(), key = { it.id }) { param ->
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .padding(horizontal = 8.dp)
+                    .padding(horizontal = 2.dp)
                     .width(IntrinsicSize.Max)
                     .defaultMinSize(minWidth = 100.dp)
             ) {
@@ -288,19 +104,22 @@ fun ParameterList(
                     }
                 )
 
+                // Mod assignments for mod arcs
+                val paramMods = assignments.filter { it.target.effectId == effect.effectId && it.target.paramId == param.id }
+
                 /* Parameter input */
                 when(param) {
                     is EffectParameter.Range -> {
                         /* Text input dialog */
                         if (showDialog) {
-                            androidx.compose.material3.AlertDialog(
+                            AlertDialog(
                                 onDismissRequest = {
                                     showDialog = false
                                     textValue = param.value.toString()
                                 },
                                 title = { Text(param.name, style = MaterialTheme.typography.bodyMedium) },
                                 text = {
-                                    androidx.compose.material3.OutlinedTextField(
+                                    OutlinedTextField(
                                         value = textValue,
                                         onValueChange = { textValue = it },
                                         label = { Text("Value") },
@@ -313,13 +132,10 @@ fun ParameterList(
                                     )
                                 },
                                 confirmButton = {
-                                    androidx.compose.material3.TextButton(
+                                    TextButton(
                                         onClick = {
                                             textValue.toFloatOrNull()?.let { newValue ->
-                                                val clamped = newValue.coerceIn( // Clamp user input
-                                                    param.range.first.toFloat(),
-                                                    param.range.second.toFloat()
-                                                )
+                                                val clamped = newValue.coerceIn(param.range.first.toFloat(), param.range.second.toFloat()) // Clamp user input
                                                 param.fromNormalized( // Set internal value from normalized position
                                                     clamped.mapRange(
                                                         inRange = param.range.first.toFloat()..param.range.second.toFloat(),
@@ -330,7 +146,7 @@ fun ParameterList(
                                             }
                                             showDialog = false
                                         }
-                                    ) { Text("OK") }
+                                    ) { Text(text = "OK", style = MaterialTheme.typography.bodyMedium) }
                                 },
                                 dismissButton = null,
                                 modifier = Modifier
@@ -340,7 +156,8 @@ fun ParameterList(
                             )
                         }
 
-                        // Knob for range parameters
+                        // Knob for Range parameters
+                        val paramKey = ParamKey(effect.effectId, param.id)
                         DDKnob(
                             modifier = Modifier
                                 .width(44.dp)
@@ -366,8 +183,21 @@ fun ParameterList(
                                 onSetParam(effect.effectId, param.id, param.value)
                             },
                             onValueChangeFinished = {},
+
                             knobImageResId = R.drawable.control_knob,
-                            frameCount = 31
+                            frameCount = 31,
+
+                            effectID = param.effectId,
+                            paramID = param.id,
+                            modAssignments = paramMods,
+                            selectedModID = selectedModulator?.id,
+                            isModulatable = param.isModulatable,
+                            currentModOffset = currentModOffsets[paramKey] ?: 0f,
+
+                            onAssignModulator = { modId -> onAssignMod(modId, effect.effectId, param.id) },
+                            onRemoveModulator = { modId -> onRemoveMod(modId, effect.effectId, param.id) },
+                            onModAmountChange = { modId, amount -> onModAmountChange(modId, effect.effectId, param.id, amount) },
+                            onTogglePolarity = { modId -> onTogglePolarity(modId, effect.effectId, param.id) }
                         )
                     }
 
@@ -419,14 +249,6 @@ fun ParameterList(
                     }
                 }
             }
-
-//            VerticalDivider(
-//                thickness = 1.dp,
-//                modifier = Modifier
-//                    .fillMaxHeight()
-//                    .padding(horizontal = 10.dp)
-//            )
-
         }
     }
 }

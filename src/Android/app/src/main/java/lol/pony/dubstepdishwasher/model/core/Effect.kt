@@ -12,4 +12,6 @@ abstract class Effect {
         param.value = value
     }
     fun setBypass(state: Boolean) { isBypassed = state }
+
+    fun getParam(paramId: Int) : EffectParameter<*>? { return parameters.find { it.id == paramId } as? EffectParameter<*> }
 }

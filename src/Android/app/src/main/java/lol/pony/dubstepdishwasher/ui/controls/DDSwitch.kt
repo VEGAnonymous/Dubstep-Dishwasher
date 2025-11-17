@@ -13,8 +13,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 
-/* This is also vibe-coded; tell your friends */
-
 @Composable
 fun DDSwitch(
     checked: Boolean,

@@ -53,11 +53,6 @@ enum class WavetableType(override val uiName: String) : UIEnum {
     SAW("Saw"),
     SQUARE("Square")
 }
-enum class RandomMode(override val uiName: String) : UIEnum {
-    PERLIN("Perlin"),
-    SAMPLE_HOLD("Sample & Hold"),
-    BINARY("Binary")
-}
 
 enum class ParallelMode(override val uiName: String) : UIEnum {
     SUM("Sum"),

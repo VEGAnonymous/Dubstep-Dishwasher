@@ -16,7 +16,8 @@ data class Command(
 class ControlQueue(
     scope: CoroutineScope,
     private val rate: Int = 50, // 50 Hz control rate
-    private val onFlush: (Command) -> Unit
+    private val onFlush: (Command) -> Unit,
+    private val onUpdate: (() -> Unit)? = null
 ) {
     private val queue = ConcurrentLinkedQueue<Command>()
     private val paramUpdates = mutableMapOf<Pair<Int, Int>, Command>()
@@ -38,6 +39,7 @@ class ControlQueue(
     }
 
     private fun flush() {
+        onUpdate?.invoke()
         val params = synchronized(paramUpdates) { paramUpdates.values.toList().also { paramUpdates.clear() } }
         params.forEach(onFlush)
         while (true) { // Flush + handle all commands in queue
