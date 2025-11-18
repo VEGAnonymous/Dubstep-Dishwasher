@@ -3,6 +3,7 @@ package lol.pony.dubstepdishwasher.model.core
 abstract class Effect {
     abstract val effectId: Int
     abstract val effectType: EffectType
+    abstract val resourceUsage: ResourceUsage
     abstract val parameters: MutableList<EffectParameter<*>>
     var isBypassed = false
 

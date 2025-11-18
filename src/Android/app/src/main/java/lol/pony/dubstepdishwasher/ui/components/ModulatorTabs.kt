@@ -51,7 +51,7 @@ fun ModulatorTabs(
         userScrollEnabled = true
     ) {
         items(modulators) { mod ->
-            val isSelected = (mod == selectedMod)
+            val isSelected = (mod.id == selectedMod?.id)
 
             Row (
                 horizontalArrangement = Arrangement.Start,

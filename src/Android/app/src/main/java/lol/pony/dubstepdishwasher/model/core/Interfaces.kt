@@ -28,9 +28,15 @@ interface ModulatableParam {
 interface Preset<T> {
     val name: String
     val data: T
+    val category: String?
+    val favorite: Boolean
+}
+
+interface RandomizablePreset<T, A> : Preset<T> {
+    fun randomized(args: A? = null): Preset<T>
 }
 
 // State
 interface PresetContainer<T> {
-    var currentPreset: Preset<T>
+    var currentPreset: Preset<T>?
 }

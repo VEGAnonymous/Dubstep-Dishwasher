@@ -31,6 +31,7 @@ class EffectChain {
         EffectType.WAH to { id: Int -> Wah(id) }
     )
 
+    // Internals
     fun get(effectId: Int): Effect? = effects.find { it.effectId == effectId }
     fun getAll(): List<Effect> = effects.toMutableStateList()
     fun indexOf(effectId: Int): Int = effects.indexOfFirst { it.effectId == effectId }
@@ -38,7 +39,21 @@ class EffectChain {
         val effect = effects.removeAt(posFrom)
         effects.add(posTo.coerceIn(0, effects.size), effect)
     }
+    fun totalUsage(): ResourceUsage {
+        val totalCompute = effects.sumOf{ it.resourceUsage.compute.toDouble() }
+        val totalMemory = effects.sumOf { it.resourceUsage.memory }
+        return ResourceUsage(compute = totalCompute.toFloat(), memory = totalMemory)
+    }
+    fun projectedUsage(type: EffectType): ResourceUsage {
+        val init = effectInits[type] ?: return totalUsage()
+        val dummy = init(-1)
+        return ResourceUsage(
+            compute = totalUsage().compute + dummy.resourceUsage.compute,
+            memory  = totalUsage().memory  + dummy.resourceUsage.memory
+        )
+    }
 
+    // Commands
     fun addEffect(type: EffectType) {
         val assignedId = if (freeIds.isNotEmpty()) freeIds.removeFirst() else nextIdx++
         effectInits[type]?.invoke(assignedId)?.let { effects.add(it) }

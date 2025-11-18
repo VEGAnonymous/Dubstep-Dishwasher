@@ -1,31 +1,41 @@
 package lol.pony.dubstepdishwasher.model.core
 
-import androidx.compose.ui.tooling.preview.UiMode
-
 /* DEFINES */
+
+const val MAX_COMPUTE_USAGE = 0.90f // 90%
+const val MAX_MEMORY_USAGE  = 450   // 400 kB
+
 /* ENUMS */
 
-enum class EffectType(override val uiName: String) : UIEnum {
-    CHORUS("Chorus"),
-    COMPRESSOR("Compressor"),
-    DELAY("Delay"),
-    DISTORTION("Distortion"),
-    EQUALIZER("Equalizer"),
-    FLANGER("Flanger"),
-    FORMANT_SHIFTER("Formant Shifter"),
-    FREEZER("Freezer"),
-    GAIN("Gain"),
-    GATE("Gate"),
-    GRANULATOR("Granulator"),
-    MODULATION("Modulation"),
-    PARALLEL("Parallel"),
-    PHASER("Phaser"),
-    PITCH_SHIFTER("Pitch Shifter"),
-    REVERB("Reverb"),
-    SCRUBBY("Scrubby"),
-    SPECTRAL_GATE("Spectral Gate"),
-    VOCODER("Vocoder"),
-    WAH("Wah")
+data class ResourceUsage(
+    val compute: Float, // Worst-case CPU usage, 0.0–1.0
+    val memory: Int = 0 // Worst-case RAM usage in kB
+)
+
+enum class EffectType(
+    override val uiName: String,
+    val resourceUsage: ResourceUsage
+) : UIEnum {
+    CHORUS("Chorus", ResourceUsage(0.05f)),
+    COMPRESSOR("Compressor", ResourceUsage(0.05f)),
+    DELAY("Delay", ResourceUsage(0.02f)),
+    DISTORTION("Distortion", ResourceUsage(0.02f)),
+    EQUALIZER("Equalizer", ResourceUsage(0.01f)),
+    FLANGER("Flanger", ResourceUsage(0.01f)),
+    FORMANT_SHIFTER("Formant Shifter", ResourceUsage(0.19f, 30)),
+    FREEZER("Freezer", ResourceUsage(0.16f, 200)),
+    GAIN("Gain", ResourceUsage(0.005f)),
+    GATE("Gate", ResourceUsage(0.04f)),
+    GRANULATOR("Granulator", ResourceUsage(0.13f)),
+    MODULATION("Modulation", ResourceUsage(0.01f)),
+    PARALLEL("Parallel", ResourceUsage(0f)), // Will vary
+    PHASER("Phaser", ResourceUsage(0.08f)),
+    PITCH_SHIFTER("Pitch Shifter", ResourceUsage(0.11f)),
+    REVERB("Reverb", ResourceUsage(0.13f, 150)),
+    SCRUBBY("Scrubby", ResourceUsage(0.04f)),
+    SPECTRAL_GATE("Spectral Gate", ResourceUsage(0.16f, 20)),
+    VOCODER("Vocoder", ResourceUsage(0.10f)), // TEMP: Placeholder values since I haven't tested this yet
+    WAH("Wah", ResourceUsage(0.06f))
 }
 
 enum class CommandType(val value: Byte) {

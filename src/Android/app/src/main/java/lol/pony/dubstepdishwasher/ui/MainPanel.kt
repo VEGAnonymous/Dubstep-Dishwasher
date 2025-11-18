@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,30 +23,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import lol.pony.dubstepdishwasher.model.BLEManager
 import lol.pony.dubstepdishwasher.model.core.*
 import lol.pony.dubstepdishwasher.ui.components.*
 import lol.pony.dubstepdishwasher.viewmodel.MainViewModel
+import lol.pony.dubstepdishwasher.viewmodel.MainViewModelFactory
 
 enum class LeftColumnMode { FX, MOD }
-
-class MainViewModelFactory(private val bleManager: BLEManager) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return MainViewModel(bleManager) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
-    }
-}
 
 @Composable
 fun MainPanel(bleManager: BLEManager) {
     val mainViewModel: MainViewModel = viewModel(factory = MainViewModelFactory(bleManager))
+
+    val resourceError = mainViewModel.resourceError.collectAsState().value
+
     val effects by mainViewModel.effects.collectAsState()
+    val modulators by mainViewModel.modulators.collectAsState()
 
     val currentModValues by mainViewModel.currentModValues.collectAsState()
     val currentModOffsets by mainViewModel.currentModOffsets.collectAsState()
@@ -59,6 +53,19 @@ fun MainPanel(bleManager: BLEManager) {
             // LEFT COLUMN
             var leftColumnMode by remember { mutableStateOf(LeftColumnMode.FX) }
             var selectedModulator by remember { mutableStateOf<Modulator?>(null) }
+            LaunchedEffect(modulators) {
+                // if nothing selected, pick first
+                if (selectedModulator == null && modulators.isNotEmpty()) {
+                    selectedModulator = modulators.first()
+                } else {
+                    selectedModulator?.let { sel ->
+                        val updated = modulators.find { it.id == sel.id }
+                        if (updated != null && updated !== sel) {
+                            selectedModulator = updated
+                        }
+                    }
+                }
+            }
 
             Column(
                 Modifier.width(250.dp)
@@ -93,7 +100,10 @@ fun MainPanel(bleManager: BLEManager) {
                         Column(Modifier.width(250.dp)) {
                             EffectChainControls(
                                 onAdd = { mainViewModel.addEffect(it) },
-                                onClear = { mainViewModel.clearChain() })
+                                onClear = { mainViewModel.clearChain() },
+                                resourceError = resourceError,
+                                onDismissError = { mainViewModel.clearResourceError() }
+                            )
                             HorizontalDivider()
                             EffectList(
                                 effects = effects,
@@ -163,12 +173,15 @@ fun MainPanel(bleManager: BLEManager) {
                 editorState = editorState,
                 onStateChange = { state -> mainViewModel.updateEditorState(modId, state) },
                 curvePresets = curvePresets,
-                onSavePreset = { name, points -> mainViewModel.saveCurvePreset(name, points) },
+                onSavePreset = { name, category, points -> mainViewModel.saveCurvePreset(name, category, points) },
+                onDeletePreset = { name -> mainViewModel.deleteCurvePreset(name) },
+                onFavoritePreset = { name, favorite -> mainViewModel.favoriteCurvePreset(name, favorite) },
                 onDismiss = { editorOpen = null },
                 onSave = { curve ->
                     mainViewModel.updateModulatorCurve(modId, curve)
                     editorOpen = null
                 }
+
             )
         }
 

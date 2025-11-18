@@ -2,6 +2,7 @@
   <dictionary name="project">
     <words>
       <w>biquad</w>
+      <w>dtcm</w>
       <w>hann</w>
       <w>inits</w>
       <w>lerp</w>

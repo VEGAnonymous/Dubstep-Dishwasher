@@ -5,6 +5,7 @@ import lol.pony.dubstepdishwasher.model.core.*
 class Wah(id: Int) : Effect() {
     override val effectId = id
     override val effectType = EffectType.WAH
+    override val resourceUsage = effectType.resourceUsage
     override val parameters = mutableListOf<EffectParameter<*>>(
         EffectParameter.Range(effectId = id, id = 0, name = "Mix", unit = ParamUnit.PERCENT, range = 0.0f to 1.0f, exp = 1f, step = 0.01f, initialValue = 1.0f),
         EffectParameter.Range(effectId = id, id = 1, name = "Min Freq", unit = ParamUnit.HZ, range = 20.0f to 1000.0f, exp = 2f, step = 0.1f, initialValue = 350.0f),

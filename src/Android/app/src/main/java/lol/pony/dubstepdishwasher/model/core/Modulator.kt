@@ -26,7 +26,7 @@ sealed class Modulator(open val id: String) {
     data class LFO(
         override val id: String,
         var phase: Float = 0f, // 0.0-1.0
-        override var curve: List<CurvePoint> = triCurve()
+        override var curve: List<CurvePoint> = triBPCurve()
     ) : Modulator(id) {
         override val parameters = mutableListOf<ModulatorParameter<*>>(
             // Rate

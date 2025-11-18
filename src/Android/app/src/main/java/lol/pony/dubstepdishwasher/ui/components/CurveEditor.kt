@@ -41,8 +41,10 @@ import lol.pony.dubstepdishwasher.model.core.Modulator
 import lol.pony.dubstepdishwasher.model.core.applyCurve
 import lol.pony.dubstepdishwasher.R
 import lol.pony.dubstepdishwasher.model.core.CurvePreset
+import lol.pony.dubstepdishwasher.model.core.CurveRandomArgs
 import lol.pony.dubstepdishwasher.model.core.EditorState
 import lol.pony.dubstepdishwasher.model.core.lerp
+import lol.pony.dubstepdishwasher.model.core.snapValue
 import lol.pony.dubstepdishwasher.ui.controls.DDSwitch
 import kotlin.math.abs
 
@@ -54,7 +56,9 @@ fun CurveEditor(
     curvePresets: List<CurvePreset>,
     editorState: EditorState,
     onStateChange: (EditorState) -> Unit,
-    onSavePreset: (String, List<CurvePoint>) -> CurvePreset,
+    onSavePreset: (String, String?, List<CurvePoint>) -> CurvePreset,
+    onDeletePreset: (String) -> Unit,
+    onFavoritePreset: (String, Boolean) -> Unit,
     onDismiss: () -> Unit,
     onSave: (List<CurvePoint>) -> Unit
 ) {
@@ -77,12 +81,6 @@ fun CurveEditor(
     var snapToGrid by remember { mutableStateOf(editorState.snapToGrid) }
     var gridX by remember { mutableIntStateOf(editorState.gridX) }
     var gridY by remember { mutableIntStateOf(editorState.gridY) }
-
-    fun snapValue(value: Float, divisions: Int): Float {
-        if (!snapToGrid || divisions <= 0) return value
-        val step = 1f / divisions
-        return (kotlin.math.round(value / step) * step).coerceIn(0f, 1f)
-    }
 
     /* MAIN COMPOSE */
     Box( // Outside container
@@ -255,7 +253,7 @@ fun CurveEditor(
                                             /* SNAP TO GRID */
                                             val point = editedPoints[index]
                                             if (lockEndpoints && (index == 0 || index == editedPoints.lastIndex)) { // Snap matched endpoints
-                                                val snappedY = snapValue(point.y, gridY)
+                                                val snappedY = snapValue(snapToGrid, value = point.y, divisions = gridY)
                                                 editedPoints = editedPoints.toMutableList().apply {
                                                     this[0] = this.first().copy(y = snappedY)
                                                     this[lastIndex] = this.last().copy(y = snappedY)
@@ -263,8 +261,8 @@ fun CurveEditor(
                                             } else { // Snap normally
                                                 editedPoints = editedPoints.toMutableList().apply {
                                                     this[index] = point.copy(
-                                                        x = snapValue(point.x, gridX),
-                                                        y = snapValue(point.y, gridY)
+                                                        x = snapValue(snapToGrid, value = point.x, divisions = gridX),
+                                                        y = snapValue(snapToGrid, value = point.y, divisions = gridY)
                                                     )
                                                 }
                                             }
@@ -404,9 +402,17 @@ fun CurveEditor(
                                 presets = curvePresets,
                                 currentData = editedPoints,
                                 containerState = editorState,
+                                randomArgs = CurveRandomArgs(
+                                    snapToGrid = editorState.snapToGrid,
+                                    gridX = editorState.gridX,
+                                    gridY = editorState.gridY,
+                                    lockEndpoints = editorState.lockEndpoints
+                                ),
                                 onStateChange = { presetContainer -> onStateChange(presetContainer) },
-                                onSave = { name -> onSavePreset(name, editedPoints) },
+                                onSave = { name, category -> onSavePreset(name, category, editedPoints) },
                                 onLoad = { preset -> editedPoints = preset.data.map { it.copy() } },
+                                onDelete = { name -> onDeletePreset(name) },
+                                onFavorite = { name, favorite -> onFavoritePreset(name, favorite) },
                                 // Interface copy workaround: we know it's literally a data class
                                 copyContainer = { state, preset -> state.copy(currentPreset = preset as CurvePreset) }
                             )
