@@ -1,6 +1,8 @@
 package lol.pony.dubstepdishwasher.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -13,11 +15,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import lol.pony.dubstepdishwasher.R
 import lol.pony.dubstepdishwasher.model.core.Effect
+import lol.pony.dubstepdishwasher.model.core.EffectType
 import lol.pony.dubstepdishwasher.model.core.ModAssignment
 import lol.pony.dubstepdishwasher.model.core.Modulator
 import lol.pony.dubstepdishwasher.model.core.ParamKey
+import lol.pony.dubstepdishwasher.ui.components.subcomponents.DefaultParameterList
+import lol.pony.dubstepdishwasher.ui.components.subcomponents.DistortionParameterList
 
 @Composable
 fun ParameterColumn(
@@ -33,38 +40,90 @@ fun ParameterColumn(
     onTogglePolarity: (String, Int, Int) -> Unit
 ) {
     LazyColumn {
-        items(effects, key = { it.effectId }) { fx ->
+        items(effects, key = { it.effectId }) { effect ->
             Row (
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(100.dp)
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // TEMP: Generic text label per row; replace with cooler graphic later
-                Text(
-                    text = fx.effectType.uiName,
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.width(100.dp)
-                )
+                val iconRes = effectLabel(effect.effectType)
 
-                // Parameter list rows
-                ParameterList(
-                    modifier = Modifier.fillMaxWidth(),
-                    effect = fx,
-                    assignments = assignments,
-                    selectedModulator = selectedModulator,
-                    currentModOffsets = currentModOffsets,
+                if (iconRes != null) {
+                    Image(
+                        painter = painterResource(iconRes),
+                        contentDescription = effect.effectType.uiName,
+                        modifier = Modifier
+                            .width(150.dp)
+                            .fillMaxHeight()
+                            .padding(end = 8.dp)
+                    )
+                } else {
+                    Text(
+                        text = effect.effectType.uiName,
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier.width(150.dp)
+                    )
+                }
 
-                    onSetParam = onSetParam,
-                    onAssignMod = onAssignMod,
-                    onRemoveMod = onRemoveMod,
-                    onModAmountChange = onModAmountChange,
-                    onTogglePolarity = onTogglePolarity
-                )
+                // Default parameter list rows
+                when (effect.effectType) {
+                    EffectType.DISTORTION -> DistortionParameterList(
+                        effect = effect,
+                        assignments = assignments,
+                        selectedModulator = selectedModulator,
+                        currentModOffsets = currentModOffsets,
+                        onSetParam = onSetParam,
+                        onAssignMod = onAssignMod,
+                        onRemoveMod = onRemoveMod,
+                        onModAmountChange = onModAmountChange,
+                        onTogglePolarity = onTogglePolarity
+                    )
+
+                    // EffectType.EQUALIZER -> EqualizerParameterList(...)
+
+                    else -> DefaultParameterList(
+                        effect = effect,
+                        assignments = assignments,
+                        selectedModulator = selectedModulator,
+                        currentModOffsets = currentModOffsets,
+                        onSetParam = onSetParam,
+                        onAssignMod = onAssignMod,
+                        onRemoveMod = onRemoveMod,
+                        onModAmountChange = onModAmountChange,
+                        onTogglePolarity = onTogglePolarity
+                    )
+                }
             }
 
             HorizontalDivider()
         }
+    }
+}
+
+@Composable
+private fun effectLabel(effectType: EffectType): Int? {
+    return when (effectType) {
+        EffectType.CHORUS -> R.drawable.label_fx_chorus
+        EffectType.COMPRESSOR -> R.drawable.label_fx_compressor
+        EffectType.DELAY -> R.drawable.label_fx_delay
+        EffectType.DISTORTION -> R.drawable.label_fx_distortion
+        EffectType.EQUALIZER -> R.drawable.label_fx_equalizer
+        EffectType.FLANGER -> R.drawable.label_fx_flanger
+        EffectType.FORMANT_SHIFTER -> R.drawable.label_fx_formantshifter
+        EffectType.FREEZER -> R.drawable.label_fx_freezer
+        EffectType.GAIN -> R.drawable.label_fx_gain
+        EffectType.GATE -> R.drawable.label_fx_gate
+        EffectType.GRANULATOR -> R.drawable.label_fx_granulator
+        EffectType.MODULATION -> R.drawable.label_fx_modulation
+        EffectType.PARALLEL -> R.drawable.label_fx_parallel
+        EffectType.PHASER -> R.drawable.label_fx_phaser
+        EffectType.PITCH_SHIFTER -> R.drawable.label_fx_pitchshifter
+        EffectType.REVERB -> R.drawable.label_fx_reverb
+        EffectType.SCRUBBY -> R.drawable.label_fx_scrubby
+        EffectType.SPECTRAL_GATE -> R.drawable.label_fx_spectralgate
+        EffectType.VOCODER -> R.drawable.label_fx_vocoder
+        EffectType.WAH -> R.drawable.label_fx_wah
     }
 }

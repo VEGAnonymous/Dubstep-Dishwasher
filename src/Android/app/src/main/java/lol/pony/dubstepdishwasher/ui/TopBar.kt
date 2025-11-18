@@ -121,11 +121,11 @@ fun TopBar (
     if (showUsageDialog) {
         AlertDialog(
             onDismissRequest = { showUsageDialog = false },
-            title = { Text(text = "Resource Usage (Approx.)", style = MaterialTheme.typography.bodyMedium) },
+            title = { Text(text = "MCU Resource Usage (Approx.)", style = MaterialTheme.typography.bodyMedium) },
             text = {
                 Column {
                     Text(text = "CPU: ${(usage.compute * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
-                    Text(text = "DTCM (RAM): ${usage.memory} kB", style = MaterialTheme.typography.bodyMedium)
+                    Text(text = "RAM (DTCM): ${usage.memory} / 512 kB", style = MaterialTheme.typography.bodyMedium)
                 }
             },
             confirmButton = {
