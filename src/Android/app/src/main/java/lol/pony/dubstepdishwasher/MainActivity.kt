@@ -1,6 +1,7 @@
 package lol.pony.dubstepdishwasher
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -12,8 +13,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.polidea.rxandroidble3.RxBleConnection
 import com.polidea.rxandroidble3.RxBleDevice
 import com.polidea.rxandroidble3.scan.ScanResult
@@ -21,9 +27,12 @@ import lol.pony.dubstepdishwasher.model.BLEManager
 
 import lol.pony.dubstepdishwasher.ui.*
 import lol.pony.dubstepdishwasher.ui.theme.DubstepDishwasherTheme
+import lol.pony.dubstepdishwasher.viewmodel.MainViewModel
 
 /* SET THIS FLAG TO SKIP BLE - FOR DEVELOPMENT ONLY */
 const val SKIP_BLE = true
+// CPU limit - adjust as needed to allow leniency
+const val CPU_LIMIT = 100
 
 class MainActivity : ComponentActivity() {
 
@@ -73,14 +82,29 @@ fun BleScannerApp(modifier: Modifier = Modifier, bleManager: BLEManager, request
     // Gets connection state and connection device
     val connectedDevice = bleManager.connectedDevice.value
     val connectionState = bleManager.connectionState.value
+    val context = LocalContext.current
 
     // Scan for devices if no device is connected
     if ((connectedDevice != null && connectionState == RxBleConnection.RxBleConnectionState.CONNECTED) || SKIP_BLE /* SET FLAG ABOVE TO SKIP BLE */) {
         /* MAIN GUI */
+        val mainViewModel: MainViewModel = viewModel(factory = MainViewModelFactory(bleManager))
+        val effects by mainViewModel.effects.collectAsState()
+
+        var toast: Toast? = null
+
+        LaunchedEffect(mainViewModel) {
+            mainViewModel.toastMessages.collect { message ->
+                toast?.cancel()
+                toast = Toast.makeText(context, message, Toast.LENGTH_SHORT)
+                toast?.show()
+            }
+        }
+
         Column(modifier = Modifier.fillMaxHeight()) {
             TopBar(
                 device = if (SKIP_BLE) null else connectedDevice,
-                onDisconnect = { bleManager.disconnect() }
+                onDisconnect = { bleManager.disconnect() },
+                cpuUsage = effects.sumOf { it.cpuUsage?.toDouble() ?: 0.0 }.toFloat()
             )
 
             HorizontalDivider()

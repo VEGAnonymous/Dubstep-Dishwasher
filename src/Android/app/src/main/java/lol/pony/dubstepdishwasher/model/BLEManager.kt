@@ -14,7 +14,6 @@ import com.polidea.rxandroidble3.scan.ScanResult
 import com.polidea.rxandroidble3.scan.ScanSettings
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.CompositeDisposable
-import java.util.UUID
 
 class BLEManager(private val context: Context) {
     private val rxBleClient: RxBleClient = RxBleClient.create(context)
@@ -47,7 +46,6 @@ class BLEManager(private val context: Context) {
      * Returns true if all required BLE and location permissions are granted.
      * The list of required permissions depends on the Android version.
      */
-
     fun hasPermissions(): Boolean {
         return requiredPermissions.all {
             ActivityCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED

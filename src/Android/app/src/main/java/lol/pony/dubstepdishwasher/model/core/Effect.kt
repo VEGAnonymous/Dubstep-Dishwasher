@@ -4,6 +4,7 @@ abstract class Effect {
     abstract val effectId: Int
     abstract val effectType: EffectType
     abstract val parameters: MutableList<EffectParameter<*>>
+    val cpuUsage: Float? get() = effectType.cpuUsage
     var isBypassed = false
 
     @Suppress("UNCHECKED_CAST")

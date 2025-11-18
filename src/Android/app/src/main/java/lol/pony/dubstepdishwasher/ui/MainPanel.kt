@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
@@ -19,8 +20,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -65,21 +68,19 @@ fun MainPanel(bleManager: BLEManager) {
                     .fillMaxHeight()
             ) {
                 Row(
-                    Modifier.width(250.dp)
+                    Modifier.fillMaxWidth()
                         .padding(vertical = 2.dp)
                         .scale(0.8f),
-                    horizontalArrangement = Arrangement.Center
+                    horizontalArrangement = Arrangement.spacedBy(20.dp, alignment = Alignment.CenterHorizontally)
                 )
                 { // Select which tab
                     Button(
-                        onClick = { leftColumnMode = LeftColumnMode.FX },
-                        modifier = Modifier.padding(horizontal = 10.dp)
+                        onClick = { leftColumnMode = LeftColumnMode.FX }
                     ) {
                         Text(text = "FX", style = MaterialTheme.typography.headlineSmall)
                     }
                     Button(
-                        onClick = { leftColumnMode = LeftColumnMode.MOD },
-                        modifier = Modifier.padding(horizontal = 10.dp)
+                        onClick = { leftColumnMode = LeftColumnMode.MOD }
                     ) {
                         Text("MOD", style = MaterialTheme.typography.headlineSmall)
                     }
@@ -93,7 +94,8 @@ fun MainPanel(bleManager: BLEManager) {
                         Column(Modifier.width(250.dp)) {
                             EffectChainControls(
                                 onAdd = { mainViewModel.addEffect(it) },
-                                onClear = { mainViewModel.clearChain() })
+                                onClear = { mainViewModel.clearChain() },
+                                currUsage = effects.sumOf { it.cpuUsage?.toDouble() ?: 0.0 }.toFloat())
                             HorizontalDivider()
                             EffectList(
                                 effects = effects,

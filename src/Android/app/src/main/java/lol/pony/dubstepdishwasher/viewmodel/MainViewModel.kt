@@ -2,9 +2,9 @@ package lol.pony.dubstepdishwasher.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import lol.pony.dubstepdishwasher.CPU_LIMIT
 import lol.pony.dubstepdishwasher.model.ControlQueue
 import lol.pony.dubstepdishwasher.model.EffectChain
 import lol.pony.dubstepdishwasher.model.BLEManager
@@ -57,6 +57,10 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
     // Presets
     private val _curvePresets = MutableStateFlow(defaultCurvePresets())
     val curvePresets: StateFlow<List<CurvePreset>> = _curvePresets
+
+    // UI Events
+    private val _toastMessages = MutableSharedFlow<String>()
+    val toastMessages = _toastMessages.asSharedFlow()
 
     /* MODULATION */
 
@@ -185,6 +189,18 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
     /* COMMANDS */
 
     fun addEffect(type: EffectType) {
+        val totalUsage = _effects.value.sumOf { it.cpuUsage?.toDouble() ?: 0.0 }.toFloat()
+        if (totalUsage + (type.cpuUsage ?: 0.0f) > CPU_LIMIT) {
+            viewModelScope.launch {
+                _toastMessages.emit("${type.uiName} not added: Over CPU limit")
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            _toastMessages.emit("${type.uiName} added")
+        }
+
         chain.addEffect(type)
         _effects.value = chain.getAll()
         controlQueue.enqueue(ADD, type.ordinal, 0, 0.0f)

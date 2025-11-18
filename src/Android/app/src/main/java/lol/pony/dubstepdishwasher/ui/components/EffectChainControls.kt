@@ -23,11 +23,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import lol.pony.dubstepdishwasher.CPU_LIMIT
 import lol.pony.dubstepdishwasher.model.core.EffectType
-
 @Composable
-fun EffectChainControls(onAdd: (EffectType) -> Unit, onClear: () -> Unit) {
+fun EffectChainControls(onAdd: (EffectType) -> Unit, onClear: () -> Unit, currUsage: Float) {
     Row (modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp).height(40.dp), horizontalArrangement = Arrangement.Center) {
         var expanded by remember { mutableStateOf(false) }
 
@@ -38,10 +39,15 @@ fun EffectChainControls(onAdd: (EffectType) -> Unit, onClear: () -> Unit) {
             }
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 EffectType.entries.forEach { type ->
+                    val usageDisplay = type.cpuUsage?.let { "$it%" } ?: "N/A"
+
+                    val overLimit = (type.cpuUsage ?: 0f) + currUsage > CPU_LIMIT
                     DropdownMenuItem(
                         text = { Text(
-                            text = type.uiName,
-                            style = MaterialTheme.typography.bodyMedium
+                            text = "${type.uiName} - $usageDisplay",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (overLimit) Color.Red else Color.Unspecified
+
                         )},
                         onClick = {
                             onAdd(type)

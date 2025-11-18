@@ -5,27 +5,27 @@ import androidx.compose.ui.tooling.preview.UiMode
 /* DEFINES */
 /* ENUMS */
 
-enum class EffectType(override val uiName: String) : UIEnum {
-    CHORUS("Chorus"),
-    COMPRESSOR("Compressor"),
-    DELAY("Delay"),
-    DISTORTION("Distortion"),
-    EQUALIZER("Equalizer"),
-    FLANGER("Flanger"),
-    FORMANT_SHIFTER("Formant Shifter"),
-    FREEZER("Freezer"),
-    GAIN("Gain"),
-    GATE("Gate"),
-    GRANULATOR("Granulator"),
-    MODULATION("Modulation"),
-    PARALLEL("Parallel"),
-    PHASER("Phaser"),
-    PITCH_SHIFTER("Pitch Shifter"),
-    REVERB("Reverb"),
-    SCRUBBY("Scrubby"),
-    SPECTRAL_GATE("Spectral Gate"),
-    VOCODER("Vocoder"),
-    WAH("Wah")
+enum class EffectType(override val uiName: String, val cpuUsage: Float?) : UIEnum {
+    CHORUS("Chorus", 5.0f),
+    COMPRESSOR("Compressor", 5.0f),
+    DELAY("Delay", 2.0f),
+    DISTORTION("Distortion", 2.0f),
+    EQUALIZER("Equalizer", 1.0f),
+    FLANGER("Flanger", 1.0f),
+    FORMANT_SHIFTER("Formant Shifter", 19.0f),
+    FREEZER("Freezer", 16.0f),
+    GAIN("Gain", 0.5f),
+    GATE("Gate", 4.0f),
+    GRANULATOR("Granulator", 13.0f),
+    MODULATION("Modulation", 1.0f),
+    PARALLEL("Parallel", null),
+    PHASER("Phaser", 8.0f),
+    PITCH_SHIFTER("Pitch Shifter", 11.0f),
+    REVERB("Reverb", 13.0f),
+    SCRUBBY("Scrubby", 4.0f),
+    SPECTRAL_GATE("Spectral Gate", 16.0f),
+    VOCODER("Vocoder", null),
+    WAH("Wah", 6.0f)
 }
 
 enum class CommandType(val value: Byte) {
