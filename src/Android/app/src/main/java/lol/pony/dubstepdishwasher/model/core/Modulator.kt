@@ -30,7 +30,7 @@ sealed class Modulator(open val id: String) {
     ) : Modulator(id) {
         override val parameters = mutableListOf<ModulatorParameter<*>>(
             // Rate
-            ModulatorParameter.Range(modId = id, id = 0, name = "Rate", unit = ParamUnit.HZ, range = 0.0f to 20.0f, exp = 3f, step = 0.01f, initialValue = 0.621f),
+            ModulatorParameter.Range(modId = id, id = 0, name = "Rate", unit = ParamUnit.HZ, range = 0.0f to 5.0f, exp = 2f, step = 0.01f, initialValue = 0.621f),
             // Modulator mode
             ModulatorParameter.Discrete(modId = id, id = 1, name = "Mode", unit = ParamUnit.ENUM, possibleValues = LFOMode.entries, initialValue = LFOMode.NORMAL),
             // Random mode

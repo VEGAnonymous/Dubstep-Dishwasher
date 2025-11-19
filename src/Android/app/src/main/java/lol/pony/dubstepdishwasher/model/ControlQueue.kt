@@ -3,6 +3,7 @@ package lol.pony.dubstepdishwasher.model
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import lol.pony.dubstepdishwasher.model.core.CONTROL_RATE
 import lol.pony.dubstepdishwasher.model.core.CommandType
 import java.util.concurrent.ConcurrentLinkedQueue
 
@@ -15,7 +16,7 @@ data class Command(
 
 class ControlQueue(
     scope: CoroutineScope,
-    private val rate: Int = 50, // 50 Hz control rate
+    private val rate: Int = CONTROL_RATE,
     private val onFlush: (Command) -> Unit,
     private val onUpdate: (() -> Unit)? = null
 ) {
@@ -40,11 +41,20 @@ class ControlQueue(
 
     private fun flush() {
         onUpdate?.invoke()
-        val params = synchronized(paramUpdates) { paramUpdates.values.toList().also { paramUpdates.clear() } }
-        params.forEach(onFlush)
-        while (true) { // Flush + handle all commands in queue
-            val cmd = queue.poll() ?: break // Queue empty
-            onFlush(cmd)
+
+        // Only keep latest values for each parameter
+        val params = synchronized(paramUpdates) {
+            val latest = paramUpdates.values.toList()
+            paramUpdates.clear()
+            latest
         }
+
+        // Send only one param update per flush tick
+        val param = params.firstOrNull()
+        if (param != null) { onFlush(param); return }
+
+        // Otherwise send one queued command per tick
+        val cmd = queue.poll()
+        if (cmd != null) onFlush(cmd)
     }
 }
