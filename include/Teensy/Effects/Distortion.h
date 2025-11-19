@@ -5,14 +5,12 @@
 
 class Distortion : public Effect {
     private:
-        enum Params : ParamID { MIX, MODE, DRIVE, ENABLE_AAF };
+        enum Params : ParamID { MIX, MODE, DRIVE };
 
         DistortionMode mode;
         float mix, drive;
-        bool enableAAF;
 
         float (Distortion::*algorithm)(float, float) = nullptr; // Function pointer for distortion algorithm to use
-        FIR_Filter antiAlias;
 
         // Distortion algorithms
         float tube(float in, float drive);
@@ -24,12 +22,11 @@ class Distortion : public Effect {
         float saturate(float in, float drive);
 
     public:
-        Distortion(float mix = 1.0f, DistortionMode mode = DistortionMode::TUBE, float drive = 0.25f, bool enableAAF = false);
+        Distortion(float mix = 1.0f, DistortionMode mode = DistortionMode::TUBE, float drive = 0.25f);
 
         void setMix(float mix); // [0.0, 1.0]
         void setMode(DistortionMode mode);
         void setDrive(float drive); // [0.0, 1.0]
-        void setAAF(bool enableAAF); 
         void setParam(ParamID param, float value) override;
 
         void process(const float* in, float* out, size_t n) override;

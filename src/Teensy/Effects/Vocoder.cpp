@@ -73,7 +73,7 @@ Vocoder::Vocoder(float mix, size_t nBands, float lowFreq, float highFreq,
         }
 
 void Vocoder::setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
-void Vocoder::setNBands(size_t nBands) { this->nBands = std::clamp(nBands, (size_t)4, (size_t)40); setBands(); } // [4, 40]
+void Vocoder::setNBands(size_t nBands) { this->nBands = std::clamp(nBands, (size_t)4, (size_t)20); setBands(); } // [4, 20]
 void Vocoder::setFreqRange(float lowFreq, float highFreq) { // Hz, [10.0, 16000.0]
     this->lowFreq = std::clamp(lowFreq, 10.0f, 16000.0f);
     this->highFreq = std::clamp(highFreq, 10.0f, 16000.0f);

@@ -39,11 +39,11 @@ class Vocoder : public Effect {
         void setBands();
 
     public:
-        Vocoder(float mix = 1.0f, size_t nBands = 20, float lowFreq = 80.0f, float highFreq = 12000.0f, 
+        Vocoder(float mix = 1.0f, size_t nBands = 10, float lowFreq = 80.0f, float highFreq = 12000.0f, 
                 float bandwidth = 0.5f, float depth = 1.0f, float attack = 2.0f, float release = 35.0f);
 
         void setMix(float mix); // [0.0, 1.0]
-        void setNBands(size_t nBands); // [4, 40]
+        void setNBands(size_t nBands); // [4, 20]
         void setFreqRange(float lowFreq, float highFreq); // Hz, [10.0, 16000.0]
         void setBandwidth(float bandwidthFactor); // [0.03, 4.0]
         void setDepth(float depth); // [0.0, 2.0]

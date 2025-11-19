@@ -35,7 +35,7 @@ enum class EffectType(
     REVERB("Reverb", ResourceUsage(0.13f, 150)),
     SCRUBBY("Scrubby", ResourceUsage(0.04f)),
     SPECTRAL_GATE("Spectral Gate", ResourceUsage(0.16f, 20)),
-    VOCODER("Vocoder", ResourceUsage(0.10f)), // TEMP: Placeholder values since I haven't tested this yet
+    VOCODER("Vocoder", ResourceUsage(0.22f)),
     WAH("Wah", ResourceUsage(0.06f))
 }
 

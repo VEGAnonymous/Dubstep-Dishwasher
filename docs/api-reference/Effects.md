@@ -55,14 +55,13 @@ Implements a feedback delay line.
 ## `Distortion`
 
 **Description:**  
-Applies nonlinear distortion to an input signal. Includes several [algorithms](https://www.desmos.com/calculator/qrqipgp7r4): tube, soft/hard clipping, diode, bitcrush, rectify, and saturation. Optional FIR anti-aliasing filter available.
+Applies nonlinear distortion to an input signal. Includes several [algorithms](https://www.desmos.com/calculator/qrqipgp7r4): tube, soft/hard clipping, diode, bitcrush, rectify, and saturation.
 
 **Parameters:**
 
 0. **`MIX`** — Dry/wet balance `[0.0, 1.0]`
 1. **`MODE`** — Distortion algorithm [`DistortionMode` enum]
 2. **`DRIVE`** — Input gain before nonlinearity `[0.0, 1.0]`
-3. **`ENABLE_AAF`** — Enables Anti-Aliasing Filter (AAF) `true / false`
 
 ---
 
@@ -328,7 +327,7 @@ Rough and ready vocoder effect. Only supports "self-modulation"; that is, the ca
 **Parameters:**
 
 0. **`MIX`** — Dry/wet balance `[0.0, 1.0]`
-1. **`N_BANDS`** — Number of bands `[4, 40]`
+1. **`N_BANDS`** — Number of bands `[4, 20]`
 2. **`LOW_FREQ`** — Frequency of the lowest filter in the filterbank in Hz `[10.0, 16000.0]`
 3. **`HIGH_FREQ`** — Frequency of the highest filter in the filterbank in Hz `[10.0, 16000.0]`
 4. **`BANDWIDTH`** — Filterbank bandwidth factor; lower values result in narrower bands and vice versa `[0.05, 4.0]`

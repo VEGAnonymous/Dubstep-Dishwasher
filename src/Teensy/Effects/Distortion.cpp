@@ -6,14 +6,12 @@
 
 /*
 
-enum Params : ParamID { MIX, MODE, DRIVE, ENABLE_AAF };
+enum Params : ParamID { MIX, MODE, DRIVE };
 
 DistortionMode mode;
 float mix, drive;
-bool enableAAF;
 
 float (Distortion::*algorithm)(float, float) = nullptr; // Function pointer for distortion algorithm to use
-FIR_Filter antiAlias;
 
 */
 
@@ -61,8 +59,7 @@ float Distortion::saturate(float in, float drive) {
 
 /* PUBLIC */
 
-Distortion::Distortion(float mix, DistortionMode mode, float drive, bool enableAAF) 
-: antiAlias(1.0f, AAF, sizeof(AAF) / sizeof(float)) { setMix(mix); setMode(mode); setDrive(drive); setAAF(enableAAF); }
+Distortion::Distortion(float mix, DistortionMode mode, float drive) { setMix(mix); setMode(mode); setDrive(drive); }
 
 void Distortion::setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
 void Distortion::setMode(DistortionMode mode) {
@@ -79,13 +76,11 @@ void Distortion::setMode(DistortionMode mode) {
     }
 }
 void Distortion::setDrive(float drive) { this->drive = std::clamp(drive, 0.0f, 1.0f); } // [0.0, 1.0]
-void Distortion::setAAF(bool enableAAF) { this->enableAAF = enableAAF; } 
 void Distortion::setParam(ParamID param, float value) {
     switch (param) {
         case MIX: setMix(value); break;
         case MODE: setMode(static_cast<DistortionMode>(value)); break;
         case DRIVE: setDrive(value); break;
-        case ENABLE_AAF: setAAF(value > 0.5f); break;
     }
 }
 
@@ -96,7 +91,6 @@ void Distortion::process(const float* in, float* out, size_t n) {
     float wetSig;
     for (size_t i = 0; i < n; ++i) {
         wetSig = (this->*algorithm)(*in_ptr, drive) * 0.966051f; // Apply non-linearity (-0.3dB)
-        if (enableAAF) antiAlias.process(&wetSig, &wetSig, 1); // Optional AAF
         *out_ptr++ = dryWetMix(*in_ptr++, wetSig, mix); // Mix
     }
 }

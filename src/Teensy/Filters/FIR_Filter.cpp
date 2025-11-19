@@ -17,7 +17,7 @@ size_t z_i = 0; // State pointer
         
 /* PUBLIC */
 
-FIR_Filter::FIR_Filter(float mix, const float* h, size_t M) : h(h), z(M * 2, 0.0f), z_i(0) { setMix(mix); }
+FIR_Filter::FIR_Filter(float mix, const float* h, size_t M) : h(h), M(M), z(M * 2, 0.0f), z_i(0) { setMix(mix); }
 
 void FIR_Filter::setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
 void FIR_Filter::setParam(ParamID param, float value) { 
