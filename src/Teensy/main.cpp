@@ -122,9 +122,6 @@ void setup() {
     AudioInterrupts();
 }
 
-Command cmd;
-size_t rcvBytes = 0;
-
 void loop() {
 
     handler.listen();

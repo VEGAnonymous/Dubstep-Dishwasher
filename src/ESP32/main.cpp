@@ -7,31 +7,30 @@
 #define RX_PIN 18
 #define TX_PIN 17
 
+#define DEBUG 0
 
-
-// BLE stuff
+/* BLE */
 #include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <BLEServer.h>
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
 
-
 // UUIDs
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 // #define CHARACTERISTIC_UUID2 "beb54832-36e1-4688-b7f5-ea07361b26a8"
 
-// variables for managing connection state
+// Variables for managing connection state
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
-// pointer to BLE server
+// Pointer to BLE server
 BLEServer *pServer = NULL;
 
-// unsigned long lastTime = 0;
+uint32_t advertiseTime = 0;
 
-// handle server callbacks (connect and disconnect)
-class MyServerCallbacks: public BLEServerCallbacks {
+// Server callbacks (connect and disconnect)
+class ServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) {
         deviceConnected = true;
         Serial.println("Device connected");
@@ -42,9 +41,6 @@ class MyServerCallbacks: public BLEServerCallbacks {
         Serial.println("Device disconnected");
     }
 };
-
-Handler<Command, MelFrame> handler(Serial1); // Packet handler (send commands / receive frames)
-InferenceBuffer inferenceBuffer; // Buffer and process incoming mel frames for RT inference 
 
 class Callbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) override {
@@ -63,6 +59,11 @@ class Callbacks: public BLECharacteristicCallbacks {
     }
 };
 
+/* UART */
+
+Handler<Command, MelFrame> handler(Serial1); // Packet handler (send commands / receive frames)
+InferenceBuffer inferenceBuffer; // Buffer and process incoming mel frames for RT inference 
+
 void setup() {
     Serial.begin(115200);
     Serial1.begin(230400, SERIAL_8N1, RX_PIN, TX_PIN);
@@ -70,12 +71,12 @@ void setup() {
     /* Setup UART handler */
     handler.setCallback([](const MelFrame& frame) { inferenceBuffer.addFrame(frame); });
 
-    // BLE setup (I copied this from platformio setup tutorial)
+    /* BLE setup */
     BLEDevice::init("T8_ESP");
     pServer = BLEDevice::createServer();
     pServer->setCallbacks(new MyServerCallbacks());
     
-    // create service and characteristic(s)
+    // Create service and characteristic(s)
     BLEService *pService = pServer->createService(SERVICE_UUID);
     BLECharacteristic *pCharacteristic = pService->createCharacteristic(
                                           CHARACTERISTIC_UUID,
@@ -84,13 +85,15 @@ void setup() {
 
     pCharacteristic->setCallbacks(new Callbacks());
 
-    // start service
+    // Start service
     pService->start();
 
-    // set up advertising
+    // Set up advertising
     BLEAdvertising *pAdvertising = pServer->getAdvertising();
     pAdvertising->addServiceUUID(SERVICE_UUID);
     pAdvertising->setScanResponse(true);
+
+    advertiseTime = 0;
     pServer->startAdvertising();
     
     pAdvertising->start();
@@ -100,19 +103,18 @@ void setup() {
 }
 
 void loop() {
-    // 
-    if (!deviceConnected && oldDeviceConnected) {
-        delay(1000); // wait a bit for bluetooth stack to clear
-        pServer->startAdvertising(); // restart advertising
+    if ((!deviceConnected && oldDeviceConnected) && (millis() - advertiseTime >= 1000)) {
+        advertiseTime = millis();
+        pServer->startAdvertising(); // Restart advertising
         Serial.println("Started advertising");
         oldDeviceConnected = deviceConnected;
     }
-    // connecting
+
     if (deviceConnected && !oldDeviceConnected) {
         oldDeviceConnected = deviceConnected;
     }
 
-    // #if DEBUG
+    #if DEBUG
     // Debug: Read from Serial and process incoming bytes
     while (Serial.available()) {
       uint8_t serialData = Serial.read();
