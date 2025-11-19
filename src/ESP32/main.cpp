@@ -1,14 +1,19 @@
 #include <Arduino.h>
-#include "Handler.h"
-#include "ESP32/espdefs.h"
+#include "../Handler.h"
+#include "espdefs.h"
 
 #define RX_PIN 18
 #define TX_PIN 17
+
+
 
 // BLE stuff
 #include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <BLEServer.h>
+#include <BLEScan.h>
+#include <BLEAdvertisedDevice.h>
+
 
 // UUIDs
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
@@ -20,6 +25,8 @@ bool deviceConnected = false;
 bool oldDeviceConnected = false;
 // pointer to BLE server
 BLEServer *pServer = NULL;
+
+// unsigned long lastTime = 0;
 
 // handle server callbacks (connect and disconnect)
 class MyServerCallbacks: public BLEServerCallbacks {
@@ -37,8 +44,14 @@ class MyServerCallbacks: public BLEServerCallbacks {
 class MyCallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) {
         std::string value = pCharacteristic->getValue();
-        // return on empty writes
-        if (value.length() == 0) return;
+        // Serial.printf("Received %d bytes\n", value.length());
+        // return on invalid writes
+        if (value.length() % 8 != 0) return;
+
+        // if (lastTime) {
+        //     Serial.printf("millis %lu\n", millis() - lastTime);
+        // }
+        // lastTime = millis();
 
         // sends written bytes to helper function
         processIncomingBytes((const uint8_t*)value.data(), value.length());
@@ -51,7 +64,7 @@ void setup() {
     Serial1.begin(115200, SERIAL_8N1, RX_PIN, TX_PIN);
 
     // BLE setup (I copied this from platformio setup tutorial)
-    BLEDevice::init("Team 8 ESP32 BLE");
+    BLEDevice::init("T8_ESP");
     pServer = BLEDevice::createServer();
     pServer->setCallbacks(new MyServerCallbacks());
     
@@ -59,16 +72,10 @@ void setup() {
     BLEService *pService = pServer->createService(SERVICE_UUID);
     BLECharacteristic *pCharacteristic = pService->createCharacteristic(
                                           CHARACTERISTIC_UUID,
-                                          BLECharacteristic::PROPERTY_READ |
                                           BLECharacteristic::PROPERTY_WRITE
                                         );
-    // BLECharacteristic *pCharacteristic2 = pService->createCharacteristic(
-    //                                       CHARACTERISTIC_UUID2,
-    //                                       BLECharacteristic::PROPERTY_WRITE
-    //                                     );
 
     pCharacteristic->setCallbacks(new MyCallbacks());
-    // pCharacteristic2->setCallbacks(new MyCallbacks());
 
     // start service
     pService->start();
@@ -94,30 +101,30 @@ void loop() {
         oldDeviceConnected = deviceConnected;
     }
 
-    #if DEBUG
+    // #if DEBUG
     // Debug: Read from Serial and process incoming bytes
-    while (Serial.available()) {
-      uint8_t serialData = Serial.read();
-      processIncomingBytes(&serialData, 1);  
-    }
+    // while (Serial.available()) {
+    //   uint8_t serialData = Serial.read();
+    //   processIncomingBytes(&serialData, 1);  
+    // }
 
     // Debug: Echo back any received commands
     // not needed atm since no data is being received from the teensy
-    if (Serial1.available()) {
-        Command rcvCmd;
-        size_t rcvBytes = 0;
+    // if (Serial1.available()) {
+    //     Command rcvCmd;
+    //     size_t rcvBytes = 0;
 
-        while (Serial1.available() && rcvBytes < sizeof(Command)) {
-            uint8_t* buf = (uint8_t*)&rcvCmd;
-            buf[rcvBytes++] = Serial1.read();
-        }
+    //     while (Serial1.available() && rcvBytes < sizeof(Command)) {
+    //         uint8_t* buf = (uint8_t*)&rcvCmd;
+    //         buf[rcvBytes++] = Serial1.read();
+    //     }
 
-        if (rcvBytes == sizeof(Command)) {
-            if (verifyChecksum(rcvCmd)) {
-                Serial.printf("cmd: %d | id1: %d | id2: %d | value: %.3f | checksum: 0x%02X (valid)\n", 
-                    rcvCmd.cmd, rcvCmd.id1, rcvCmd.id2, rcvCmd.value, rcvCmd.checksum);
-            } else return; // Drop invalid packets
-        }
-    }
-    #endif
+    //     if (rcvBytes == sizeof(Command)) {
+    //         if (verifyChecksum(rcvCmd)) {
+    //             Serial.printf("cmd: %d | id1: %d | id2: %d | value: %.3f | checksum: 0x%02X (valid)\n", 
+    //                 rcvCmd.cmd, rcvCmd.id1, rcvCmd.id2, rcvCmd.value, rcvCmd.checksum);
+    //         } else return; // Drop invalid packets
+    //     }
+    // }
+    // #endif
 }

@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.ActivityCompat
 import com.polidea.rxandroidble3.RxBleClient
@@ -27,6 +28,7 @@ class BLEManager(private val context: Context) {
     val connectionState = mutableStateOf<RxBleConnection.RxBleConnectionState?>(null)
     // val characteristics = mutableStateOf<List<BluetoothGattCharacteristic>>(emptyList())
     // val characteristicsData = mutableStateOf<Map<UUID, String>>(emptyMap())
+    private var isReadable = false
     val characteristic = mutableStateOf<BluetoothGattCharacteristic?>(null)
     val characteristicData = mutableStateOf<String?>(null)
 
@@ -99,6 +101,9 @@ class BLEManager(private val context: Context) {
     fun connectToDevice(device: RxBleDevice) {
         connectedDevice.value = device
         device.establishConnection(false)
+            .flatMapSingle { rxBleConnection ->
+                rxBleConnection.requestMtu(408).map { rxBleConnection }
+            }
             .subscribe({ rxBleConnection ->
                 connection = rxBleConnection
                 connectionState.value = RxBleConnection.RxBleConnectionState.CONNECTED
@@ -122,8 +127,9 @@ class BLEManager(private val context: Context) {
                     .firstOrNull { (it.properties and (BluetoothGattCharacteristic.PROPERTY_WRITE or BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE)) != 0 }
                 characteristic.value = writableCharacteristic
                 // reads initial value
-                writableCharacteristic?.let {
+                characteristic.value?.let {
                     if ((it.properties and BluetoothGattCharacteristic.PROPERTY_READ) != 0) {
+                        isReadable = true
                         readCharacteristic(it)
                     }
                 }
@@ -169,15 +175,12 @@ class BLEManager(private val context: Context) {
      *
      * @param value The values to write converted to a byte array.
      */
-    fun writeCharacteristic(value: String) {
+    fun writeCharacteristic(bytesToWrite: ByteArray) {
         characteristic.value?.let { char ->
             try {
-                // converts string to identical byte array
-                val bytesToWrite = hexStringToByteArray(value)
                 connection?.writeCharacteristic(char.uuid, bytesToWrite)
                     ?.subscribe({
                         // reads value and verifies it if readable characteristic
-                        val isReadable = char.properties.and(BluetoothGattCharacteristic.PROPERTY_READ) != 0
                         if (isReadable) {
                             readCharacteristic(char, bytesToWrite)
                         } else {
@@ -208,28 +211,6 @@ class BLEManager(private val context: Context) {
         // characteristicsData.value = emptyMap()
         characteristic.value = null
         characteristicData.value = null
-    }
-
-    /**
-     * Converts string to byte array with direct mapping
-     * to the hex values in the string.
-     * Also checks for valid hex bytes
-     * @param hex The string to convert to byte array.
-     * @return Byte array representation of [hex].
-     *
-     * Example:
-     * ```kotlin
-     * val result = hexStringToByteArray("1234 567 8")
-     * result -> [0x12, 0x34, 0x56, 0x78]
-     * ```
-     */
-    private fun hexStringToByteArray(hex: String): ByteArray {
-        val cleanHex = hex.replace(" ", "")
-        require(cleanHex.length % 2 == 0) { "Hex string must have an even length" }
-        return cleanHex.chunked(2)
-            // only maps 0x0-0xF
-            .map { it.toInt(16).toByte() }
-            .toByteArray()
     }
 
     /**

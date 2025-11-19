@@ -278,8 +278,8 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
     // Clock all updates to control rate
     private val controlQueue = ControlQueue(
         scope = viewModelScope,
-        rate = 50,
-        onFlush = { cmd -> sendCommand(cmd.type, cmd.id1, cmd.id2, cmd.value) },
+        rate = CONTROL_RATE,
+        onFlush = { commands -> sendCommands(commands) },
         onUpdate = { update() }
     )
 
@@ -394,33 +394,27 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
     /* BLE */
 
     // Convert byte array to string with space separator
-    private fun bytesToHexString(bytes: ByteArray): String { return bytes.joinToString(" ") { "%02X".format(it) } }
+    private fun bytesToHexString(bytes: ByteArray): String {
+        return bytes.joinToString(" ") { "%02X".format(it) }
+    }
 
     /**
-     * Sends a command to the BLE device via a
-     * byte array produced by a buffer.
-     * @param cmd Command of type [CommandType] to send
-     * @param id1 EffectID for command
-     * @param id2 ParamID for setParam or 2nd EffectID for reorderEffect
-     * @param value Float value for setParam/toggleBypass
+     * Sends a list of commands to the BLE device in a single buffer.
+     * @param commands The list of commands to send
      */
-    private fun sendCommand(cmd: CommandType, id1: Int, id2: Int, value: Float) {
-        // Log.d("sendCommand", "SENT: CommandType=$cmd, id1=$id1, id2=$id2, value=$value")
+    private fun sendCommands(commands: List<lol.pony.dubstepdishwasher.model.Command>) {
+        if (commands.isEmpty()) return
 
-        // Initialize buffer
-        val buffer = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN)
-        // Write buffer values
-        buffer.put(cmd.value)       // cmd
-        buffer.put(id1.toByte())    // id1
-        buffer.put(id2.toByte())    // id2
-        buffer.put(0.toByte())      // checksum (always 0)
-        buffer.putFloat(value)          // value
+        // 8 bytes per command: cmd (1), id1 (1), id2 (1), checksum (1), value (4)
+        val buffer = ByteBuffer.allocate(commands.size * 8).order(ByteOrder.LITTLE_ENDIAN)
 
-        // Converts buffer to array and then hex string for writeCommand
-        // TEMP: Might just remove the hexString part later
-        val commandBytes = buffer.array()
-        val hexString = bytesToHexString(commandBytes)
-
-        bleManager.writeCharacteristic(hexString)
+        for (command in commands) {
+            buffer.put(command.type.value)
+            buffer.put(command.id1.toByte())
+            buffer.put(command.id2.toByte())
+            buffer.put(0.toByte()) // checksum (always 0)
+            buffer.putFloat(command.value)
+        }
+        bleManager.writeCharacteristic(buffer.array())
     }
 } // MainViewModel

@@ -4,7 +4,7 @@ package lol.pony.dubstepdishwasher.model.core
 
 const val MAX_COMPUTE_USAGE = 0.90f // 90%
 const val MAX_MEMORY_USAGE  = 450   // 400 kB
-const val CONTROL_RATE = 20 // Hz
+const val CONTROL_RATE = 10 // Hz
 
 /* ENUMS */
 

@@ -17,7 +17,7 @@ data class Command(
 class ControlQueue(
     scope: CoroutineScope,
     private val rate: Int = CONTROL_RATE,
-    private val onFlush: (Command) -> Unit,
+    private val onFlush: (List<Command>) -> Unit,
     private val onUpdate: (() -> Unit)? = null
 ) {
     private val queue = ConcurrentLinkedQueue<Command>()
@@ -42,19 +42,22 @@ class ControlQueue(
     private fun flush() {
         onUpdate?.invoke()
 
+        val commandsToFlush = mutableListOf<Command>()
+
         // Only keep latest values for each parameter
-        val params = synchronized(paramUpdates) {
-            val latest = paramUpdates.values.toList()
+        synchronized(paramUpdates) {
+            commandsToFlush.addAll(paramUpdates.values)
             paramUpdates.clear()
-            latest
         }
 
-        // Send only one param update per flush tick
-        val param = params.firstOrNull()
-        if (param != null) { onFlush(param); return }
+        while(true) {
+            val cmd = queue.poll() ?: break
+            commandsToFlush.add(cmd)
+        }
 
         // Otherwise send one queued command per tick
-        val cmd = queue.poll()
-        if (cmd != null) onFlush(cmd)
+        if (commandsToFlush.isNotEmpty()) {
+            onFlush(commandsToFlush)
+        }
     }
 }

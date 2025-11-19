@@ -112,7 +112,12 @@ fun TopBar (
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(horizontal = 8.dp)
             )
-            IconButton(onClick = onDisconnect, modifier = Modifier.size(18.dp).padding(top = 3.dp)) {
+            IconButton(
+                onClick = {
+                    viewModel.clearChain()
+                    onDisconnect()
+                },
+                modifier = Modifier.size(18.dp).padding(top = 3.dp)) {
                 Icon(Icons.Filled.Close, contentDescription = "Disconnect")
             }
         }
