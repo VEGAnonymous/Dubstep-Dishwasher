@@ -13,6 +13,10 @@
     #define M_PI_2 1.57079632679489661923
 #endif
 
+// Log-mel spectrogram
+#define NUM_BINS 257
+#define NUM_MELS 64
+
 // Datatypes
 using EffectID = uint8_t;
 using ParamID = uint8_t;

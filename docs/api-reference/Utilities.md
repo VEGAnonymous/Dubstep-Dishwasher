@@ -252,3 +252,21 @@ Short-Time Fourier Transform implementation with spectrogram storage. Provides s
 - Maintains processing queue for accurate overlap-add timing
 - Spectrogram size determined by buffer duration and hop rate
 - **Very computationally and memory intensive**
+
+---
+
+### `Log_Mel`
+
+**Description:**  
+High-level utility class to compute log-mel spectrograms from an STFT. FFT size fixed at 512, hop factor fixed at 4 (hopSize = 128).
+
+**Methods:**
+
+**`setMelCallback(callback)`**
+- Registers callback function once a new log-mel frame is ready
+- **`callback`** — Function taking `(const float*, size_t)` parameters, representing `(melEnergies, numMels)`
+
+**`processBlock(in, n)`**
+- Processes a block of samples
+- **`in`** — Input sample 
+- **`n`** — Number of samples per block, typically `AUDIO_BLOCK_SAMPLES`

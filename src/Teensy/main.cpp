@@ -7,15 +7,15 @@
 
 #include "Teensy/Control/AudioChain.h"
 #include "Teensy/Control/AudioChainStream.h"
+#include "Teensy/Control/LogMelStream.h"
 
 #include "Handler.h"
 
-// TODO: Encapsulate UART I/O in Handler.h 
-
 /* Testing - Set flags here */
-const bool USB_IO = false, 
-           LOG_RSE = true,
-           LOG_CMD = true;
+constexpr bool USB_IO = false, 
+               SND_SPECT = true,
+               LOG_RSE = true,
+               LOG_CMD = true;
 
 AudioInputUSB usbIn; 
 AudioOutputUSB usbOut;
@@ -29,10 +29,15 @@ AudioOutputI2S dacOut; // DAC output
 /* DSP */
 std::unique_ptr<AudioChain> chain; // FX chain
 std::unique_ptr<AudioChainStream> stream; // Audio stream
-std::unique_ptr<AudioConnection> patch1, patch2; // Connections
+std::unique_ptr<LogMelStream> logMelStream; // Log-mel spectrogram stream
+std::unique_ptr<AudioConnection> patch1, patch2, patch3; // Connections
 
 /* CONTROL */
-void processCommand(Command& cmd, AudioChain& chain) {
+
+Handler<Command, MelFrame> handler(Serial1); // Packet handler (send frames / receive commands)
+uint32_t frameCounter = 0; // Log-mel frame index
+
+void processCommand(const Command& cmd, AudioChain& chain) {
     switch (static_cast<CommandType>(cmd.cmd)) {
         case CommandType::ADD: // Add effect
             chain.addEffect(static_cast<EffectName>(cmd.id1));
@@ -63,9 +68,16 @@ void processCommand(Command& cmd, AudioChain& chain) {
 /* RUNTIME */
 void setup() {
     Serial.begin(115200);
-    Serial1.begin(115200); // Pin 0
+    Serial1.begin(230400); // Pin 0/1
 
     pinMode(LED_BUILTIN, OUTPUT);
+
+    /* Setup handler */
+    handler.setCallback([](const Command& cmd) {
+        if (LOG_CMD) Serial.printf("cmd: %d | id1: %d | id2: %d | value: %.3f | checksum: 0x%02X (valid)\n", 
+        cmd.cmd, cmd.id1, cmd.id2, cmd.value, cmd.checksum);
+        processCommand(cmd, *chain);
+    });
 
     while (!Serial && millis() < 4000) {}
 
@@ -78,14 +90,25 @@ void setup() {
     /* Instantiate DSP chain */
     chain = std::make_unique<AudioChain>();
     stream = std::make_unique<AudioChainStream>(*chain);
+    if (SND_SPECT) {
+        logMelStream = std::make_unique<LogMelStream>();
+        logMelStream->setMelCallback([&](const float* melEnergies, size_t numMels) { // Send mel-frames over Serial1 when ready
+            MelFrame frame{};
+            frame.index = frameCounter++;
+            frame.numMels = numMels;
+            memcpy(frame.mel, melEnergies, numMels * sizeof(float));
+            handler.send(frame);
+        });
+    }
 
     if (USB_IO) {
         patch1 = std::make_unique<AudioConnection>(usbIn, 0, *stream, 0);
         patch2 = std::make_unique<AudioConnection>(*stream, 0, usbOut, 0);
-        // patch1 = std::make_unique<AudioConnection>(usbIn, 0, usbOut, 0);
+        if (SND_SPECT) patch3 = std::make_unique<AudioConnection>(usbIn, 0, *logMelStream, 0);
     } else {
         patch1 = std::make_unique<AudioConnection>(adcIn, 0, *stream, 0);
         patch2 = std::make_unique<AudioConnection>(*stream, 0, dacOut, 0);
+        if (SND_SPECT) patch3 = std::make_unique<AudioConnection>(adcIn, 0, *logMelStream, 0);
     }
     
     /* Teensy Audio setup */
@@ -104,22 +127,7 @@ size_t rcvBytes = 0;
 
 void loop() {
 
-    /* Parse received commands */
-    while (Serial1.available()) {
-        uint8_t* buf = (uint8_t*)&cmd;
-        buf[rcvBytes++] = Serial1.read();
-
-        if (rcvBytes == sizeof(Command)) {
-            // Full packet received
-            if (verifyChecksum(cmd)) {
-                if (LOG_CMD) Serial.printf("cmd: %d | id1: %d | id2: %d | value: %.3f | checksum: 0x%02X (valid)\n", 
-                cmd.cmd, cmd.id1, cmd.id2, cmd.value, cmd.checksum);
-                processCommand(cmd, *chain);
-            }
-            // Reset for next packet
-            rcvBytes = 0;
-        }
-    }
+    handler.listen();
     
     if (millis() - logTime >= 1000) {
         logTime = millis();

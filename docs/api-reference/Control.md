@@ -81,3 +81,47 @@ patch2 = std::make_unique<AudioConnection>(*stream, 0, dacOut, 0);
 
 }
 ```
+
+---
+
+## `LogMelStream`
+
+**Description:**  
+Teensy Audio Library wrapper that computes a running log-mel spectrogram of the upstream using `Log_Mel`. Extends `AudioStream` from Teensy Audio Library.
+
+**Notes:**
+- *For this class to be practically useful, a callback function must be set*
+- Converts int16 input to float32 for processing
+- Processes one block of `AUDIO_BLOCK_SAMPLES` per `update()` call
+- Calls to `update()` automatically handled by Teensy Audio Library
+
+**Example Usage:**
+
+```
+/* IO */
+AudioInputI2S adcIn; // ADC input
+
+/* DSP */
+std::unique_ptr<LogMelStream> logMelStream; // Log-mel stream
+std::unique_ptr<AudioConnection> patch1; // Connection
+
+...
+
+void setup() {
+
+logMelStream = std::make_unique<LogMelStream>();
+// Set callback - send frames over UART via Handler when ready
+logMelStream->setMelCallback([&](const float* melEnergies, size_t numMels) {
+    MelFrame frame{};
+    frame.index = frameCounter++;
+    frame.numMels = numMels;
+    memcpy(frame.mel, melEnergies, numMels * sizeof(float));
+    handler.send(frame);
+});
+
+patch1 = std::make_unique<AudioConnection>(adcIn, 0, *logMelStream, 0);
+
+...
+
+}
+```
