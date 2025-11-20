@@ -4,10 +4,9 @@
 
 /*
 
-static constexpr float DUR_S = 2.0f;
-static constexpr size_t NUM_MELS = 64;
-static constexpr size_t NUM_FRAMES = 690; // (88200 // 128) + 1
-static constexpr size_t BUFFER_SIZE = NUM_MELS * NUM_FRAMES;
+static constexpr size_t INFERENCE_NUM_MELS = 64;
+static constexpr size_t INFERENCE_NUM_FRAMES = 690; // (88200 // 128) + 1
+static constexpr size_t INFERENCE_BUFFER_SIZE = INFERENCE_NUM_MELS * INFERENCE_NUM_FRAMES;
 
 float* buffer;       // Full spectrogram buffer
 int m_currentFrame;
@@ -53,7 +52,7 @@ void InferenceBuffer::addFrame(const MelFrame& frame) {
     m_currentFrame++;
 
     // Check if the buffer is now full
-    if (m_currentFrame == NUM_FRAMES) {
+    if (m_currentFrame == INFERENCE_NUM_FRAMES) {
         // Serial.println("Processing buffer");
         processBuffer();
         

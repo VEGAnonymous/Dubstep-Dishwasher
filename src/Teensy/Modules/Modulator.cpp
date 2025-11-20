@@ -108,15 +108,14 @@ float Modulator::compute(float dt) { // Compute current output value
     switch (type) {
         case ModulatorType::LFO_CURVE:
             if (lfoCurve) { /* LFO */
-                float phase = lfoCurve->getPhase();
-                float freq = lfoCurve->getFreq();
-                
                 // Evaluate at current phase
                 auto& points = lfoCurve->getCurve();
                 if (points.size() >= 2) {
                     output = std::clamp(lfoCurve->next(), 0.0f, 1.0f);
                 
+                    float freq = lfoCurve->getFreq();
                     float phase = lfoCurve->getPhase();
+                    
                     output = lfoCurve->evaluateCurve(phase);
                     phase += freq * dt; // Advance by dt
                     if (phase >= 1.0f) phase -= 1.0f;

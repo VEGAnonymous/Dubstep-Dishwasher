@@ -7,9 +7,9 @@
 
 class InferenceBuffer {
     private:
-        static constexpr size_t NUM_MELS = 64;
-        static constexpr size_t NUM_FRAMES = 690; // (88200 // 128) + 1
-        static constexpr size_t BUFFER_SIZE = NUM_MELS * NUM_FRAMES;
+        static constexpr size_t INFERENCE_NUM_MELS = 64;
+        static constexpr size_t INFERENCE_NUM_FRAMES = 690; // (88200 // 128) + 1
+        static constexpr size_t INFERENCE_BUFFER_SIZE = INFERENCE_NUM_MELS * INFERENCE_NUM_FRAMES;
 
         float* buffer; // Full spectrogram buffer
         int m_currentFrame;

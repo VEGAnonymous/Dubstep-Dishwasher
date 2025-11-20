@@ -7,7 +7,7 @@
 #define RX_PIN 18
 #define TX_PIN 17
 
-#define DEBUG 0
+// #define DEBUG 0 // In Utilities.h
 
 /* BLE */
 #include <BLEDevice.h>
@@ -46,22 +46,22 @@ class Callbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) override {
         std::string value = pCharacteristic->getValue();
         // Serial.printf("Received %d bytes\n", value.length());
-        // return on invalid writes
-        if (value.length() % 8 != 0) return;
+        // Return on invalid writes
+        if (value.length() % sizeof(Command) != 0) return;
 
         // if (lastTime) {
         //     Serial.printf("millis %lu\n", millis() - lastTime);
         // }
         // lastTime = millis();
 
-        // sends written bytes to helper function
+        // Sends written bytes to helper function
         processIncomingBytes((const uint8_t*)value.data(), value.length());
     }
 };
 
 /* UART */
 
-Handler<Command, MelFrame> handler(Serial1); // Packet handler (send commands / receive frames)
+Handler<MelFrame, Command> handler(Serial1); // Packet handler (send commands / receive frames)
 InferenceBuffer inferenceBuffer; // Buffer and process incoming mel frames for RT inference 
 
 void setup() {
@@ -74,7 +74,7 @@ void setup() {
     /* BLE setup */
     BLEDevice::init("T8_ESP");
     pServer = BLEDevice::createServer();
-    pServer->setCallbacks(new MyServerCallbacks());
+    pServer->setCallbacks(new ServerCallbacks());
     
     // Create service and characteristic(s)
     BLEService *pService = pServer->createService(SERVICE_UUID);

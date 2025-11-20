@@ -41,3 +41,44 @@ Random signal generator with multiple noise algorithms. Produces pseudo-random v
 - **`BINARY`** — Random binary signal alternating between `-1.0` and `+1.0`
 
 **Notes:** Output range is `[-1.0, 1.0]` for all modes
+
+----
+
+## `Curve`
+
+**Description:**  
+Modulator which evaluates a curve of `CurvePoint` instances.
+
+```
+struct CurvePoint {
+    float x;
+    float y;
+    float curve; // exp
+}
+```
+
+**`Constructor:**
+- **`freq`** — Initial frequency in Hz.
+- **`loop`** — Whether to loop. Should be set to `true` in most cases with the exception of mapping `Modulator` instances. `true / false`
+
+**`Methods:**
+
+All the usual `freq` / `phase` setters and getters, plus:
+
+**`setCurve(points)`**
+- Set the curve structure in one go.
+- **`points`** — Vector of `CurvePoint` instances
+
+**`setCurvePoint(index, x, y, curve)`**
+- Set the curve structure in point by point.
+- **`index`** — Index of the new point
+- **`x`** — x value of the new point; will automatically sort if out of order `[0.0, 1.0]` 
+- **`y`** — y value of the new point `[0.0, 1.0]` 
+- **`curve`** — Exponent of the curve segment
+
+**`clearCurve()`**
+- Clears the internal curve (sets a flat line at y = 0).
+
+**`getCurve()`**
+- Returns the vector of `CurvePoint` instances used by the modulator.
+
