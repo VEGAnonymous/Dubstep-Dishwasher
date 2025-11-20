@@ -22,6 +22,7 @@ class Wah : public Effect {
         void setMaxFreq(float maxFreq); // Hz, [1000.0, 8000.0]
         void setQ(float q); // [0.3, 6.0]
         void setParam(ParamID param, float value) override;
+        float getParam(ParamID param) const override;
 
         void process(const float* in, float* out, size_t n) override;
 };

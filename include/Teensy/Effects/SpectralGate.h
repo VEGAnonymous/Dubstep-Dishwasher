@@ -14,6 +14,7 @@ class SpectralGate : public Phase_Vocoder {
         void setTilt(float tilt); // [-1.0, 1.0]
         void setInvert(bool invert);
         void setParam(ParamID param, float value) override;
+        float getParam(ParamID param) const override;
 
     protected:
         void processSpectrum(STFT::FFTFrame& frame) override;

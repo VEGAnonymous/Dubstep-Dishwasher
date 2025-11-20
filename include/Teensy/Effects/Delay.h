@@ -8,7 +8,7 @@ class Delay : public Effect {
         enum Params : ParamID { MIX, DELAY_TIME, FEEDBACK };
 
         static constexpr float maxDelayTime = 500.0f; // ms
-        float mix, feedback;
+        float mix, delayTime, feedback;
         DelayLine delayLine;
 
     public:
@@ -18,6 +18,7 @@ class Delay : public Effect {
         void setDelayTime(float delayTime); // ms, [1.0, 500.0]
         void setFeedback(float feedback); // [-0.95, 0.95]
         void setParam(ParamID param, float value) override;
+        float getParam(ParamID param) const override;
 
         void process(const float* in, float* out, size_t n) override;
 };

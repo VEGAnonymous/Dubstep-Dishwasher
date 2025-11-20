@@ -31,6 +31,7 @@ class Chorus : public Effect {
         void setDelayTime(float delayTime); // ms, [0.0, 20.0]
         void setFeedback(float feedback); // [-0.95, 0.95]
         void setParam(ParamID param, float value) override;
+        float getParam(ParamID param) const override;
 
         void process(const float* in, float* out, size_t n) override;
 };

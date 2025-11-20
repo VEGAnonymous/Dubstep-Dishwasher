@@ -20,6 +20,7 @@ class FormantShifter : public Phase_Vocoder {
         void setFormantShift(float formantShift); // semitones, [-12.0, 12.0]
         void setEnvelopeWidth(size_t envelopeWidth);
         void setParam(ParamID param, float value) override;
+        float getParam(ParamID param) const override;
 
     protected:
         void processSpectrum(STFT::FFTFrame& frame) override;

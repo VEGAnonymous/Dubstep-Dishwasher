@@ -19,6 +19,7 @@ class FIR_Filter : public Effect {
 
         void setMix(float mix); // [0.0, 1.0]
         void setParam(ParamID param, float value) override;
+        float getParam(ParamID param) const override;
 
         void process(const float* in, float* out, size_t n) override;
 };

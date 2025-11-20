@@ -8,7 +8,8 @@ class Vocoder : public Effect {
     private:
         enum Params : ParamID { MIX, N_BANDS, LOW_FREQ, HIGH_FREQ, BANDWIDTH, DEPTH, ATTACK_TIME, RELEASE_TIME };
 
-        float mix, lowFreq, highFreq, bandwidthFactor, depth, attackCoeff, releaseCoeff;
+        float mix, lowFreq, highFreq, bandwidthFactor, depth, attackTime, releaseTime;
+        float attackCoeff, releaseCoeff;
         size_t nBands;
 
         FIR_Filter hilbert; // Hilbert transformer for phase-shifted carrier
@@ -50,6 +51,7 @@ class Vocoder : public Effect {
         void setAttackTime(float attackTime); // ms, [10.0, 1000.0]
         void setReleaseTime(float releaseTime); // ms, [10.0, 2000.0]
         void setParam(ParamID param, float value) override;
+        float getParam(ParamID param) const override;
 
         void process(const float* in, float* out, size_t n) override;
 };

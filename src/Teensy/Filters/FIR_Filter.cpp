@@ -25,6 +25,13 @@ void FIR_Filter::setParam(ParamID param, float value) {
         case MIX: setMix(value); break;
     }
 }
+float FIR_Filter::getParam(ParamID param) const { 
+    switch (param) {
+        case MIX: return mix;
+        default: return 0.0f;
+    }
+}
+
 
 void FIR_Filter::process(const float* in, float* out, size_t n) { // Filter via convolution
     const float* in_ptr = in;

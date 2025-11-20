@@ -33,6 +33,15 @@ void Wah::setParam(ParamID param, float value) {
         case Q: setQ(value); break;
     }
 }
+float Wah::getParam(ParamID param) const { 
+    switch (param) {
+        case MIX: return mix;
+        case MIN_FREQ: return minFreq;
+        case MAX_FREQ: return maxFreq;
+        case Q: return q;
+        default: return 0.0f;
+    }
+}
 
 void Wah::process(const float* in, float* out, size_t n) {
     for (size_t i = 0; i < n; ++i) {

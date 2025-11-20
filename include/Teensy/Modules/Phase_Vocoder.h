@@ -23,6 +23,6 @@ class Phase_Vocoder : public Effect { // Classes which process FFT frames in the
         void setFFTSize(size_t N); // [128, FFT_MAX_SIZE], MUST BE POWER OF 2 (please? I'm asking nicely)
 
         void setParam(ParamID param, float value) override;
-
+        float getParam(ParamID param) const override;
         void process(const float* in, float* out, size_t n) override;
 };

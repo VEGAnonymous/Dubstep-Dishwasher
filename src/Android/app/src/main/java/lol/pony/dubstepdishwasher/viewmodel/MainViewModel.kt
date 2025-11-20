@@ -12,10 +12,12 @@ import kotlinx.coroutines.flow.update
 import lol.pony.dubstepdishwasher.model.ControlQueue
 import lol.pony.dubstepdishwasher.model.EffectChain
 import lol.pony.dubstepdishwasher.model.BLEManager
+import lol.pony.dubstepdishwasher.model.Command
 import lol.pony.dubstepdishwasher.model.core.*
 import lol.pony.dubstepdishwasher.model.core.CommandType.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.experimental.xor
 
 class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
 
@@ -136,7 +138,8 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
         rebuildModulators(data.modulators)
         _modAssignments.value = data.assignments.map { it.copy() }
         _editorStates.value = data.editorStates.mapValues { it.value.copy() }
-        update()
+
+        syncModulation()
     }
 
     fun deleteGlobalPreset(name: String) {
@@ -185,7 +188,6 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
             else Modulator.Mapping(snap.id, curve = snap.curve.map { it.copy() })
 
             snap.parameters.forEachIndexed { paramId, value -> if (value != null) mod.setParam(paramId, value) }
-
             mod
         }
     }
@@ -204,67 +206,6 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
 
     fun favoriteCurvePreset(name: String, favorite: Boolean) {
         _curvePresets.update { list -> list.map { preset -> if (preset.name == name) preset.copy(favorite = favorite) else preset } }
-    }
-
-    /* MODULATION */
-
-    fun addAssignment(modId: String, effectId: Int, paramId: Int) {
-        val key = ParamKey(effectId, paramId)
-        val assignList = _modAssignments.value.toMutableList()
-        val exists = assignList.any { it.modId == modId && it.target == key } // Prevent duplicate assignments
-
-        if (!exists) {
-            assignList += ModAssignment(
-                modId = modId,
-                target = key,
-                amount = 0.5f,
-                polarity = ModPolarity.Bipolar
-            )
-            _modAssignments.value = assignList
-        }
-    }
-
-    fun removeAssignment(modId: String, effectId: Int, paramId: Int) {
-        _modAssignments.value = _modAssignments.value.filterNot {
-            it.modId == modId && it.target.effectId == effectId && it.target.paramId == paramId
-        }
-    }
-
-    fun updateAssignmentAmount(modId: String, effectId: Int, paramId: Int, amount: Float) {
-        _modAssignments.value = _modAssignments.value.map {
-            if (it.modId == modId && it.target.effectId == effectId && it.target.paramId == paramId)
-                it.copy(amount = amount)
-            else it
-        }
-    }
-
-    fun updateAssignmentPolarity(modId: String, effectId: Int, paramId: Int) {
-        _modAssignments.value = _modAssignments.value.map {
-            if (it.modId == modId && it.target.effectId == effectId && it.target.paramId == paramId) {
-                val newPolarity = when (it.polarity) {
-                    ModPolarity.Bipolar -> ModPolarity.Unipolar
-                    ModPolarity.Unipolar -> ModPolarity.Bipolar
-                }
-                it.copy(polarity = newPolarity)
-            } else it
-        }
-    }
-
-    fun setModulatorParam(modId: String, paramId: Int, value: Any) {
-        val mod = _modulators.value.find { it.id == modId } ?: return
-        mod.setParam(paramId, value)
-    }
-
-    fun updateModulatorCurve(modId: String, curve: List<CurvePoint>) {
-        _modulators.value = _modulators.value.map { mod ->
-            if (mod.id == modId) {
-                mod.updateCurve(curve)
-                when (mod) {
-                    is Modulator.LFO -> mod.copy()
-                    is Modulator.Mapping -> mod.copy()
-                }
-            } else mod
-        }
     }
 
     /* UI */
@@ -301,27 +242,11 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
             }
         }
         _currentModValues.value = modValues
-
-        offsets.forEach { (paramKey, offset) -> // Apply offsets to all targets
-            val effect = chain.get(paramKey.effectId) ?: return@forEach
-            val param = effect.getParam(paramKey.paramId) ?: return@forEach
-            if (param !is EffectParameter.Range<*>) return@forEach
-
-            val baseValue = param.value.toFloat()
-
-            // Compute final modulated value
-            val span = param.range.second.toFloat() - param.range.first.toFloat()
-            val modulatedValue = (baseValue + offset * span).coerceIn(param.range.first.toFloat(), param.range.second.toFloat())
-            // println(modulatedValue)
-
-            // Send command
-            /* TODO: Make this optional for internal-only parameters (like modulating LFO rates
-               Although that's (impossible currently because you can't drag to another modulator tab...yet) */
-            controlQueue.enqueue(SET_PARAM, paramKey.effectId, paramKey.paramId, modulatedValue)
-        }
     }
 
     /* COMMANDS */
+
+    // EFFECTS
 
     fun addEffect(type: EffectType) {
         val projected = chain.projectedUsage(type)
@@ -333,24 +258,31 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
         chain.addEffect(type)
         _effects.value = chain.getAll()
         _resourceUsage.value = chain.totalUsage()
-        controlQueue.enqueue(ADD, type.ordinal, 0, 0.0f)
+        controlQueue.enqueue(EFFECT_ADD, type.ordinal, 0, 0.0f)
         // Log.d("cmd", "ADD: effectType=${type.name}")
     }
 
     fun removeEffect(effectId: Int) {
         chain.removeEffect(effectId)
-        _modAssignments.value = _modAssignments.value.filter { it.target.effectId != effectId } // Also remove mod assignments
+        _modAssignments.value = _modAssignments.value.filterNot { it.target.effectId == effectId } // Also remove mod assignments
 
         _effects.value = chain.getAll()
         _resourceUsage.value = chain.totalUsage()
-        controlQueue.enqueue(REMOVE, effectId, 0, 0.0f)
+
+        controlQueue.enqueue(EFFECT_REMOVE, effectId, 0, 0.0f)
+        _modAssignments.value.filter { it.target.effectId == effectId }.forEach { assignment -> // And downstream assignments
+            val modIndex = modulatorIdToIndex(assignment.modId)
+            controlQueue.enqueue(
+                MOD_ASSIGNMENT_REMOVE, modIndex, assignment.target.effectId, assignment.target.paramId.toFloat()
+            )
+        }
         // Log.d("cmd", "REMOVE: effectId=$effectId")
     }
 
     fun reorderEffect(effectId: Int, toIndex: Int) {
         chain.reorderEffect(effectId, toIndex)
         _effects.value = chain.getAll()
-        controlQueue.enqueue(REORDER, effectId, toIndex, 0.0f)
+        controlQueue.enqueue(EFFECT_REORDER, effectId, toIndex, 0.0f)
         // Log.d("cmd", "REORDER: effectId=$effectId, toIndex=$toIndex")
     }
 
@@ -370,7 +302,7 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
             else -> throw IllegalArgumentException("Unsupported value type")
         }
 
-        controlQueue.enqueue(SET_PARAM, effectId, paramId, sendValue)
+        controlQueue.enqueue(EFFECT_SET_PARAMETER, effectId, paramId, sendValue)
         // Log.d("cmd", "SET_PARAM: effectId=$effectId, paramId=$paramId, value=$value")
     }
 
@@ -378,7 +310,7 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
         chain.setBypass(effectId, !chain.get(effectId)!!.isBypassed)
         _effects.value = chain.getAll()
         val value = if (chain.get(effectId)!!.isBypassed) 0.0f else 1.0f
-        controlQueue.enqueue(BYPASS, effectId, 0, value)
+        controlQueue.enqueue(EFFECT_BYPASS, effectId, 0, value)
         // Log.d("cmd", "BYPASS: effectId=$effectId")
     }
 
@@ -387,33 +319,209 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
         _modAssignments.value = emptyList()
         _effects.value = chain.getAll()
         _resourceUsage.value = ResourceUsage(0f, 0)
-        controlQueue.enqueue(CLEAR, 0, 0, 0.0f)
+        controlQueue.enqueue(EFFECT_CLEAR, 0, 0, 0.0f)
         // Log.d("cmd", "CLEAR")
     }
 
-    /* BLE */
+    // MODULATION
 
-    // Convert byte array to string with space separator
-    private fun bytesToHexString(bytes: ByteArray): String {
-        return bytes.joinToString(" ") { "%02X".format(it) }
+    private fun modulatorIdToIndex(modId: String): Int { return _modulators.value.indexOfFirst { it.id == modId }.coerceIn(0, 11) }
+
+    fun setModulatorParam(modId: String, paramId: Int, value: Any) {
+        val mod = _modulators.value.find { it.id == modId } ?: return
+        mod.setParam(paramId, value)
+
+        // Casting to float for value
+        val modIndex = modulatorIdToIndex(modId)
+        val sendValue = when (value) {
+            is Float -> value
+            is Int -> value.toFloat()
+            is LFOMode -> value.ordinal.toFloat()
+            is RandomMode -> value.ordinal.toFloat()
+            else -> throw IllegalArgumentException("Unsupported value type")
+        }
+
+        controlQueue.enqueue(MOD_SET_PARAMETER,
+            modIndex, paramId, sendValue)
     }
+
+    fun updateModulatorCurve(modId: String, curve: List<CurvePoint>) {
+        _modulators.value = _modulators.value.map { mod ->
+            if (mod.id == modId) {
+                mod.updateCurve(curve)
+                when (mod) {
+                    is Modulator.LFO -> mod.copy()
+                    is Modulator.Mapping -> mod.copy()
+                }
+            } else mod
+        }
+
+        val modIndex = modulatorIdToIndex(modId)
+
+        // Clear existing curve
+        controlQueue.enqueue(MOD_CLEAR_CURVE,
+            modIndex, 0, 0f)
+
+        // Send each point
+        curve.forEachIndexed { index, point ->
+            controlQueue.enqueue(MOD_SET_CURVE_POINT,
+                modIndex, index, point.x, point.y, point.curve)
+        }
+
+        // Reset LFO phase to sync with downstream
+        val mod = _modulators.value.find { it.id == modId }
+        if (mod is Modulator.LFO) mod.phase = 0f
+    }
+
+    fun addAssignment(modId: String, effectId: Int, paramId: Int) {
+        val key = ParamKey(effectId, paramId)
+        val assignList = _modAssignments.value.toMutableList()
+        val exists = assignList.any { it.modId == modId && it.target == key } // Prevent duplicate assignments
+
+        if (!exists) {
+            val assignment = ModAssignment(
+                modId = modId,
+                target = key,
+                amount = 0.5f,
+                polarity = ModPolarity.Bipolar
+            )
+            assignList += assignment
+            _modAssignments.value = assignList
+
+            val modIndex = modulatorIdToIndex(modId)
+            controlQueue.enqueue(MOD_ASSIGNMENT_ADD,
+                modIndex, effectId, paramId.toFloat(), 0.5f, ModPolarity.Bipolar.ordinal.toFloat())
+        }
+    }
+
+    fun removeAssignment(modId: String, effectId: Int, paramId: Int) {
+        _modAssignments.value = _modAssignments.value.filterNot {
+            it.modId == modId && it.target.effectId == effectId && it.target.paramId == paramId
+        }
+
+        val modIndex = modulatorIdToIndex(modId)
+        controlQueue.enqueue(MOD_ASSIGNMENT_REMOVE,
+            modIndex, effectId, paramId.toFloat())
+    }
+
+    fun updateAssignmentAmount(modId: String, effectId: Int, paramId: Int, amount: Float) {
+        _modAssignments.value = _modAssignments.value.map {
+            if (it.modId == modId && it.target.effectId == effectId && it.target.paramId == paramId)
+                it.copy(amount = amount)
+            else it
+        }
+
+        val modIndex = modulatorIdToIndex(modId)
+        val assignment = _modAssignments.value.find {
+            it.modId == modId && it.target.effectId == effectId && it.target.paramId == paramId
+        } ?: return
+
+        controlQueue.enqueue(MOD_ASSIGNMENT_SET,
+            modIndex, effectId, paramId.toFloat(), assignment.polarity.ordinal.toFloat())
+    }
+
+    fun updateAssignmentPolarity(modId: String, effectId: Int, paramId: Int) {
+        _modAssignments.value = _modAssignments.value.map {
+            if (it.modId == modId && it.target.effectId == effectId && it.target.paramId == paramId) {
+                val newPolarity = when (it.polarity) {
+                    ModPolarity.Bipolar -> ModPolarity.Unipolar
+                    ModPolarity.Unipolar -> ModPolarity.Bipolar
+                }
+                it.copy(polarity = newPolarity)
+            } else it
+        }
+
+        val modIndex = modulatorIdToIndex(modId)
+        val assignment = _modAssignments.value.find {
+            it.modId == modId && it.target.effectId == effectId && it.target.paramId == paramId
+        } ?: return
+
+        controlQueue.enqueue(MOD_ASSIGNMENT_SET,
+            modIndex, effectId, paramId.toFloat(), assignment.amount, assignment.polarity.ordinal.toFloat())
+    }
+
+    /* // Probably unused here - ESP32 should manually send
+    fun setMappingInput(modId: String, normalizedInput: Float) {
+        val mod = _modulators.value.find { it.id == modId }
+        if (mod is Modulator.Mapping) {
+            mod.inputValue = normalizedInput
+
+            val modIndex = modulatorIdToIndex(modId)
+            controlQueue.enqueue(CommandType.MOD_MAPPING_SET_INPUT, modIndex, 0, normalizedInput)
+        }
+    }
+    */
+
+    private fun syncModulation() { // Sync modulation with downstream
+        // Send modulator parameters and curves
+        _modulators.value.forEachIndexed { index, mod ->
+            // Parameters
+            mod.parameters.forEachIndexed { paramId, param ->
+                when (val value = param.value) {
+                    is Float -> controlQueue.enqueue(MOD_SET_PARAMETER, index, paramId, value)
+                    is LFOMode -> controlQueue.enqueue(MOD_SET_PARAMETER, index, paramId, value.ordinal.toFloat())
+                    is RandomMode -> controlQueue.enqueue(MOD_SET_PARAMETER, index, paramId, value.ordinal.toFloat())
+                }
+            }
+            // Curves
+            controlQueue.enqueue(MOD_CLEAR_CURVE, index, 0, 0f)
+            mod.curve.forEachIndexed { pointIndex, point ->
+                controlQueue.enqueue(MOD_SET_CURVE_POINT, index, pointIndex, point.x, point.y, point.curve)
+            }
+        }
+
+        // Send assignments
+        _modAssignments.value.forEach { assignment ->
+            val modIndex = modulatorIdToIndex(assignment.modId)
+            controlQueue.enqueue(MOD_ASSIGNMENT_ADD,
+                modIndex,
+                assignment.target.effectId,
+                assignment.target.paramId.toFloat(),
+                assignment.amount,
+                assignment.polarity.ordinal.toFloat()
+            )
+        }
+    }
+
+    /* BLE */
 
     /**
      * Sends a list of commands to the BLE device in a single buffer.
      * @param commands The list of commands to send
      */
-    private fun sendCommands(commands: List<lol.pony.dubstepdishwasher.model.Command>) {
+    private fun sendCommands(commands: List<Command>) {
         if (commands.isEmpty()) return
 
-        // 8 bytes per command: cmd (1), id1 (1), id2 (1), checksum (1), value (4)
-        val buffer = ByteBuffer.allocate(commands.size * 8).order(ByteOrder.LITTLE_ENDIAN)
+        // 16 bytes per Command
+        val buffer = ByteBuffer.allocate(commands.size * 16).order(ByteOrder.LITTLE_ENDIAN)
 
         for (command in commands) {
             buffer.put(command.type.value)
             buffer.put(command.id1.toByte())
             buffer.put(command.id2.toByte())
-            buffer.put(0.toByte()) // checksum (always 0)
-            buffer.putFloat(command.value)
+            // Compute checksum
+            /*
+            val checksum = command.type.value xor
+                    command.id1.toByte() xor
+                    command.id2.toByte() xor
+                    command.value1.toBits().toByte() xor
+                    ((command.value1.toBits() shr 8) and 0xFF).toByte() xor
+                    ((command.value1.toBits() shr 16) and 0xFF).toByte() xor
+                    ((command.value1.toBits() shr 24) and 0xFF).toByte() xor
+                    command.value2.toBits().toByte() xor
+                    ((command.value2.toBits() shr 8) and 0xFF).toByte() xor
+                    ((command.value2.toBits() shr 16) and 0xFF).toByte() xor
+                    ((command.value2.toBits() shr 24) and 0xFF).toByte() xor
+                    command.value3.toBits().toByte() xor
+                    ((command.value3.toBits() shr 8) and 0xFF).toByte() xor
+                    ((command.value3.toBits() shr 16) and 0xFF).toByte() xor
+                    ((command.value3.toBits() shr 24) and 0xFF).toByte()
+            */
+            val checksum = 0.toByte(); // TEMP
+            buffer.put(checksum)
+            buffer.putFloat(command.value1)
+            buffer.putFloat(command.value2)
+            buffer.putFloat(command.value3)
         }
         bleManager.writeCharacteristic(buffer.array())
     }

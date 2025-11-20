@@ -11,7 +11,9 @@ data class Command(
     val type: CommandType,
     val id1: Int,
     val id2: Int,
-    val value: Float
+    val value1: Float,
+    val value2: Float = 0f,
+    val value3: Float = 0f
 )
 
 class ControlQueue(
@@ -32,9 +34,9 @@ class ControlQueue(
         }
     }
 
-    fun enqueue(cmd: CommandType, id1: Int, id2: Int, value: Float) {
-        val command = Command(cmd, id1, id2, value)
-        if (cmd == CommandType.SET_PARAM) { // For param setting, only keep latest
+    fun enqueue(cmd: CommandType, id1: Int, id2: Int, value1: Float, value2: Float = 0f, value3: Float = 0f) {
+        val command = Command(cmd, id1, id2, value1, value2, value3)
+        if (cmd == CommandType.EFFECT_SET_PARAMETER) { // For param setting, only keep latest
             synchronized(paramUpdates) { paramUpdates[Pair(id1, id2)] = command }
         } else queue.offer(command)
     }
@@ -44,8 +46,7 @@ class ControlQueue(
 
         val commandsToFlush = mutableListOf<Command>()
 
-        // Only keep latest values for each parameter
-        synchronized(paramUpdates) {
+        synchronized(paramUpdates) { // Only keep latest values for each parameter
             commandsToFlush.addAll(paramUpdates.values)
             paramUpdates.clear()
         }
@@ -56,8 +57,6 @@ class ControlQueue(
         }
 
         // Otherwise send one queued command per tick
-        if (commandsToFlush.isNotEmpty()) {
-            onFlush(commandsToFlush)
-        }
+        if (commandsToFlush.isNotEmpty()) onFlush(commandsToFlush)
     }
 }

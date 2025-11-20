@@ -8,7 +8,7 @@
 enum Params : ParamID { MIX, MODE, MODULATOR, FREQ, DEPTH, BIAS, RECTIFY };
 
 float mix, freq, depth, bias, rectify;
-ModulationEffectMode mode; 
+ModulationEffectMode mode; WavetableType modulatorType;
 Wavetable modulator;
 
 */
@@ -22,7 +22,10 @@ Modulation::Modulation(float mix, ModulationEffectMode mode, WavetableType modul
 
 void Modulation::setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
 void Modulation::setMode(ModulationEffectMode mode) { this->mode = mode; }
-void Modulation::setModulator(WavetableType modulatorType) { modulator.setTable(modulatorType); }
+void Modulation::setModulator(WavetableType modulatorType) { 
+    this->modulatorType = modulatorType;
+    modulator.setTable(modulatorType); 
+}
 void Modulation::setFreq(float freq) { this->freq = std::clamp(freq, 1.0f, 2000.0f); modulator.setFreq(this->freq); } // [1.0, 2000.0]
 void Modulation::setDepth(float depth) { this->depth = std::clamp(depth, 0.0f, 1.0f); } // [0.0, 1.0]
 void Modulation::setBias(float bias) { this->bias = std::clamp(bias, 0.0f, 1.0f); } // [0.0, 1.0]
@@ -36,6 +39,18 @@ void Modulation::setParam(ParamID param, float value) {
         case DEPTH: setDepth(value); break;
         case BIAS: setBias(value); break;
         case RECTIFY: setRectify(value); break;
+    }
+}
+float Modulation::getParam(ParamID param) const {
+    switch (param) {
+        case MIX: return mix;
+        case MODE: return (float)mode;
+        case MODULATOR: return (float)modulatorType;
+        case FREQ: return freq;
+        case DEPTH: return depth;
+        case BIAS: return bias;
+        case RECTIFY: return rectify;
+        default: return 0.0f;
     }
 }
 

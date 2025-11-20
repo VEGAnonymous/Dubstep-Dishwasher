@@ -18,6 +18,12 @@ void IIR_Filter::setParam(ParamID param, float value) {
         // Subclasses can call IIR_Filter::setParam(param, value)
     }
 }
+float IIR_Filter::getParam(ParamID param) const {
+    switch (param) {
+        case MIX: return mix;
+        default: return 0.0f;
+    }
+}
 
 float IIR_Filter::processSample(float x) { return LCCDE(x); }
 void IIR_Filter::process(const float* in, float* out, size_t n) {

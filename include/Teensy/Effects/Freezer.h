@@ -39,6 +39,7 @@ class Freezer : public Effect {
         void setFFTSize(size_t N); // [128, FFT_MAX_SIZE], MUST BE POWER OF 2 (I'm not going to ask you again)
         void setLoopRegion(float start, float end); // [0.0, 1.0] for both
         void setParam(ParamID param, float value) override;
+        float getParam(ParamID param) const override;
         
         void process(const float* in, float* out, size_t n) override;
 };

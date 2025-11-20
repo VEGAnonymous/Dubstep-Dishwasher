@@ -44,6 +44,7 @@ class PitchShifter : public Effect {
         void setGrainOverlap(float grainOverlap); // [0.25, 0.75]
         void setJitter(float jitter); // [0.0, 1.0]
         void setParam(ParamID param, float value) override;
+        float getParam(ParamID param) const override;
         
         void process(const float* in, float* out, size_t n) override;
 };

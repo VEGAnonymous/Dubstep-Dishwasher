@@ -7,7 +7,7 @@ class Gate : public Effect {
     private:
         enum Params : ParamID { MIX, THRESHOLD, ATTACK_TIME, RELEASE_TIME, HOLD_TIME, INVERT };
 
-        float mix, threshold; bool invert;
+        float mix, threshold, attackTime, releaseTime, holdTime; bool invert;
         float attackCoeff, releaseCoeff; 
 
         DelayLine inBuffer;
@@ -25,6 +25,7 @@ class Gate : public Effect {
         void setHoldTime(float holdTime); // ms, [1.0, 1500.0]
         void setInvert(bool invert);
         void setParam(ParamID param, float value) override;
+        float getParam(ParamID param) const override;
 
         void process(const float* in, float* out, size_t n) override;
 };

@@ -106,6 +106,16 @@ void PitchShifter::setParam(ParamID param, float value) {
         case JITTER: setJitter(value); break;
     }
 }
+float PitchShifter::getParam(ParamID param) const {
+    switch (param) {
+        case MIX: return mix;
+        case PITCH_SHIFT: return pitchShift;
+        case GRAIN_SIZE: return grainSize;
+        case GRAIN_OVERLAP: return grainOverlap;
+        case JITTER: return jitter;
+        default: return 0.0f;
+    }
+}
 
 void PitchShifter::process(const float* in, float* out, size_t n) {
     for (size_t i = 0; i < n; ++i) {

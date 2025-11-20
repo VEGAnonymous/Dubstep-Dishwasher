@@ -81,6 +81,15 @@ void Distortion::setParam(ParamID param, float value) {
         case MIX: setMix(value); break;
         case MODE: setMode(static_cast<DistortionMode>(value)); break;
         case DRIVE: setDrive(value); break;
+   
+    }
+}
+float Distortion::getParam(ParamID param) const {
+    switch (param) {
+        case MIX: return mix;
+        case MODE: return (float)mode;
+        case DRIVE: return drive;
+        default: return 0.0f;
     }
 }
 

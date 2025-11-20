@@ -52,6 +52,7 @@ class Granulator : public Effect {
         void setLevelRand(float levelRand); // [0.0, 1.0]
         void setEnvelopeType(EnvelopeType envType);
         void setParam(ParamID param, float value) override;
+        float getParam(ParamID param) const override;
 
     void process(const float* in, float* out, size_t n) override;
 };

@@ -8,7 +8,7 @@ class Modulation : public Effect {
         enum Params : ParamID { MIX, MODE, MODULATOR, FREQ, DEPTH, BIAS, RECTIFY };
 
         float mix, freq, depth, bias, rectify;
-        ModulationEffectMode mode; 
+        ModulationEffectMode mode; WavetableType modulatorType;
         Wavetable modulator;
 
     public:
@@ -23,6 +23,7 @@ class Modulation : public Effect {
         void setBias(float bias); // [0.0, 1.0]
         void setRectify(float rectify); // [-1.0, 1.0]
         void setParam(ParamID param, float value) override;
+        float getParam(ParamID param) const override;
 
         void process(const float* in, float* out, size_t n) override;
 };

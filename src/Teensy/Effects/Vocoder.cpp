@@ -7,8 +7,8 @@
 
 enum Params : ParamID { MIX, N_BANDS, LOW_FREQ, HIGH_FREQ, BANDWIDTH, DEPTH, ATTACK_TIME, RELEASE_TIME };
 
-float mix, lowFreq, highFreq, bandwidthFactor, depth, attackCoeff, releaseCoeff;
-size_t nBands;
+float mix, lowFreq, highFreq, bandwidthFactor, depth, attackTime, releaseTime;
+float attackCoeff, releaseCoeff;
 
 FIR_Filter hilbert; // Hilbert transformer for phase-shifted carrier
 
@@ -82,10 +82,12 @@ void Vocoder::setFreqRange(float lowFreq, float highFreq) { // Hz, [10.0, 16000.
 void Vocoder::setBandwidth(float bandwidthFactor) { this->bandwidthFactor = std::clamp(bandwidthFactor, 0.03f, 4.0f); setBands(); } // [0.03, 4.0]
 void Vocoder::setDepth(float depth) { this->depth = std::clamp(depth, 0.0f, 2.0f); } // [0.0, 2.0]
 void Vocoder::setAttackTime(float attackTime) { // ms, [10.0, 1000.0]
+    this->attackTime = attackTime;
     attackCoeff = 1.0f - exp(-1.0f / (std::clamp(attackTime, 10.0f, 1000.0f) * SAMPLE_RATE / 1000.0f)); 
     for (Band& band : bands) { band.attackCoeff = attackCoeff; }
 }
 void Vocoder::setReleaseTime(float releaseTime) { // ms, [10.0, 2000.0]
+    this->releaseTime = releaseTime;
     releaseCoeff = 1.0f - exp(-1.0f / (std::clamp(releaseTime, 10.0f, 2000.0f) * SAMPLE_RATE / 1000.0f)); 
     for (Band& band : bands) band.releaseCoeff = releaseCoeff;
 }
@@ -99,6 +101,19 @@ void Vocoder::setParam(ParamID param, float value) {
         case DEPTH: setDepth(value); break;
         case ATTACK_TIME: setAttackTime(value); break;
         case RELEASE_TIME: setReleaseTime(value); break;
+    }
+}
+float Vocoder::getParam(ParamID param) const {
+    switch (param) {
+        case MIX: return mix;
+        case N_BANDS: return (float)nBands;
+        case LOW_FREQ: return lowFreq;
+        case HIGH_FREQ: return highFreq;
+        case BANDWIDTH: return bandwidthFactor;
+        case DEPTH: return depth;
+        case ATTACK_TIME: return attackTime;
+        case RELEASE_TIME: return releaseTime;
+        default: return 0.0f;
     }
 }
 

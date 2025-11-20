@@ -27,6 +27,7 @@ class Reverb : public Effect {
         void setModRate(float modRate); // Hz, [0.05, 5.0]
         void setModDepth(float modDepth); // [0.0, 1.0]
         void setParam(ParamID param, float value) override;
+        float getParam(ParamID param) const override;
 
         void process(const float* in, float* out, size_t n) override;
 };

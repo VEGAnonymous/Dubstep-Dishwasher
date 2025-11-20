@@ -18,14 +18,10 @@ class AudioChain {
     public:
         AudioChain();
 
-        Effect* addEffect(EffectName id);
-
+        Effect* addEffect(EffectName name);
         void removeEffect(EffectID id);
-
         Effect* getEffect(EffectID id);
-
         void reorderEffect(EffectID id, size_t pos);
-
         void clear();
 
         void processChain(const float* input, float* output, size_t n);

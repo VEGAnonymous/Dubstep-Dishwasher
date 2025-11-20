@@ -9,5 +9,5 @@ data class EditorState(
     val gridX: Int = 8,
     val gridY: Int = 8,
     val lockEndpoints: Boolean = false,
-    override var currentPreset: Preset<List<CurvePoint>>? = defaultCurvePresets()[2] // Tri BP
+    override var currentPreset: Preset<List<CurvePoint>>? = defaultCurvePresets()[1] // Tri UP
 ) : PresetContainer<List<CurvePoint>>

@@ -9,7 +9,7 @@
 
 enum Params : ParamID { MIX, THRESHOLD, RATIO, KNEE, ATTACK_TIME, RELEASE_TIME, MAKEUP_GAIN, AUTO_MAKEUP };
 
-float mix, threshold, ratio, knee, makeupGain; bool autoMakeup;
+float mix, threshold, ratio, knee, attackTime, releaseTime, makeupGain; bool autoMakeup;
 float attackCoeff, releaseCoeff, makeupCoeff;
 
 DelayLine inBuffer; 
@@ -44,8 +44,14 @@ void Compressor::setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } 
 void Compressor::setThreshold(float threshold) { this->threshold = std::clamp(threshold, -100.0f, 0.0f); } // dB, [-100.0, 0.0]
 void Compressor::setRatio(float ratio) { this->ratio = std::clamp(ratio, 1.0f, 100.0f); } // [1.0, 100.0]
 void Compressor::setKnee(float knee) { this->knee = std::clamp(knee, 0.0f, 40.0f); } // dB, [0.0, 40.0]
-void Compressor::setAttackTime(float attackTime) { attackCoeff = exp(-2.2f / (std::clamp(attackTime, 0.01f, 250.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [0.01, 250.0]
-void Compressor::setReleaseTime(float releaseTime) { releaseCoeff = exp(-2.2f / (std::clamp(releaseTime, 10.0f, 2500.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [10.0, 2500.0]
+void Compressor::setAttackTime(float attackTime) { // ms, [0.01, 250.0]
+    this->attackTime = attackTime;
+    attackCoeff = exp(-2.2f / (std::clamp(attackTime, 0.01f, 250.0f) * SAMPLE_RATE / 1000.0f)); 
+} 
+void Compressor::setReleaseTime(float releaseTime) { // ms, [10.0, 2500.0]
+    this->releaseTime = releaseTime;
+    releaseCoeff = exp(-2.2f / (std::clamp(releaseTime, 10.0f, 2500.0f) * SAMPLE_RATE / 1000.0f)); 
+} 
 void Compressor::setMakeupGain(float makeupGain) { this->makeupGain = std::clamp(makeupGain, -72.0f, 36.0f); } // dB, [-72.0, 36.0]
 void Compressor::setAutoMakeup(bool autoMakeup) { 
     this->autoMakeup = autoMakeup;
@@ -61,6 +67,19 @@ void Compressor::setParam(ParamID param, float value) {
         case RELEASE_TIME: setReleaseTime(value); break;
         case MAKEUP_GAIN: setMakeupGain(value); break;
         case AUTO_MAKEUP: setAutoMakeup(value > 0.5f); break;
+    }
+}
+float Compressor::getParam(ParamID param) const {
+    switch (param) {
+        case MIX: return mix;
+        case THRESHOLD: return threshold;
+        case RATIO: return ratio;
+        case KNEE: return knee;
+        case ATTACK_TIME: return attackTime;
+        case RELEASE_TIME: return releaseTime;
+        case MAKEUP_GAIN: return makeupGain;
+        case AUTO_MAKEUP: return autoMakeup ? 1.0f : 0.0f;
+        default: return 0.0f;
     }
 }
 

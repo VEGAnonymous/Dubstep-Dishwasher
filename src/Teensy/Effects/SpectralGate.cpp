@@ -26,6 +26,14 @@ void SpectralGate::setParam(ParamID param, float value) {
         default: Phase_Vocoder::setParam(param, value);
     }
 }
+float SpectralGate::getParam(ParamID param) const {
+    switch (param) {
+        case THRESHOLD: return threshold;
+        case TILT: return tilt;
+        case INVERT: return invert ? 1.0f : 0.0f;
+        default: return Phase_Vocoder::getParam(param);
+    }
+}
 
 /* PROTECTED */
 

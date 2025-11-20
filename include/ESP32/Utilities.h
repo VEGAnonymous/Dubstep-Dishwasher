@@ -33,8 +33,8 @@ void processIncomingBytes(const uint8_t* data, size_t len) {
 
         #if DEBUG
         // Debug: Print forwarded command   
-        Serial.printf("cmd: %d | id1: %d | id2: %d | value: %.3f | checksum: 0x%02X\n",
-            cmd.cmd, cmd.id1, cmd.id2, cmd.value, cmd.checksum);
+        Serial.printf("cmd: %d | id1: %d | id2: %d | id3: %d | value1: %.3f | value2: %.3f | value3: %.3f | checksum: 0x%02X\n", 
+                       cmd.cmd, cmd.id1, cmd.id2, cmd.value1, cmd.value2, cmd.value3, cmd.checksum);
         #endif
 
         bytesRead = 0; // Reset for next command

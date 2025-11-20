@@ -80,6 +80,16 @@ void Reverb::setParam(ParamID param, float value) {
         case MOD_DEPTH: setModDepth(value); break;
     }
 }
+float Reverb::getParam(ParamID param) const {
+    switch (param) {
+        case MIX: return mix;
+        case PREDELAY_TIME: return predelayTime;
+        case DECAY_TIME: return decayTime;
+        case MOD_RATE: return modRate;
+        case MOD_DEPTH: return modDepth;
+        default: return 0.0f;
+    }
+}
 
 void Reverb::process(const float* in, float* out, size_t n) {
     for (size_t i = 0; i < n; ++i) {

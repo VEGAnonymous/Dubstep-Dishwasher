@@ -44,6 +44,7 @@ Random::Random(float freq, RandomMode mode) { setFreq(freq); setMode(mode); }
 
 void Random::setFreq(float freq) { this->freq = freq; } // Hz
 void Random::setPhase(float phase) { this->phase = phase; }
+float Random::getPhase() const { return this->phase; }
 void Random::setMode(RandomMode mode) {
     this->mode = mode;
     switch (mode) {

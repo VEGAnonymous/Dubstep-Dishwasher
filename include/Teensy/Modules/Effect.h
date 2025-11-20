@@ -6,9 +6,10 @@
 
 class Effect {
     protected:
-        bool bypass = false;
         EffectID id;
-
+        EffectName effectName;
+        bool bypass = false;
+        
     public:
         virtual ~Effect() = default;
         
@@ -16,8 +17,16 @@ class Effect {
         bool isBypassed() const;
         void setID(EffectID id);
         EffectID getID() const;
+        
+        void setEffectName(EffectName name);
+        EffectName getEffectName() const;
 
-        virtual void setParam(ParamID param, float value) = 0; // Allows setting subclass parameters from an Effect pointer
+        void setNormalized(ParamID param, float normalizedValue);
 
-        virtual void process(const float* in, float* out, size_t n) = 0; // Process sample block, implemented per effect
+        virtual float getNormalized(ParamID param) const;
+        
+        // Subclasses must implement
+        virtual void setParam(ParamID param, float value) = 0;
+        virtual float getParam(ParamID param) const = 0;
+        virtual void process(const float* in, float* out, size_t n) = 0;
 };

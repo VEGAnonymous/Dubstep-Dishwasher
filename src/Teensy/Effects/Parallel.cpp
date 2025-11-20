@@ -123,6 +123,15 @@ void Parallel::setParam(ParamID pid, float value) {
     } // pid
 } // setParam
 
+float Parallel::getParam(ParamID param) const {
+    switch (param) {
+        case MIX: return mix;
+        case MODE: return (float)mode;
+        // Other things? Probably not...
+        default: return 0.0f;
+    }
+}
+
 void Parallel::process(const float* in, float* out, size_t n) {
     // Process chains independently
     chainA.processChain(in, signalA, n);

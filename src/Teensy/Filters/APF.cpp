@@ -93,6 +93,13 @@ void APF::setParam(ParamID param, float value) {
         default: IIR_Filter::setParam(param, value);
     }
 }
+float APF::getParam(ParamID param) const { 
+    switch (param) {
+        case CUTOFF: return cutoff;
+        case Q: return 1.0f / (1.0f - g);
+        default: return IIR_Filter::getParam(param);
+    }
+}
 
 float APF::LCCDE(float x) {
     if (!useDFII) { // Direct Form I

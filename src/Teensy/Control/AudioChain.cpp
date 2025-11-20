@@ -62,12 +62,13 @@ AudioChain::AudioChain() {
     };
 }
 
-Effect* AudioChain::addEffect(EffectName id) {
+Effect* AudioChain::addEffect(EffectName name) {
     // Search for effect initializer via EffectName mapping
-    auto it = effectInits.find(id);
+    auto it = effectInits.find(name);
     if (it == effectInits.end()) return nullptr; // Not found
 
     auto effect = it->second();
+    effect->setEffectName(name);
 
     // Assign next free ID
     EffectID assignedID;

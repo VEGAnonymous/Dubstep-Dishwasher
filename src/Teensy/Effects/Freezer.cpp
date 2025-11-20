@@ -85,6 +85,17 @@ void Freezer::setParam(ParamID param, float value) {
         case LOOP_END: setLoopRegion(loopStart, value); break;
     }
 }
+float Freezer::getParam(ParamID param) const {
+    switch (param) {
+        case MIX: return mix;
+        case RATE: return rate;
+        case SPECTRAL_MODE: return spectralMode ? 1.0f : 0.0f;
+        case FFT_SIZE: return (float)fftSize;
+        case LOOP_START: return loopStart;
+        case LOOP_END: return loopEnd;
+        default: return 0.0f;
+    }
+}
 
 void Freezer::process(const float* in, float* out, size_t n) {
     const size_t bufN = bufSize,

@@ -1,15 +1,18 @@
 #pragma once
 
 #include <Arduino.h>
+#include <Teensy/Defines.h>
 
 /* DATA */
 
 struct Command {
-    uint8_t cmd;      // Command type (0 = Add, 1 = Remove, 2 = Reorder, 3 = Set param, 4 = Bypass)
-    uint8_t id1;      // EffectID
-    uint8_t id2;      // ParamID
+    uint8_t cmd;      // Command type (see include/Teensy/Defines.h)
+    uint8_t id1;      // Primary ID (EffectID, ModulatorID...)
+    uint8_t id2;      // Secondary ID (ParamID, CurvePoint index...)
     uint8_t checksum; // Checksum (XOR)
-    float value;      // Command value
+    float value1;
+    float value2;
+    float value3;
 } __attribute__((packed));
 
 struct MelFrame {

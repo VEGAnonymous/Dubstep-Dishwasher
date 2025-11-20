@@ -41,6 +41,13 @@ void Phase_Vocoder::setParam(ParamID param, float value) {
         case FFT_SIZE: setFFTSize((size_t)value); break;
     }
 }
+float Phase_Vocoder::getParam(ParamID param) const {
+    switch (param) {
+        case MIX: return mix;
+        case FFT_SIZE: return (float)fftSize;
+        default: return 0.0f;
+    }
+}
 
 void Phase_Vocoder::process(const float* in, float* out, size_t n) {
     for (size_t i = 0; i < n; ++i) {

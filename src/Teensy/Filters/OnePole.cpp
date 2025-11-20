@@ -32,6 +32,13 @@ void OnePole::setParam(ParamID param, float value) {
         default: IIR_Filter::setParam(param, value);
     }
 }
+float OnePole::getParam(ParamID param) const { 
+    switch (param) {
+        case CUTOFF: return cutoff;
+        case COEFF: return a1;
+        default: return IIR_Filter::getParam(param);
+    }
+}
 
 float OnePole::LCCDE(float x) { 
     // y[n] = (1-a)x[n] - ay[n-1]

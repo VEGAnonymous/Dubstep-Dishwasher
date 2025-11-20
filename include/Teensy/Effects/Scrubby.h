@@ -34,6 +34,7 @@ class Scrubby : public Effect {
         void setSeekDur(float seekDurLow, float seekDurHigh); // [0.03, 1.0] for both
         void setOctaveRange(int octavesDown, int octavesUp);
         void setParam(ParamID param, float value) override;
+        float getParam(ParamID param) const override;
 
     void process(const float* in, float* out, size_t n) override;
 };

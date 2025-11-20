@@ -8,7 +8,7 @@
 enum Params : ParamID { MIX, DELAY_TIME, FEEDBACK };
 
 static constexpr float maxDelayTime = 500.0f; // ms
-float mix, feedback;
+float mix, delayTime, feedback;
 DelayLine delayLine;
 
 */
@@ -19,13 +19,24 @@ Delay::Delay(float mix, float delayTime, float feedback) :
 delayLine(delayTime, maxDelayTime) { setMix(mix); setFeedback(feedback); }
 
 void Delay::setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
-void Delay::setDelayTime(float delayTime) { delayLine.setDelayTime(std::clamp(delayTime, 1.0f, maxDelayTime)); } // ms, [1.0, 500.0]
+void Delay::setDelayTime(float delayTime) { // ms, [1.0, 500.0]
+    this->delayTime = delayTime;
+    delayLine.setDelayTime(std::clamp(delayTime, 1.0f, maxDelayTime)); 
+} 
 void Delay::setFeedback(float feedback) { this->feedback = std::clamp(feedback, -0.95f, 0.95f); } // [-0.95, 0.95]
 void Delay::setParam(ParamID param, float value) {
     switch (param) {
         case MIX: setMix(value); break;
         case DELAY_TIME: setDelayTime(value); break;
         case FEEDBACK: setFeedback(value); break;
+    }
+}
+float Delay::getParam(ParamID param) const {
+    switch (param) {
+        case MIX: return mix;
+        case DELAY_TIME: return delayTime;
+        case FEEDBACK: return feedback;
+        default: return 0.0f;
     }
 }
 

@@ -9,7 +9,7 @@
 
 enum Params : ParamID { MIX, THRESHOLD, ATTACK_TIME, RELEASE_TIME, HOLD_TIME, INVERT };
 
-float mix, threshold; bool invert;
+float mix, threshold, attackTime, releaseTime, holdTime; bool invert;
 float attackCoeff, releaseCoeff; 
 
 DelayLine inBuffer;
@@ -27,9 +27,18 @@ Gate::Gate(float mix, float threshold, float attack, float release, float hold, 
 
 void Gate::setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
 void Gate::setThreshold(float threshold) { this->threshold = std::clamp(threshold, -100.0f, 0.0f); } // dB, [-100.0, 0.0]
-void Gate::setAttackTime(float attackTime) { attackCoeff = exp(-2.2f / (std::clamp(attackTime, 0.01f, 250.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [0.01, 250.0]
-void Gate::setReleaseTime(float releaseTime) { releaseCoeff = exp(-2.2f / (std::clamp(releaseTime, 0.01f, 1500.0f) * SAMPLE_RATE / 1000.0f)); } // ms, [0.01, 1500.0]
-void Gate::setHoldTime(float holdTime) { holdSamples = (size_t)(std::clamp(holdTime, 1.0f, 1500.0f) * SAMPLE_RATE / 1000.0f); } // ms, [1.0, 1500.0]
+void Gate::setAttackTime(float attackTime) { // ms, [0.01, 250.0]
+    this->attackTime = attackTime; 
+    attackCoeff = exp(-2.2f / (std::clamp(attackTime, 0.01f, 250.0f) * SAMPLE_RATE / 1000.0f)); 
+} 
+void Gate::setReleaseTime(float releaseTime) { // ms, [0.01, 1500.0]
+    this->releaseTime = releaseTime;
+    releaseCoeff = exp(-2.2f / (std::clamp(releaseTime, 0.01f, 1500.0f) * SAMPLE_RATE / 1000.0f)); 
+} 
+void Gate::setHoldTime(float holdTime) { // ms, [1.0, 1500.0]
+    this->holdTime = holdTime;
+    holdSamples = (size_t)(std::clamp(holdTime, 1.0f, 1500.0f) * SAMPLE_RATE / 1000.0f); 
+} 
 void Gate::setInvert(bool invert) { this->invert = invert; }
 void Gate::setParam(ParamID param, float value) {
     switch (param) {
@@ -39,6 +48,17 @@ void Gate::setParam(ParamID param, float value) {
         case RELEASE_TIME: setReleaseTime(value); break;
         case HOLD_TIME: setHoldTime(value); break;
         case INVERT: setInvert(value > 0.5f); break;
+    }
+}
+float Gate::getParam(ParamID param) const {
+    switch (param) {
+        case MIX: return mix;
+        case THRESHOLD: return threshold;
+        case ATTACK_TIME: return attackTime;
+        case RELEASE_TIME: return releaseTime;
+        case HOLD_TIME: return holdTime;
+        case INVERT: return invert ? 1.0f : 0.0f;
+        default: return 0.0f;
     }
 }
 

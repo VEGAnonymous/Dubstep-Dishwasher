@@ -116,12 +116,30 @@ void Granulator::setParam(ParamID param, float value) {
         case RATE_RAND: setRateRand(value); break;
         case LENGTH: setLength(value); break;
         case LENGTH_RAND: setLengthRand(value); break;
+        case TUNE: setTune(value); break;
+        case TUNE_RAND: setTuneRand(value); break;
         case LEVEL: setLevel(value); break;
         case LEVEL_RAND: setLevelRand(value); break;
         case REVERSE_CHANCE: setReverseChance(value); break;
         case ENVELOPE_TYPE: setEnvelopeType(static_cast<EnvelopeType>(value)); break;
-        case TUNE: setTune(value); break;
-        case TUNE_RAND: setTuneRand(value); break;
+    }
+}
+float Granulator::getParam(ParamID param) const {
+    switch (param) {
+        case MIX: return mix;
+        case POSITION: return position;
+        case POSITION_RAND: return positionRand;
+        case RATE: return rate;
+        case RATE_RAND: return rateRand;
+        case LENGTH: return length;
+        case LENGTH_RAND: return lengthRand;
+        case TUNE: return tune;
+        case TUNE_RAND: return tuneRand;
+        case LEVEL: return level;
+        case LEVEL_RAND: return levelRand;
+        case REVERSE_CHANCE: return reverseChance;
+        case ENVELOPE_TYPE: return (float)envType;
+        default: return 0.0f;
     }
 }
 

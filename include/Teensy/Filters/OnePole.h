@@ -16,6 +16,7 @@ class OnePole : public IIR_Filter { // One-pole LPF
         void setCoeff(float a);
         void setCutoff(float cutoff); // Hz
         void setParam(ParamID param, float value) override;
+        float getParam(ParamID param) const override;
 
         float LCCDE(float x) override;
 };

@@ -44,7 +44,7 @@ void Phaser::setCenterFreq(float centerFreq) { this->centerFreq = std::clamp(cen
 void Phaser::setSpread(float spread) { this->spread = std::clamp(spread, 0.1f, 1.0f); setupStages(); } // [0.1, 1.0]
 void Phaser::setDepth(float depth) { this->depth = std::clamp(depth, 0.0f, 1.0f); } // [0.0, 1.0]
 void Phaser::setFeedback(float feedback) { this->feedback = std::clamp(feedback, -0.95f, 0.95f); } // [-0.95, 0.95]
-void Phaser::setParam(ParamID param, float value) { // [0.0, 1.0]
+void Phaser::setParam(ParamID param, float value) {
     switch (param) {
         case MIX: setMix(value); break;
         case RATE: setRate(value); break;
@@ -52,6 +52,17 @@ void Phaser::setParam(ParamID param, float value) { // [0.0, 1.0]
         case SPREAD: setSpread(value); break;
         case DEPTH: setDepth(value); break;
         case FEEDBACK: setFeedback(value); break;
+    }
+}
+float Phaser::getParam(ParamID param) const {
+    switch (param) {
+        case MIX: return mix;
+        case RATE: return rate;
+        case CENTER_FREQ: return centerFreq;
+        case SPREAD: return spread;
+        case DEPTH: return depth;
+        case FEEDBACK: return feedback;
+        default: return 0.0f;
     }
 }
 

@@ -40,6 +40,7 @@ class APF : public IIR_Filter { // 1st order, Direct Form I/II
         void setCutoff(float cutoff);
         void setQ(float q);
         void setParam(ParamID param, float value) override;
+        float getParam(ParamID param) const override;
 
         float LCCDE(float x) override;
 };

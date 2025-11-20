@@ -5,15 +5,21 @@
 /*
 
 audio_block_t * _inputQueueArray[1];
+
 AudioChain &chain;
+std::unique_ptr<ModulationEngine> modEngine;
 
 */
 
 /* PUBLIC */
 
-AudioChainStream::AudioChainStream(AudioChain &chain) : AudioStream(1, _inputQueueArray), chain(chain) {}
+AudioChainStream::AudioChainStream(AudioChain &chain) 
+    : AudioStream(1, _inputQueueArray), chain(chain) {
+    modEngine = std::make_unique<ModulationEngine>(chain);
+}
 
-// Should probably create helpers to decouple some of this but I don't care lol
+ModulationEngine* AudioChainStream::getModEngine() { return modEngine.get(); }
+
 void AudioChainStream::update() {
     audio_block_t *inBlock = receiveReadOnly(0); // Receive block from upstream
     if (!inBlock) return;
@@ -22,6 +28,10 @@ void AudioChainStream::update() {
     float buf[AUDIO_BLOCK_SAMPLES];
     for (int i = 0; i < AUDIO_BLOCK_SAMPLES; ++i) { buf[i] = (float)inBlock->data[i] / 32768.0f; }
 
+    // Apply modulation
+    float dt = (float)AUDIO_BLOCK_SAMPLES / SAMPLE_RATE;
+    if (modEngine) modEngine->update(dt);
+    
     // Process effect chain (in place)
     chain.processChain(buf, buf, AUDIO_BLOCK_SAMPLES);
 

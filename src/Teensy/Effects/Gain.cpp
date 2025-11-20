@@ -17,12 +17,22 @@ float gainFactor; bool clip;
 
 Gain::Gain(float gainDB) { setGain(gainDB); }
 
-void Gain::setGain(float gainDB) { this->gainFactor = dbAmp(std::clamp(gainDB, -60.0f, 24.0f)); } // dB, [-60.0, 24.0]
+void Gain::setGain(float gainDB) { // dB, [-60.0, 24.0]
+    this->gainDB = std::clamp(gainDB, -60.0f, 24.0f);
+    this->gainFactor = dbAmp(this->gainDB); 
+} 
 void Gain::setClip(bool clip) { this->clip = clip; }
 void Gain::setParam(ParamID param, float value) {
     switch (param) {
         case GAIN: setGain(value); break;
         case CLIP: setClip(value > 0.5f); break;
+    }
+}
+float Gain::getParam(ParamID param) const {
+    switch (param) {
+        case GAIN: return gainDB;
+        case CLIP: return clip ? 1.0f : 0.0f;
+        default: return 0.0f;
     }
 }
 

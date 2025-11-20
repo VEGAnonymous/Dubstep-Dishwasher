@@ -40,3 +40,11 @@ void Biquad::setParam(ParamID param, float value) {
         default: IIR_Filter::setParam(param, value);
     }
 }
+float Biquad::getParam(ParamID param) const {
+    switch (param) {
+        case Biquad::Params::CUTOFF: return cutoff;
+        case Biquad::Params::Q: return q;
+        case Biquad::Params::GAIN: return gainDB;
+        default: return IIR_Filter::getParam(param);
+    }
+}

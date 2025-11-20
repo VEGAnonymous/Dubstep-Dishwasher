@@ -31,6 +31,15 @@ void Flanger::setParam(ParamID param, float value) {
         case FEEDBACK: setFeedback(value); break;
     }
 }
+float Flanger::getParam(ParamID param) const {
+    switch (param) {
+        case MIX: return mix;
+        case RATE: return rate;
+        case DEPTH: return depth;
+        case FEEDBACK: return feedback;
+        default: return 0.0f;
+    }
+}
 
 void Flanger::process(const float* in, float* out, size_t n) {
     const float* in_ptr = in;

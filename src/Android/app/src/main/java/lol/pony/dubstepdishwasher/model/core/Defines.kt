@@ -4,9 +4,28 @@ package lol.pony.dubstepdishwasher.model.core
 
 const val MAX_COMPUTE_USAGE = 0.90f // 90%
 const val MAX_MEMORY_USAGE  = 450   // 400 kB
-const val CONTROL_RATE = 10 // Hz
+const val CONTROL_RATE = 50 // Hz
 
 /* ENUMS */
+
+enum class CommandType(val value: Byte) {
+    // Effect chain commands
+    EFFECT_ADD(0),
+    EFFECT_REMOVE(1),
+    EFFECT_REORDER(2),
+    EFFECT_SET_PARAMETER(3),
+    EFFECT_BYPASS(4),
+    EFFECT_CLEAR(5),
+
+    // Modulation commands
+    MOD_SET_PARAMETER(6),
+    MOD_CLEAR_CURVE(7),
+    MOD_SET_CURVE_POINT(8),
+    MOD_ASSIGNMENT_ADD(9),
+    MOD_ASSIGNMENT_REMOVE(10),
+    MOD_ASSIGNMENT_SET(11),
+    // MOD_MAPPING_SET_INPUT(12)
+}
 
 data class ResourceUsage(
     val compute: Float, // Worst-case CPU usage, 0.0–1.0
@@ -37,15 +56,6 @@ enum class EffectType(
     SPECTRAL_GATE("Spectral Gate", ResourceUsage(0.16f, 20)),
     VOCODER("Vocoder", ResourceUsage(0.22f)),
     WAH("Wah", ResourceUsage(0.06f))
-}
-
-enum class CommandType(val value: Byte) {
-    ADD(0),
-    REMOVE(1),
-    REORDER(2),
-    SET_PARAM(3),
-    BYPASS(4),
-    CLEAR(5)
 }
 
 enum class ParamUnit { PERCENT, ENUM, MS, HZ, DB, SEMITONES, DIMENSIONLESS }

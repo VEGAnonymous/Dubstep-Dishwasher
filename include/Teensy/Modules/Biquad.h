@@ -25,4 +25,5 @@ class Biquad : public IIR_Filter { // Generic SOS form, Direct Form II-Transpose
         virtual void setGain(float gainDB); // dB, [-24.0, 24.0]
         
         void setParam(ParamID param, float value);
+        float getParam(ParamID param) const override;
 };

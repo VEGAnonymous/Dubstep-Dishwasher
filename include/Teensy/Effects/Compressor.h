@@ -7,7 +7,7 @@ class Compressor : public Effect {
     private:
         enum Params : ParamID { MIX, THRESHOLD, RATIO, KNEE, ATTACK_TIME, RELEASE_TIME, MAKEUP_GAIN, AUTO_MAKEUP };
 
-        float mix, threshold, ratio, knee, makeupGain; bool autoMakeup;
+        float mix, threshold, ratio, knee, attackTime, releaseTime, makeupGain; bool autoMakeup;
         float attackCoeff, releaseCoeff, makeupCoeff;
 
         DelayLine inBuffer; 
@@ -30,6 +30,7 @@ class Compressor : public Effect {
         void setMakeupGain(float makeupGain); // dB, [-72.0, 36.0]
         void setAutoMakeup(bool autoMakeup);
         void setParam(ParamID param, float value) override;
+        float getParam(ParamID param) const override;
 
         void process(const float* in, float* out, size_t n) override;
 };

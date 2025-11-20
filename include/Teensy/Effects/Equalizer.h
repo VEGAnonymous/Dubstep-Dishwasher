@@ -36,6 +36,7 @@ class Equalizer : public Effect {
         void setBand2Q(float q); // [0.02, 40.0]
         void setBand2Gain(float gainDB); // dB, [-24.0, 24.0]
         void setParam(ParamID param, float value) override;
+        float getParam(ParamID param) const override;
 
         void process(const float* in, float* out, size_t n) override;
 };

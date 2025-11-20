@@ -68,6 +68,20 @@ void Equalizer::setParam(ParamID param, float value) {
         case BAND2_GAIN: setBand2Gain(value); break;
     }
 }
+float Equalizer::getParam(ParamID param) const { 
+    switch (param) {
+        case MIX: return mix;
+        case BAND1_TYPE: return (float)band1Type;
+        case BAND1_CUTOFF: return band1Cutoff;
+        case BAND1_Q: return band1Q;
+        case BAND1_GAIN: return band1Gain;
+        case BAND2_TYPE: return (float)band2Type;
+        case BAND2_CUTOFF: return band2Cutoff;
+        case BAND2_Q: return band2Q;
+        case BAND2_GAIN: return band2Gain;
+        default: return 0.0f;
+    }
+}
 
 void Equalizer::process(const float* in, float* out, size_t n) {
     for (size_t i = 0; i < n; ++i) {

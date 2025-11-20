@@ -71,6 +71,19 @@ void Scrubby::setParam(ParamID param, float value) {
         case OCTAVES_UP: setOctaveRange(octavesDown, value); break;
     }
 }
+float Scrubby::getParam(ParamID param) const {
+    switch (param) {
+        case MIX: return mix;
+        case SEEK_RATE_LOW: return seekRateLow;
+        case SEEK_RATE_HIGH: return seekRateHigh;
+        case SEEK_RANGE: return seekRange;
+        case SEEK_DUR_LOW: return seekDurLow;
+        case SEEK_DUR_HIGH: return seekDurHigh;
+        case OCTAVES_DOWN: return (float)octavesDown;
+        case OCTAVES_UP: return (float)octavesUp;
+        default: return 0.0f;
+    }
+}
 
 void Scrubby::process(const float* in, float* out, size_t n) {
     for (size_t i = 0; i < n; ++i) {

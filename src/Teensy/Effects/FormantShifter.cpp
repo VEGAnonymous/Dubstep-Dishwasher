@@ -55,6 +55,13 @@ void FormantShifter::setParam(ParamID param, float value) {
         default: Phase_Vocoder::setParam(param, value);
     }
 }
+float FormantShifter::getParam(ParamID param) const {
+    switch (param) {
+        case FORMANT_SHIFT: return formantShift;
+        case ENVELOPE_WIDTH: return (float)envelopeWidth;
+        default: return Phase_Vocoder::getParam(param);
+    }
+}
 
 /* PROTECTED */
 
