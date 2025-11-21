@@ -22,7 +22,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +48,8 @@ import lol.pony.dubstepdishwasher.model.core.Modulator
 import lol.pony.dubstepdishwasher.model.core.ModulatorParameter
 import lol.pony.dubstepdishwasher.model.core.UIEnum
 import lol.pony.dubstepdishwasher.model.core.mapRange
+import lol.pony.dubstepdishwasher.ui.components.subcomponents.CurveDisplay
+import lol.pony.dubstepdishwasher.ui.components.subcomponents.RandomScope
 import lol.pony.dubstepdishwasher.ui.controls.DDKnob
 import kotlin.math.pow
 
@@ -70,7 +71,7 @@ fun ModulatorControls(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 4.dp),
+                .padding(top = 4.dp, bottom = 14.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -243,7 +244,7 @@ fun ModulatorControls(
                 }
         }
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp).height(2.dp))
+        // HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp).height(2.dp))
         // Spacer(modifier = Modifier.height(4.dp))
 
         /* MODULATION PREVIEW */
@@ -261,13 +262,15 @@ fun ModulatorControls(
                             CurveDisplay(
                                 points = mod.curve,
                                 modifier = Modifier.fillMaxSize(),
-                                showPoints = false,
-                                lineColor = Color(0xFF00CCAA),
-                                backgroundColor = Color.Transparent,
-                                gridX = 2,
-                                gridY = 2,
                                 currentPosition = mod.phase,
-                                positionColor = Color(0xFF024F43)
+                                showPoints = false,
+                                fillGradient = true,
+                                lineColor = Color(0xFF00CCAA),
+                                positionColor = Color(0xFFCFFFF5),
+                                backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
+                                gridColor = Color(0x22FFFFFF),
+                                gridX = 2,
+                                gridY = 2
                             )
                         }
                         LFOMode.RANDOM -> {
@@ -277,7 +280,7 @@ fun ModulatorControls(
                                 modId = mod.id,
                                 currentValue = currentValue,
                                 modifier = Modifier.fillMaxSize(),
-                                lineColor = Color(0xFF00CCAA),
+                                lineColor = Color(0xFF00CCAA)
                             )
                         }
                     }
@@ -286,13 +289,15 @@ fun ModulatorControls(
                     CurveDisplay(
                         points = mod.curve,
                         modifier = Modifier.fillMaxSize(),
-                        showPoints = false,
-                        lineColor = Color(0xFF00CCAA),
-                        backgroundColor = Color.Transparent,
-                        gridX = 2,
-                        gridY = 2,
                         currentPosition = mod.inputValue,
-                        positionColor = Color(0xFF024F43)
+                        showPoints = false,
+                        fillGradient = true,
+                        lineColor = Color(0xFF00CCAA),
+                        positionColor = Color(0xFFCFFFF5),
+                        backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
+                        gridColor = Color(0x22FFFFFF),
+                        gridX = 2,
+                        gridY = 2
                     )
                 }
             }
@@ -304,12 +309,13 @@ fun ModulatorControls(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .size(16.dp)
-                        .alpha(0.3f)
+                        .padding(top = 4.dp, end = 4.dp)
+                        .alpha(0.5f)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Edit",
-                        tint = Color(0xFF000000)
+                        tint = Color(0xFFF3FFFC)
                     )
                 }
             }

@@ -65,4 +65,6 @@ dependencies {
     implementation(libs.rxandroidble)
     implementation(libs.rxandroid)
     implementation(libs.rxjava)
+    implementation(libs.coil.kt.coil.compose)
+    implementation(libs.coil.gif)
 }

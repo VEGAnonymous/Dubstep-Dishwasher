@@ -1,16 +1,19 @@
 package lol.pony.dubstepdishwasher.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
@@ -20,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.dp
@@ -27,6 +31,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import lol.pony.dubstepdishwasher.model.BLEManager
 import lol.pony.dubstepdishwasher.model.core.*
 import lol.pony.dubstepdishwasher.ui.components.*
+import lol.pony.dubstepdishwasher.ui.components.subcomponents.CurveEditor
 import lol.pony.dubstepdishwasher.viewmodel.MainViewModel
 import lol.pony.dubstepdishwasher.viewmodel.MainViewModelFactory
 
@@ -78,21 +83,14 @@ fun MainPanel(bleManager: BLEManager) {
                     horizontalArrangement = Arrangement.Center
                 )
                 { // Select which tab
-                    Button(
-                        onClick = { leftColumnMode = LeftColumnMode.FX },
-                        modifier = Modifier.padding(horizontal = 10.dp)
-                    ) {
-                        Text(text = "FX", style = MaterialTheme.typography.headlineSmall)
-                    }
-                    Button(
-                        onClick = { leftColumnMode = LeftColumnMode.MOD },
-                        modifier = Modifier.padding(horizontal = 10.dp)
-                    ) {
-                        Text("MOD", style = MaterialTheme.typography.headlineSmall)
-                    }
+                    ModeToggle(
+                        currentMode = leftColumnMode,
+                        onModeChange = { leftColumnMode = it }
+                    )
                 }
 
-                HorizontalDivider()
+                // HorizontalDivider()
+                // Spacer(modifier = Modifier.height(2.dp))
 
                 when (leftColumnMode) {
                     LeftColumnMode.FX ->
@@ -121,6 +119,7 @@ fun MainPanel(bleManager: BLEManager) {
                     LeftColumnMode.MOD ->
                         // Modulators
                         Column(Modifier.width(250.dp)) {
+                            HorizontalDivider()
                             ModulatorTabs( // Mod tab selection
                                 modulators = mainViewModel.modulators.collectAsState().value,
                                 assignments = mainViewModel.modAssignments.collectAsState().value,
@@ -187,3 +186,37 @@ fun MainPanel(bleManager: BLEManager) {
 
     } // Box
 } // MainPanel
+
+@Composable
+fun ModeToggle(
+    currentMode: LeftColumnMode,
+    onModeChange: (LeftColumnMode) -> Unit
+) {
+    Row(
+        Modifier.width(250.dp)
+            .padding(vertical = 2.dp)
+            .scale(0.8f),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        LeftColumnMode.entries.forEach { mode ->
+            val active = (currentMode == mode)
+            Surface(
+                modifier = Modifier
+                    .padding(horizontal = 4.dp)
+                    .height(36.dp)
+                    .weight(1f)
+                    .clickable { onModeChange(mode) },
+                color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(4.dp),
+                shadowElevation = if (active) 0.dp else 4.dp
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = mode.name,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+            }
+        }
+    }
+}

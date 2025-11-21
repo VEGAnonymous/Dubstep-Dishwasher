@@ -23,9 +23,11 @@ import lol.pony.dubstepdishwasher.model.core.EffectType
 import lol.pony.dubstepdishwasher.model.core.ModAssignment
 import lol.pony.dubstepdishwasher.model.core.Modulator
 import lol.pony.dubstepdishwasher.model.core.ParamKey
+import lol.pony.dubstepdishwasher.ui.components.subcomponents.CompressorParameterList
 import lol.pony.dubstepdishwasher.ui.components.subcomponents.DefaultParameterList
 import lol.pony.dubstepdishwasher.ui.components.subcomponents.DistortionParameterList
 import lol.pony.dubstepdishwasher.ui.components.subcomponents.EqualizerParameterList
+import lol.pony.dubstepdishwasher.ui.components.subcomponents.GateParameterList
 
 @Composable
 fun ParameterColumn(
@@ -68,8 +70,20 @@ fun ParameterColumn(
                     )
                 }
 
-                // Default parameter list rows
+
                 when (effect.effectType) {
+                    EffectType.COMPRESSOR -> CompressorParameterList(
+                        effect = effect,
+                        assignments = assignments,
+                        selectedModulator = selectedModulator,
+                        currentModOffsets = currentModOffsets,
+                        onSetParam = onSetParam,
+                        onAssignMod = onAssignMod,
+                        onRemoveMod = onRemoveMod,
+                        onModAmountChange = onModAmountChange,
+                        onTogglePolarity = onTogglePolarity
+                    )
+
                     EffectType.DISTORTION -> DistortionParameterList(
                         effect = effect,
                         assignments = assignments,
@@ -94,6 +108,19 @@ fun ParameterColumn(
                         onTogglePolarity = onTogglePolarity
                     )
 
+                    EffectType.GATE -> GateParameterList(
+                        effect = effect,
+                        assignments = assignments,
+                        selectedModulator = selectedModulator,
+                        currentModOffsets = currentModOffsets,
+                        onSetParam = onSetParam,
+                        onAssignMod = onAssignMod,
+                        onRemoveMod = onRemoveMod,
+                        onModAmountChange = onModAmountChange,
+                        onTogglePolarity = onTogglePolarity
+                    )
+
+                    // Default parameter list rows
                     else -> DefaultParameterList(
                         effect = effect,
                         assignments = assignments,

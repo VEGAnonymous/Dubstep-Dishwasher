@@ -1,5 +1,6 @@
 package lol.pony.dubstepdishwasher.ui.components
 
+import android.media.MediaPlayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
@@ -22,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,9 +32,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import lol.pony.dubstepdishwasher.model.core.EffectType
 import lol.pony.dubstepdishwasher.model.core.lerp
+import lol.pony.dubstepdishwasher.R
 
 @Composable
 fun EffectChainControls(
@@ -90,18 +95,28 @@ fun EffectChainControls(
             }
         }
 
-        Spacer(modifier = Modifier.width(22.dp))
+        Spacer(modifier = Modifier.width(28.dp))
 
         // Clear button
-        Button(onClick = onClear, modifier = Modifier.padding(horizontal = 4.dp).scale(0.6f)) {
-            Text("Clear", style = MaterialTheme.typography.bodyMedium)
+        Button(
+            onClick = onClear,
+            modifier = Modifier.padding(horizontal = 4.dp).scale(0.6f),
+            shape = RoundedCornerShape(16.dp),
+        ) {
+            Text("CLEAR", style = MaterialTheme.typography.labelMedium)
         }
     } // Row
 
-    if (resourceError != null) {
+    if (resourceError != null) { // Exceeded resource limit
+        val context = LocalContext.current
+        LaunchedEffect(Unit) {
+            val mediaPlayer = MediaPlayer.create(context, R.raw.ohno) // :pinkiesad:
+            mediaPlayer.setOnCompletionListener { it.release() }
+            mediaPlayer.start()
+        }
         AlertDialog(
             onDismissRequest = { onDismissError() },
-            title = { Text(text = "Oh no!", style = MaterialTheme.typography.bodyMedium) },
+            title = { Text(text = "Oh no!", style = MaterialTheme.typography.bodyMedium) }, // :(
             text = { Text(text = resourceError, style = MaterialTheme.typography.bodyMedium) },
             confirmButton = {
                 TextButton(onClick = { onDismissError() }) {

@@ -16,7 +16,7 @@ import lol.pony.dubstepdishwasher.model.core.*
 import lol.pony.dubstepdishwasher.model.core.CommandType.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.experimental.xor
+// import kotlin.experimental.xor
 
 class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
 
@@ -223,6 +223,7 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
         onUpdate = { }
     )
 
+    @Suppress("unused")
     private val lfoControl = ControlQueue(
         scope = viewModelScope,
         rate = LFO_UPDATE_RATE,

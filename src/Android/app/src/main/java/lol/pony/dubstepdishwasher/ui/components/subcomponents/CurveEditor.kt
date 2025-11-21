@@ -1,4 +1,4 @@
-package lol.pony.dubstepdishwasher.ui.components
+package lol.pony.dubstepdishwasher.ui.components.subcomponents
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.background
@@ -45,6 +45,7 @@ import lol.pony.dubstepdishwasher.model.core.CurveRandomArgs
 import lol.pony.dubstepdishwasher.model.core.EditorState
 import lol.pony.dubstepdishwasher.model.core.lerp
 import lol.pony.dubstepdishwasher.model.core.snapValue
+import lol.pony.dubstepdishwasher.ui.components.PresetManager
 import lol.pony.dubstepdishwasher.ui.controls.DDSwitch
 import kotlin.math.abs
 
@@ -276,15 +277,16 @@ fun CurveEditor(
                                     }
                                 )
                             },
+                        currentPosition = currentPosition,
                         showPoints = true,
+                        fillGradient = false,
                         lineColor = Color(0xFF00CCAA),
                         pointColor = Color(0xFF666666),
                         curveHandleColor = Color(0x88666666),
+                        positionColor = Color(0xFF024F43),
                         backgroundColor = Color.White,
                         gridX = gridX,
-                        gridY = gridY,
-                        currentPosition = currentPosition,
-                        positionColor = Color(0xFF024F43)
+                        gridY = gridY
                     )
                 }
 

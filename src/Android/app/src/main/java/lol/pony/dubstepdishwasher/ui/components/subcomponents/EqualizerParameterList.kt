@@ -10,9 +10,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import lol.pony.dubstepdishwasher.model.core.*
@@ -104,8 +105,7 @@ private const val MIN_DB = -24.0f
 private const val MAX_DB = 24.0f
 private const val DB_RANGE = MAX_DB - MIN_DB
 
-data class EqualizerResponse(val freq: Float, val gainDb: Float)
-
+data class EqualizerResponse(val freq: Float, val gain: Float)
 
 @Composable
 fun EqualizerPlot(
@@ -120,42 +120,50 @@ fun EqualizerPlot(
     modifier: Modifier = Modifier
 ) {
     val samples = remember(b1Type, b1Cutoff, b1Q, b1Gain, b2Type, b2Cutoff, b2Q, b2Gain) {
-        calculateEqualizerResponse(
-            b1Type, b1Cutoff, b1Q, b1Gain,
-            b2Type, b2Cutoff, b2Q, b2Gain
-        )
+        frequencyResponse(b1Type, b1Cutoff, b1Q, b1Gain, b2Type, b2Cutoff, b2Q, b2Gain)
     }
 
     Canvas(modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
-        val w = size.width
-        val h = size.height
+        val w = size.width; val h = size.height
+        val y_0 = h - ((0f - MIN_DB) / DB_RANGE * h)
 
-        val path = Path()
+        val strokePath = Path(); val fillPath = Path()
         samples.forEachIndexed { i, sample ->
-            val logMin = ln(MIN_FREQ)
-            val logMax = ln(MAX_FREQ)
+            // Log frequency
+            val logMin = ln(MIN_FREQ); val logMax = ln(MAX_FREQ)
             val logFreq = ln(sample.freq.coerceIn(MIN_FREQ, MAX_FREQ))
             val px = ((logFreq - logMin) / (logMax - logMin)) * w
 
-            val normalizedDb = (sample.gainDb.coerceIn(MIN_DB, MAX_DB) - MIN_DB) / DB_RANGE
-            val py = h - (normalizedDb * h)
+            // Linear dB
+            val gain = sample.gain.coerceIn(MIN_DB, MAX_DB)
+            val py = h - ((gain - MIN_DB) / DB_RANGE * h)
 
-            if (i == 0) path.moveTo(px, py)
-            else path.lineTo(px, py)
+            if (i == 0) {
+                strokePath.moveTo(px, py)
+                fillPath.moveTo(px, y_0)
+                fillPath.lineTo(px, py)
+            } else {
+                strokePath.lineTo(px, py)
+                fillPath.lineTo(px, py)
+            }
         }
 
-        // 0dB line
-        val y = h - (((0.0f - MIN_DB) / DB_RANGE) * h)
-        drawLine(
-            color = Color.DarkGray,
-            start = Offset(0f, y),
-            end = Offset(w, y),
-            strokeWidth = 1f
+        // Close fill
+        val last = ln(samples.last().freq.coerceIn(MIN_FREQ, MAX_FREQ))
+        val lastPx = ((last - ln(MIN_FREQ)) / (ln(MAX_FREQ) - ln(MIN_FREQ))) * w
+        fillPath.lineTo(lastPx, y_0)
+        fillPath.close()
+
+        // Fill
+        drawPath(
+            path = fillPath,
+            brush = Brush.verticalGradient(colors = listOf(Color(0x6600CCAA), Color.Transparent)),
+            style = Fill
         )
 
-        // Draw curve
+        // Curve outline
         drawPath(
-            path = path,
+            path = strokePath,
             color = Color(0xFF00CCAA),
             style = Stroke(width = 2.5f)
         )
@@ -164,15 +172,12 @@ fun EqualizerPlot(
 
 // Generate log-spaced frequencies
 private fun logFrequencies(@Suppress("SameParameterValue") n: Int): List<Double> {
-    val startLog = ln(MIN_FREQ)
-    val endLog = ln(MAX_FREQ)
+    val startLog = ln(MIN_FREQ); val endLog = ln(MAX_FREQ)
     val step = (endLog - startLog) / (n - 1)
-    return (0 until n).map { i ->
-        exp(startLog + i * step).toDouble()
-    }
+    return (0 until n).map { i -> exp(startLog + i * step).toDouble() }
 }
 
-fun calculateEqualizerResponse(
+fun frequencyResponse(
     b1Type: BiquadType, b1Cutoff: Float, b1Q: Float, b1Gain: Float,
     b2Type: BiquadType, b2Cutoff: Float, b2Q: Float, b2Gain: Float
 ): List<EqualizerResponse> {
@@ -186,79 +191,77 @@ fun calculateEqualizerResponse(
     return frequencies.map { f ->
         val mag1 = magnitudeResponse(b1Coefficients, f)
         val mag2 = magnitudeResponse(b2Coefficients, f)
+        val gain = 20.0f * log10((mag1 * mag2).coerceAtLeast(1e-6f)) // dB
 
-        val totalMag = mag1 * mag2
-        val gainDb = 20.0f * log10(totalMag.coerceAtLeast(1e-6f))
-
-        EqualizerResponse(f.toFloat(), gainDb)
+        EqualizerResponse(f.toFloat(), gain)
     }
 }
 
-fun biquadCoefficients(type: BiquadType, cutoff: Float, q: Float, gainDb: Float): DoubleArray {
+fun biquadCoefficients(type: BiquadType, cutoff: Float, q: Float, gain: Float): DoubleArray {
     // Coefficient calculations
     // Again courtesy of the godsend Audio EQ Cookbook
-    val A = 10.0.pow(gainDb / 40.0)
-    val omega0 = (2.0 * PI * cutoff.toDouble()) / SAMPLE_RATE
-    val cosW0 = cos(omega0); val sinW0 = sin(omega0)
-    val alpha = sinW0 / (2.0 * q)
+    val A = 10.0.pow(gain / 40.0)
+    val w_0 = (2.0 * PI * cutoff.toDouble()) / SAMPLE_RATE
+    val cos_w0 = cos(w_0); val sin_w0 = sin(w_0)
+    val a = sin_w0 / (2.0 * q)
 
     var b0: Double; var b1: Double; var b2: Double; var a0: Double; var a1: Double; var a2: Double
 
     val sqrtA = sqrt(A)
-    val sqrtA_2a = 2.0f * sqrtA * alpha
+    val sqrtA_2a = 2.0f * sqrtA * a
     when (type) {
         BiquadType.PEAK -> {
-            b0 = 1.0 + alpha * A
-            b1 = -2.0 * cosW0
-            b2 = 1.0 - alpha * A
-            a0 = 1.0 + alpha / A
-            a1 = -2.0 * cosW0
-            a2 = 1.0 - alpha / A
+            b0 = 1.0 + (a * A)
+            b1 = -2.0 * cos_w0
+            b2 = 1.0 - (a * A)
+            a0 = 1.0 + (a / A)
+            a1 = -2.0 * cos_w0
+            a2 = 1.0 - (a / A)
         }
         BiquadType.LOW_PASS -> {
-            b0 = (1.0 - cosW0) / 2.0
-            b1 = 1.0 - cosW0
-            b2 = (1.0 - cosW0) / 2.0
-            a0 = 1.0 + alpha
-            a1 = -2.0 * cosW0
-            a2 = 1.0 - alpha
+            b0 = (1.0 - cos_w0) / 2.0
+            b1 = 1.0 - cos_w0
+            b2 = (1.0 - cos_w0) / 2.0
+            a0 = 1.0 + a
+            a1 = -2.0 * cos_w0
+            a2 = 1.0 - a
         }
         BiquadType.HIGH_PASS -> {
-            b0 = (1.0 + cosW0) / 2.0
-            b1 = -(1.0 + cosW0)
-            b2 = (1.0 + cosW0) / 2.0
-            a0 = 1.0 + alpha
-            a1 = -2.0 * cosW0
-            a2 = 1.0 - alpha
+            b0 = (1.0 + cos_w0) / 2.0
+            b1 = -(1.0 + cos_w0)
+            b2 = (1.0 + cos_w0) / 2.0
+            a0 = 1.0 + a
+            a1 = -2.0 * cos_w0
+            a2 = 1.0 - a
         }
         BiquadType.NOTCH -> {
             b0 = 1.0
-            b1 = -2.0 * cosW0
+            b1 = -2.0 * cos_w0
             b2 = 1.0
-            a0 = 1.0 + alpha
-            a1 = -2.0 * cosW0
-            a2 = 1.0 - alpha
+            a0 = 1.0 + a
+            a1 = -2.0 * cos_w0
+            a2 = 1.0 - a
         }
         BiquadType.LOW_SHELF -> {
             val Ap1 = A + 1.0
             val Am1 = A - 1.0
 
-            b0 = A * (Ap1 - Am1 * cosW0 + sqrtA_2a)
-            b1 = 2.0 * A * (Am1 - Ap1 * cosW0)
-            b2 = A * (Ap1 - Am1 * cosW0 - sqrtA_2a)
-            a0 = Ap1 + Am1 * cosW0 + sqrtA_2a
-            a1 = -2.0 * (Am1 + Ap1 * cosW0)
-            a2 = Ap1 + Am1 * cosW0 - sqrtA_2a
+            b0 = A * (Ap1 - (Am1 * cos_w0) + sqrtA_2a)
+            b1 = 2.0 * A * (Am1 - (Ap1 * cos_w0))
+            b2 = A * (Ap1 - (Am1 * cos_w0) - sqrtA_2a)
+            a0 = Ap1 + (Am1 * cos_w0) + sqrtA_2a
+            a1 = -2.0 * (Am1 + (Ap1 * cos_w0))
+            a2 = Ap1 + (Am1 * cos_w0) - sqrtA_2a
         }
         BiquadType.HIGH_SHELF -> {
             val Ap1 = A + 1.0; val Am1 = A - 1.0
 
-            b0 = A * (Ap1 + Am1 * cosW0 + sqrtA_2a)
-            b1 = -2.0 * A * (Am1 + Ap1 * cosW0)
-            b2 = A * (Ap1 + Am1 * cosW0 - sqrtA_2a)
-            a0 = Ap1 - Am1 * cosW0 + sqrtA_2a
-            a1 = 2.0 * (Am1 - Ap1 * cosW0)
-            a2 = Ap1 - Am1 * cosW0 - sqrtA_2a
+            b0 = A * (Ap1 + (Am1 * cos_w0) + sqrtA_2a)
+            b1 = -2.0 * A * (Am1 + (Ap1 * cos_w0))
+            b2 = A * (Ap1 + (Am1 * cos_w0) - sqrtA_2a)
+            a0 = Ap1 - (Am1 * cos_w0) + sqrtA_2a
+            a1 = 2.0 * (Am1 - (Ap1 * cos_w0))
+            a2 = Ap1 - (Am1 * cos_w0) - sqrtA_2a
         }
     }
 
@@ -278,15 +281,13 @@ fun magnitudeResponse(coefficients: DoubleArray, f: Double): Float {
     val a1 = coefficients[3]; val a2 = coefficients[4]
 
     val w = (2.0 * PI * f) / SAMPLE_RATE
-    val cosW = cos(w); val cos2W = cos(2.0 * w)
+    val cos_w = cos(w); val cos_2w = cos(2.0 * w)
 
     val numSq = b0.pow(2) + b1.pow(2) + b2.pow(2) +
-            2.0 * (b0 * b1 + b1 * b2) * cosW +
-            2.0 * b0 * b2 * cos2W
+            (2.0 * ((b0 * b1) + (b1 * b2)) * cos_w) + (2.0 * b0 * b2 * cos_2w)
 
     val denSq = 1.0 + a1.pow(2) + a2.pow(2) +
-            2.0 * (a1 + a1 * a2) * cosW +
-            2.0 * a2 * cos2W
+            (2.0 * (a1 + (a1 * a2)) * cos_w) + (2.0 * a2 * cos_2w)
 
     return sqrt(max(0.0, numSq / denSq)).toFloat()
 }

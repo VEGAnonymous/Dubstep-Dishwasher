@@ -19,7 +19,7 @@ class Gate : public Effect {
         Gate(float mix = 1.0f, float threshold = -18.0f, float attack = 25.0f, float release = 25.0f, float hold = 50.0f, bool invert = false);
 
         void setMix(float mix); // [0.0, 1.0]
-        void setThreshold(float threshold); // dB, [-100.0, 0.0]
+        void setThreshold(float threshold); // dB, [-60.0, 0.0]
         void setAttackTime(float attackTime); // ms, [0.01, 250.0]
         void setReleaseTime(float releaseTime); // ms, [0.01, 1500.0]
         void setHoldTime(float holdTime); // ms, [1.0, 1500.0]

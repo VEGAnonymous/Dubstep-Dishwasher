@@ -22,7 +22,7 @@ class Compressor : public Effect {
                    float attack = 100.0f, float release = 100.0f, float makeupGain = 0.0f, bool autoMakeup = true);
 
         void setMix(float mix); // [0.0, 1.0]
-        void setThreshold(float threshold); // dB, [-100.0, 0.0]
+        void setThreshold(float threshold); // dB, [-60.0, 0.0]
         void setRatio(float ratio); // [1.0, 100.0]
         void setKnee(float knee); // dB, [0.0, 40.0]
         void setAttackTime(float attackTime); // ms, [0.01, 250.0]

@@ -29,7 +29,7 @@ Dynamic range compressor: RMS detection, [gain reduction](https://www.desmos.com
 **Parameters:**
 
 0. **`MIX`** — Dry/wet balance `[0.0, 1.0]`  
-1. **`THRESHOLD`** — Threshold in dB `[-100.0, 0.0]`
+1. **`THRESHOLD`** — Threshold in dB `[-60.0, 0.0]`
 2. **`RATIO`** — Compression ratio `[1.0, 100.0]`
 3. **`KNEE`** — Knee width in dB `[0.0, 40.0]`
 4. **`ATTACK_TIME`** — Attack time in ms `[0.01, 250.0]`
@@ -150,7 +150,7 @@ Noise gate that attenuates signals below the threshold. Uses RMS detection and s
 **Parameters:**
 
 0. **`MIX`** — Dry/wet balance `[0.0, 1.0]`  
-1. **`THRESHOLD`** — Threshold in dB `[-100.0, 0.0]`
+1. **`THRESHOLD`** — Threshold in dB `[-60.0, 0.0]`
 4. **`ATTACK_TIME`** — Attack time in ms `[0.01, 250.0]`
 5. **`RELEASE_TIME`** — Release time in ms `[0.01, 1500.0]`
 6. **`HOLD_TIME`** — Hold time in ms `[1.0, 1500.0]`

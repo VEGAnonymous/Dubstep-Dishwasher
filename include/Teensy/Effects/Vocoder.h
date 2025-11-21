@@ -41,7 +41,7 @@ class Vocoder : public Effect {
 
     public:
         Vocoder(float mix = 1.0f, size_t nBands = 10, float lowFreq = 80.0f, float highFreq = 12000.0f, 
-                float bandwidth = 0.5f, float depth = 1.0f, float attack = 2.0f, float release = 35.0f);
+                float bandwidth = 0.5f, float depth = 1.0f, float attack = 20.0f, float release = 35.0f);
 
         void setMix(float mix); // [0.0, 1.0]
         void setNBands(size_t nBands); // [4, 20]

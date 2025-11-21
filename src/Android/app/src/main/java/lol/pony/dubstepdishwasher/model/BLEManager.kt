@@ -5,7 +5,6 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.ActivityCompat
 import com.polidea.rxandroidble3.RxBleClient
@@ -15,7 +14,6 @@ import com.polidea.rxandroidble3.scan.ScanResult
 import com.polidea.rxandroidble3.scan.ScanSettings
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.CompositeDisposable
-import java.util.UUID
 
 class BLEManager(private val context: Context) {
     private val rxBleClient: RxBleClient = RxBleClient.create(context)
@@ -32,6 +30,7 @@ class BLEManager(private val context: Context) {
     val characteristic = mutableStateOf<BluetoothGattCharacteristic?>(null)
     val characteristicData = mutableStateOf<String?>(null)
 
+    val isScanning = mutableStateOf(false)
 
     val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         arrayOf(
@@ -67,14 +66,16 @@ class BLEManager(private val context: Context) {
      * Clears previous results and disposable before starting a new scan.
      */
     fun startBleScan() {
-        // clearing previous results/disposables
+        // Clear previous results/disposables
         compositeDisposable.clear()
         scannedDevices.value = emptyList()
+
+        isScanning.value = true
         scan()
-            // filter out nameless devices
+            // Filter out nameless devices
             .filter { it.bleDevice.name != null }
             .subscribe({ scanResult ->
-                // add new devices to list
+                // Add new devices to list
                 val newDevices = scannedDevices.value.toMutableList()
                 if (newDevices.find { it.bleDevice.macAddress == scanResult.bleDevice.macAddress } == null) {
                     newDevices.add(scanResult)
@@ -90,6 +91,7 @@ class BLEManager(private val context: Context) {
      */
     fun stopBleScan() {
         compositeDisposable.clear()
+        isScanning.value = false
     }
 
     /**
@@ -121,12 +123,12 @@ class BLEManager(private val context: Context) {
     fun discoverCharacteristics() {
         connection?.discoverServices()
             ?.subscribe({ services ->
-                // gets the first writable characteristic
+                // Gets the first writable characteristic
                 val writableCharacteristic = services.bluetoothGattServices
                     .flatMap { it.characteristics }
                     .firstOrNull { (it.properties and (BluetoothGattCharacteristic.PROPERTY_WRITE or BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE)) != 0 }
                 characteristic.value = writableCharacteristic
-                // reads initial value
+                // Reads initial value
                 characteristic.value?.let {
                     if ((it.properties and BluetoothGattCharacteristic.PROPERTY_READ) != 0) {
                         isReadable = true
@@ -152,7 +154,7 @@ class BLEManager(private val context: Context) {
         connection?.readCharacteristic(characteristic.uuid)
             ?.subscribe({ value ->
                 val hexString = bytesToHexString(value)
-                // verifying stored value
+                // Verifying stored value
                 if (expectedValue != null) {
                     if (value.contentEquals(expectedValue)) {
                         characteristicData.value = hexString
@@ -160,11 +162,11 @@ class BLEManager(private val context: Context) {
                         characteristicData.value = "$hexString (Invalid)"
                     }
                 } else {
-                    // stores value
+                    // Store value
                     characteristicData.value = hexString
                 }
             }, { throwable ->
-                // update with read error message
+                // Update with read error message
                 characteristicData.value = "Error: ${throwable.message}"
             })
             ?.let { compositeDisposable.add(it) }
@@ -172,29 +174,27 @@ class BLEManager(private val context: Context) {
 
     /**
      * Writes a value to the characteristic.
-     *
-     * @param value The values to write converted to a byte array.
      */
     fun writeCharacteristic(bytesToWrite: ByteArray) {
         characteristic.value?.let { char ->
             try {
                 connection?.writeCharacteristic(char.uuid, bytesToWrite)
                     ?.subscribe({
-                        // reads value and verifies it if readable characteristic
+                        // Read value and verifies it if readable characteristic
                         if (isReadable) {
                             readCharacteristic(char, bytesToWrite)
                         } else {
-                            // updates value manually if unreadable
+                            // Update value manually if unreadable
                             characteristicData.value = bytesToHexString(bytesToWrite)
                         }
                     }, { throwable ->
-                        // updates with write error message
+                        // Update with write error message
                         characteristicData.value = "Write Error: ${throwable.message}"
                     })
                     ?.let { compositeDisposable.add(it) }
             } catch (e: IllegalArgumentException) {
-                // gives error message if string is invalid
-                characteristicData.value = "Invalid Hex String"
+                // Throw if string is invalid
+                characteristicData.value = "$e: Invalid Hex String:"
             }
         }
     }

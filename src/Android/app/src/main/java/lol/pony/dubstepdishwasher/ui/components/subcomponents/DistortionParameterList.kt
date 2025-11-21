@@ -4,11 +4,14 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import lol.pony.dubstepdishwasher.model.core.*
@@ -32,9 +35,17 @@ fun DistortionParameterList(
     @Suppress("UNCHECKED_CAST")
     val drive = modValue(effect, params[2] as EffectParameter.Range<Float>, currentModOffsets)
 
-    LazyRow(modifier = modifier.fillMaxWidth()) {
-        params.forEach { param ->
-            item(key = param.id) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Start
+    ) {
+
+        LazyRow(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 12.dp)
+        ) {
+            items(params, key = { it.id }) { param ->
                 ParameterItem(
                     effect = effect,
                     param = param,
@@ -48,20 +59,16 @@ fun DistortionParameterList(
                     onTogglePolarity = onTogglePolarity
                 )
             }
-            // Distortion curve plot
-            if (param.id == 2) {
-                item(key = "distortion_plot_${effect.effectId}") {
-                    DistortionPlot(
-                        mode = mode,
-                        drive = drive,
-                        modifier = Modifier
-                            .width(120.dp)
-                            .height(80.dp)
-                            .padding(start = 16.dp, top = 10.dp)
-                    )
-                }
-            }
         }
+
+        DistortionPlot(
+            mode = mode,
+            drive = drive,
+            modifier = Modifier
+                .width(140.dp)
+                .height(100.dp)
+                .padding(10.dp)
+        )
     }
 }
 
@@ -74,21 +81,52 @@ fun DistortionPlot(
     val samples = remember(mode, drive) { distortionCurve(mode, drive) }
 
     Canvas(modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
-        val w = size.width; val h = size.height; val midY = h / 2f
+        val w = size.width; val h = size.height
+        val midY = h / 2f; val midX = w / 2f
 
-        // Build path
-        val path = Path()
+        val strokePath = Path(); val leftFill = Path(); val rightFill = Path()
         samples.forEachIndexed { i, (x, y) ->
             val px = (x + 1f) / 2f * w
             val py = midY - (y * (h / 2f))
 
-            if (i == 0) path.moveTo(px, py)
-            else path.lineTo(px, py)
+            // Stroke path
+            if (i == 0) strokePath.moveTo(px, py) else strokePath.lineTo(px, py)
+
+            // Fill paths (y=0 split)
+            if (px <= midX) {
+                if (leftFill.isEmpty) leftFill.moveTo(px, midY)
+                leftFill.lineTo(px, py)
+            } else {
+                if (rightFill.isEmpty) rightFill.moveTo(px, midY)
+                rightFill.lineTo(px, py)
+            }
         }
 
-        // Draw curve
+        // Close fills
+        if (!leftFill.isEmpty) {
+            leftFill.lineTo(0f, midY)
+            leftFill.close()
+        }
+        if (!rightFill.isEmpty) {
+            rightFill.lineTo(w, midY)
+            rightFill.close()
+        }
+
+        drawPath( // Fill left
+            path = leftFill,
+            brush = Brush.verticalGradient(colors = listOf(Color.Transparent, Color(0x5500CCAA))),
+            style = Fill
+        )
+
+        drawPath( // Fill right
+            path = rightFill,
+            brush = Brush.verticalGradient(colors = listOf(Color(0x5500CCAA), Color.Transparent)),
+            style = Fill
+        )
+
+        // Curve outline
         drawPath(
-            path = path,
+            path = strokePath,
             color = Color(0xFF00CCAA),
             style = Stroke(width = 2.5f)
         )
@@ -96,8 +134,9 @@ fun DistortionPlot(
 }
 
 fun distortionCurve(mode: DistortionMode, drive: Float): List<Pair<Float, Float>> {
+    // https://www.desmos.com/calculator/qrqipgp7r4
     fun tube(x: Float): Float {
-        val d = 4f + drive * 11f
+        val d = 2f + (drive * 11f) // Doesn't match ground truth but for visual contrast
         return atan(x * d) * (2f / PI.toFloat())
     }
     fun softClip(x: Float): Float {
