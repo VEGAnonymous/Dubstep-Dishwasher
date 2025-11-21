@@ -280,10 +280,10 @@ fun CurveEditor(
                         currentPosition = currentPosition,
                         showPoints = true,
                         fillGradient = false,
-                        lineColor = Color(0xFF00CCAA),
+                        lineColor = Color(0xFF00AAC7),
                         pointColor = Color(0xFF666666),
                         curveHandleColor = Color(0x88666666),
-                        positionColor = Color(0xFF024F43),
+                        positionColor = Color(0xFF02344F),
                         backgroundColor = Color.White,
                         gridX = gridX,
                         gridY = gridY

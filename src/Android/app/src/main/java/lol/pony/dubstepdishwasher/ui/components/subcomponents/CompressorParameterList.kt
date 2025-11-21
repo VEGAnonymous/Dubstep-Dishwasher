@@ -102,6 +102,7 @@ fun CompressorPlot(
         compressorCurve(threshold, ratio, knee, makeup)
     }
 
+    val curveColor = Color(0xFFBF61FA)
     Canvas(modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
         val w = size.width; val h = size.height
 
@@ -126,7 +127,7 @@ fun CompressorPlot(
         // Draw path
         drawPath(
             path = path,
-            color = Color(0xFF00CCAA),
+            color = curveColor,
             style = Stroke(width = 2.5f)
         )
     }

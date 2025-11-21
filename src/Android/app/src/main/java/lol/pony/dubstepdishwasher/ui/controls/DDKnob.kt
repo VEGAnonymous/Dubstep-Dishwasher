@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -261,7 +262,7 @@ fun DDKnob(
                     val sweepAngle = endAngle - startAngle
 
                     drawArc(
-                        color = Color(0xFF00CCAA),
+                        color = Color(0xFF1B97F6),
                         startAngle = startAngle,
                         sweepAngle = sweepAngle,
                         useCenter = false,
@@ -289,7 +290,7 @@ fun DDKnob(
                 val startAngle = centerAngle - (indicatorSpan / 2f)
 
                 drawArc(
-                    color = Color(0xFF78FFD6),
+                    color = Color(0xFFB8EBFF),
                     startAngle = startAngle,
                     sweepAngle = indicatorSpan,
                     useCenter = false,
@@ -309,8 +310,8 @@ fun DDKnob(
                 modifier = Modifier
                     .fillMaxSize()
                     .alpha(overlayAlpha)
-                    .border(3.dp, Color(0xFF00CCAA), CircleShape)
-                    .background(Color(0x3300CCAA), CircleShape)
+                    .border(3.dp, Color(0xFF38D9FF), CircleShape)
+                    .background(Color(0x330074CC), CircleShape)
             )
         }
 

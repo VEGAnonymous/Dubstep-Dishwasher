@@ -27,7 +27,7 @@ fun ResourceMeter(
 ) {
     Column(
         modifier = Modifier
-            .width(90.dp)
+            .width(110.dp)
             .padding(start = 16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
@@ -41,8 +41,8 @@ private fun ResourceBar(value: Float) {
     val clamped = value.coerceIn(0f, 1f)
 
     val color = when {
-        clamped > 0.9f -> MaterialTheme.colorScheme.error
-        clamped > 0.7f -> MaterialTheme.colorScheme.tertiary
+        clamped > 0.9f -> Color(0xFFD96D52)
+        clamped > 0.7f -> Color(0xFFD0C455)
         else -> MaterialTheme.colorScheme.primary
     }
 

@@ -58,7 +58,7 @@ fun ModulatorTabs(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .clip(RoundedCornerShape(4.dp))
-                    .background(if (isSelected) Color(0x5500CCAA) else Color(0x11000000))
+                    .background(if (isSelected) Color(0x55009CCC) else Color(0x11000000))
                     .padding(vertical = 4.dp)
                     .clickable { onSelected(mod) }
             ) {

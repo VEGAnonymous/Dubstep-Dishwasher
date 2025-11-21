@@ -255,6 +255,7 @@ fun ModulatorControls(
                 .padding(4.dp)
         ) {
             // Render appropriate preview
+            val lineColor = MaterialTheme.colorScheme.secondary
             when (mod) {
                 is Modulator.LFO -> {
                     when (mod.parameters.find { it.name == "Mode" }?.value) {
@@ -265,7 +266,7 @@ fun ModulatorControls(
                                 currentPosition = mod.phase,
                                 showPoints = false,
                                 fillGradient = true,
-                                lineColor = Color(0xFF00CCAA),
+                                lineColor = lineColor,
                                 positionColor = Color(0xFFCFFFF5),
                                 backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
                                 gridColor = Color(0x22FFFFFF),
@@ -280,7 +281,7 @@ fun ModulatorControls(
                                 modId = mod.id,
                                 currentValue = currentValue,
                                 modifier = Modifier.fillMaxSize(),
-                                lineColor = Color(0xFF00CCAA)
+                                lineColor = lineColor
                             )
                         }
                     }
@@ -292,7 +293,7 @@ fun ModulatorControls(
                         currentPosition = mod.inputValue,
                         showPoints = false,
                         fillGradient = true,
-                        lineColor = Color(0xFF00CCAA),
+                        lineColor = lineColor,
                         positionColor = Color(0xFFCFFFF5),
                         backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
                         gridColor = Color(0x22FFFFFF),

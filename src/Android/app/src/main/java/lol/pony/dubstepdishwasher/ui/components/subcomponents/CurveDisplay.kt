@@ -25,10 +25,10 @@ fun CurveDisplay(
     currentPosition: Float? = null, // 0-1, null to hide
     showPoints: Boolean = true,
     fillGradient: Boolean = false,
-    lineColor: Color = Color(0xFF00CCAA),
+    lineColor: Color = MaterialTheme.colorScheme.secondary,
     pointColor: Color = Color(0xFFFFFFFF),
     curveHandleColor: Color = Color(0x88666666),
-    positionColor: Color = Color(0xFF024F43),
+    positionColor: Color = Color(0xFF02344F),
     backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
     gridColor: Color = Color(0x22000000),
     gridX: Int = 8, // -1 to disable

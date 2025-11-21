@@ -83,6 +83,7 @@ fun GatePlot(
 ) {
     val samples = remember(threshold, invert) { gateCurve(threshold, invert) }
 
+    val curveColor = Color(0xFF5281D9)
     Canvas(modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
         val w = size.width; val h = size.height
 
@@ -97,7 +98,7 @@ fun GatePlot(
 
         drawPath(
             path = path,
-            color = Color(0xFF00CCAA),
+            color = curveColor,
             style = Stroke(width = 2.5f)
         )
     }

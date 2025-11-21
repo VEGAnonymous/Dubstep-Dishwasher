@@ -43,7 +43,8 @@ fun DistortionParameterList(
         LazyRow(
             modifier = Modifier
                 .weight(1f)
-                .padding(end = 12.dp)
+                .padding(end = 12.dp),
+            userScrollEnabled = false
         ) {
             items(params, key = { it.id }) { param ->
                 ParameterItem(
@@ -80,6 +81,8 @@ fun DistortionPlot(
 ) {
     val samples = remember(mode, drive) { distortionCurve(mode, drive) }
 
+    val curveColor = Color(0xFFFF9C58)
+    val gradColor = curveColor.copy(alpha = 0.35f)
     Canvas(modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
         val w = size.width; val h = size.height
         val midY = h / 2f; val midX = w / 2f
@@ -114,20 +117,20 @@ fun DistortionPlot(
 
         drawPath( // Fill left
             path = leftFill,
-            brush = Brush.verticalGradient(colors = listOf(Color.Transparent, Color(0x5500CCAA))),
+            brush = Brush.verticalGradient(colors = listOf(Color.Transparent, gradColor)),
             style = Fill
         )
 
         drawPath( // Fill right
             path = rightFill,
-            brush = Brush.verticalGradient(colors = listOf(Color(0x5500CCAA), Color.Transparent)),
+            brush = Brush.verticalGradient(colors = listOf(gradColor, Color.Transparent)),
             style = Fill
         )
 
         // Curve outline
         drawPath(
             path = strokePath,
-            color = Color(0xFF00CCAA),
+            color = curveColor,
             style = Stroke(width = 2.5f)
         )
     }

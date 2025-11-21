@@ -123,6 +123,8 @@ fun EqualizerPlot(
         frequencyResponse(b1Type, b1Cutoff, b1Q, b1Gain, b2Type, b2Cutoff, b2Q, b2Gain)
     }
 
+    val curveColor = Color(0xFFFFFFFF)
+    val gradColor = curveColor.copy(alpha = 0.35f)
     Canvas(modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
         val w = size.width; val h = size.height
         val y_0 = h - ((0f - MIN_DB) / DB_RANGE * h)
@@ -157,14 +159,14 @@ fun EqualizerPlot(
         // Fill
         drawPath(
             path = fillPath,
-            brush = Brush.verticalGradient(colors = listOf(Color(0x6600CCAA), Color.Transparent)),
+            brush = Brush.verticalGradient(colors = listOf(gradColor, Color.Transparent)),
             style = Fill
         )
 
         // Curve outline
         drawPath(
             path = strokePath,
-            color = Color(0xFF00CCAA),
+            color = curveColor,
             style = Stroke(width = 2.5f)
         )
     }
