@@ -12,31 +12,28 @@ extern Handler<MelFrame, Command> handler;
 @param len Length of incoming data
 */
 void processIncomingBytes(const uint8_t* data, size_t len) {
-    static size_t bytesRead = 0;
-    static Command cmd;
+    static uint8_t buffer[sizeof(Command)];
+    static size_t bufferPos = 0;
 
     // for loop instead of while since it's not UART
     for (size_t i = 0; i < len; ++i) {
-        uint8_t* buf = (uint8_t*)&cmd;
-        buf[bytesRead++] = data[i];
-   
-        #if DEBUG   
+        buffer[bufferPos++] = data[i];
+
         // Debug: Print each received byte
-        if (bytesRead == 1) Serial.println("\nForwarding command to Teensy:");
-        Serial.printf("Byte %d: 0x%02X\n", bytesRead-1, buf[bytesRead-1]);
-        #endif
-    }
+        // if (bytesRead == 1) Serial.println("\nForwarding command to Teensy:");
+        // Serial.printf("Byte %d: 0x%02X\n", bytesRead-1, buf[bytesRead-1]);
 
-    // Forward completed command to teensy
-    if (bytesRead == sizeof(Command)) {
-        handler.send(cmd);
+        // Forward completed command to teensy
+        if (bufferPos == sizeof(Command)) {
+            Command cmd;
+            memcpy(&cmd, buffer, sizeof(Command));
+            handler.send(cmd);
 
-        #if DEBUG
-        // Debug: Print forwarded command   
-        Serial.printf("cmd: %d | id1: %d | id2: %d | id3: %d | value1: %.3f | value2: %.3f | value3: %.3f | checksum: 0x%02X\n", 
+            // Debug: Print forwarded command   
+            Serial.printf("cmd: %d | id1: %d | id2: %d | value1: %.3f | value2: %.3f | value3: %.3f | checksum: 0x%02X\n", 
                        cmd.cmd, cmd.id1, cmd.id2, cmd.value1, cmd.value2, cmd.value3, cmd.checksum);
-        #endif
 
-        bytesRead = 0; // Reset for next command
+            bufferPos = 0; // Reset for next command
+        }
     }
 }

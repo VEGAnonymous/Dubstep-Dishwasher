@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import lol.pony.dubstepdishwasher.model.core.LFO_UPDATE_RATE
 
 @Composable
 fun RandomScope(
@@ -31,7 +32,7 @@ fun RandomScope(
         while (true) {
             valueHistory.add(currentValueState.value)
             if (valueHistory.size > maxHistory) valueHistory.removeAt(0)
-            delay(20) // 50Hz
+            delay(1000L / LFO_UPDATE_RATE.toLong())
         }
     }
 

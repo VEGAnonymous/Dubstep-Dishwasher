@@ -4,17 +4,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import lol.pony.dubstepdishwasher.model.core.CONTROL_RATE
+import lol.pony.dubstepdishwasher.model.core.Command
+import lol.pony.dubstepdishwasher.model.core.CommandKey
 import lol.pony.dubstepdishwasher.model.core.CommandType
+import lol.pony.dubstepdishwasher.model.core.isStateCommand
 import java.util.concurrent.ConcurrentLinkedQueue
-
-data class Command(
-    val type: CommandType,
-    val id1: Int,
-    val id2: Int,
-    val value1: Float,
-    val value2: Float = 0f,
-    val value3: Float = 0f
-)
 
 class ControlQueue(
     scope: CoroutineScope,
@@ -23,7 +17,8 @@ class ControlQueue(
     private val onUpdate: (() -> Unit)? = null
 ) {
     private val queue = ConcurrentLinkedQueue<Command>()
-    private val paramUpdates = mutableMapOf<Pair<Int, Int>, Command>()
+
+    private val stateCommands = mutableMapOf<CommandKey, Command>()
 
     init {
         scope.launch {
@@ -34,29 +29,31 @@ class ControlQueue(
         }
     }
 
-    fun enqueue(cmd: CommandType, id1: Int, id2: Int, value1: Float, value2: Float = 0f, value3: Float = 0f) {
+    fun enqueue(cmd: CommandType, id1: Int, id2: Int, value1: Float,
+                value2: Float = 0f, value3: Float = 0f) {
+
         val command = Command(cmd, id1, id2, value1, value2, value3)
-        if (cmd == CommandType.EFFECT_SET_PARAMETER) { // For param setting, only keep latest
-            synchronized(paramUpdates) { paramUpdates[Pair(id1, id2)] = command }
-        } else queue.offer(command)
+        if (isStateCommand(cmd)) {
+            val key = CommandKey(cmd, id1, id2)
+            synchronized(stateCommands) { stateCommands[key] = command } // Overwrite old value
+        } else queue.offer(command) // Push structural commands in order
     }
 
     private fun flush() {
         onUpdate?.invoke()
 
-        val commandsToFlush = mutableListOf<Command>()
+        val toSend = mutableListOf<Command>()
 
-        synchronized(paramUpdates) { // Only keep latest values for each parameter
-            commandsToFlush.addAll(paramUpdates.values)
-            paramUpdates.clear()
+        synchronized(stateCommands) {
+            toSend.addAll(stateCommands.values)
+            stateCommands.clear()
         }
 
-        while(true) {
-            val cmd = queue.poll() ?: break
-            commandsToFlush.add(cmd)
+        while (true) {
+            val c = queue.poll() ?: break
+            toSend.add(c)
         }
 
-        // Otherwise send one queued command per tick
-        if (commandsToFlush.isNotEmpty()) onFlush(commandsToFlush)
+        if (toSend.isNotEmpty()) onFlush(toSend)
     }
 }

@@ -29,7 +29,11 @@ fun DistortionParameterList(
 ) {
     val params = effect.parameters.toList()
     val mode = params[1].value as DistortionMode
-    val drive = params[2].value as Float
+
+    @Suppress("UNCHECKED_CAST")
+    val driveParam = effect.parameters[2] as EffectParameter.Range<Float>
+    val modOffset = currentModOffsets[ParamKey(effect.effectId, driveParam.id)] ?: 0f
+    val drive = (driveParam.value + modOffset).coerceIn(driveParam.range.first, driveParam.range.second)
 
     LazyRow(modifier = modifier.fillMaxWidth()) {
         params.forEach { param ->
@@ -96,7 +100,7 @@ fun DistortionPlot(
 
 fun distortionCurve(mode: DistortionMode, drive: Float): List<Pair<Float, Float>> {
     fun tube(x: Float): Float {
-        val d = 4f + drive * 6f
+        val d = 4f + drive * 11f
         return atan(x * d) * (2f / PI.toFloat())
     }
     fun softClip(x: Float): Float {

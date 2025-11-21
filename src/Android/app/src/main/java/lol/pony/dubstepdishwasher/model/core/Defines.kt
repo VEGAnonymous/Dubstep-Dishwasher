@@ -4,28 +4,10 @@ package lol.pony.dubstepdishwasher.model.core
 
 const val MAX_COMPUTE_USAGE = 0.90f // 90%
 const val MAX_MEMORY_USAGE  = 450   // 400 kB
-const val CONTROL_RATE = 50 // Hz
+const val CONTROL_RATE = 20 // Hz
+const val LFO_UPDATE_RATE = 100 // Hz
 
 /* ENUMS */
-
-enum class CommandType(val value: Byte) {
-    // Effect chain commands
-    EFFECT_ADD(0),
-    EFFECT_REMOVE(1),
-    EFFECT_REORDER(2),
-    EFFECT_SET_PARAMETER(3),
-    EFFECT_BYPASS(4),
-    EFFECT_CLEAR(5),
-
-    // Modulation commands
-    MOD_SET_PARAMETER(6),
-    MOD_CLEAR_CURVE(7),
-    MOD_SET_CURVE_POINT(8),
-    MOD_ASSIGNMENT_ADD(9),
-    MOD_ASSIGNMENT_REMOVE(10),
-    MOD_ASSIGNMENT_SET(11),
-    // MOD_MAPPING_SET_INPUT(12)
-}
 
 data class ResourceUsage(
     val compute: Float, // Worst-case CPU usage, 0.0–1.0

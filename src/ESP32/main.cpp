@@ -34,18 +34,28 @@ class ServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) {
         deviceConnected = true;
         Serial.println("Device connected");
+
+        // Clear on connect
+        Command cmd = {};
+        cmd.cmd = static_cast<uint8_t>(CommandType::EFFECT_CLEAR); cmd.id1 = 0; cmd.id2 = 0; cmd.value1 = 0.0f; cmd.value2 = 0.0f; cmd.value3 = 0.0f;
+        handler.send(cmd); 
     }
 
     void onDisconnect(BLEServer* pServer) {
         deviceConnected = false;
         Serial.println("Device disconnected");
+
+        // Clear on disconnect
+        Command cmd = {};
+        cmd.cmd = static_cast<uint8_t>(CommandType::EFFECT_CLEAR); cmd.id1 = 0; cmd.id2 = 0; cmd.value1 = 0.0f; cmd.value2 = 0.0f; cmd.value3 = 0.0f;
+        handler.send(cmd);
     }
 };
 
 class Callbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) override {
         std::string value = pCharacteristic->getValue();
-        // Serial.printf("Received %d bytes\n", value.length());
+        Serial.printf("Received %d bytes\n", value.length());
         // Return on invalid writes
         if (value.length() % sizeof(Command) != 0) return;
 
@@ -72,7 +82,7 @@ void setup() {
     handler.setCallback([](const MelFrame& frame) { inferenceBuffer.addFrame(frame); });
 
     /* BLE setup */
-    BLEDevice::init("T8_ESP");
+    BLEDevice::init("Dubstep Dishwasher MCU");
     pServer = BLEDevice::createServer();
     pServer->setCallbacks(new ServerCallbacks());
     
@@ -114,13 +124,13 @@ void loop() {
         oldDeviceConnected = deviceConnected;
     }
 
-    #if DEBUG
-    // Debug: Read from Serial and process incoming bytes
-    while (Serial.available()) {
-      uint8_t serialData = Serial.read();
-      processIncomingBytes(&serialData, 1);  
-    }
-    #endif
+    // #if DEBUG
+    // // Debug: Read from Serial and process incoming bytes
+    // while (Serial.available()) {
+    //   uint8_t serialData = Serial.read();
+    //   processIncomingBytes(&serialData, 1);  
+    // }
+    // #endif
 
     handler.listen();
 }

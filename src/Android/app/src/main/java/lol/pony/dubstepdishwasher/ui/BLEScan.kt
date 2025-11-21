@@ -15,9 +15,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.polidea.rxandroidble3.RxBleDevice
 import com.polidea.rxandroidble3.scan.ScanResult
 import lol.pony.dubstepdishwasher.model.BLEManager
+import lol.pony.dubstepdishwasher.viewmodel.MainViewModel
+import lol.pony.dubstepdishwasher.viewmodel.MainViewModelFactory
 
 @Composable
 fun ScanScreen(
@@ -25,6 +28,7 @@ fun ScanScreen(
     bleManager: BLEManager,
     requestPermissions: () -> Unit
 ) {
+    val mainViewModel: MainViewModel = viewModel(factory = MainViewModelFactory(bleManager))
     Column(modifier = modifier.padding(16.dp)) {
         Row {
             // Scan buttons
@@ -39,7 +43,10 @@ fun ScanScreen(
         // Displays scanned devices
         ScannedDevicesList(
             devices = bleManager.scannedDevices.value,
-            onConnect = { bleManager.connectToDevice(it) })
+            onConnect = {
+                bleManager.connectToDevice(it)
+                mainViewModel.clearChain()
+            })
     }
 }
 

@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.update
 import lol.pony.dubstepdishwasher.model.ControlQueue
 import lol.pony.dubstepdishwasher.model.EffectChain
 import lol.pony.dubstepdishwasher.model.BLEManager
-import lol.pony.dubstepdishwasher.model.Command
 import lol.pony.dubstepdishwasher.model.core.*
 import lol.pony.dubstepdishwasher.model.core.CommandType.*
 import java.nio.ByteBuffer
@@ -221,12 +220,19 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
         scope = viewModelScope,
         rate = CONTROL_RATE,
         onFlush = { commands -> sendCommands(commands) },
+        onUpdate = { }
+    )
+
+    private val lfoControl = ControlQueue(
+        scope = viewModelScope,
+        rate = LFO_UPDATE_RATE,
+        onFlush = { },
         onUpdate = { update() }
     )
 
     private fun update() {
         /* Apply modulation */
-        val dt = 1f / 50f // 50Hz
+        val dt = 1f / LFO_UPDATE_RATE
         val offsets = ModRouter.computeModulations( // Get all mod offsets
             modulators = _modulators.value,
             assignments = _modAssignments.value,
@@ -417,7 +423,7 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
         } ?: return
 
         controlQueue.enqueue(MOD_ASSIGNMENT_SET,
-            modIndex, effectId, paramId.toFloat(), assignment.polarity.ordinal.toFloat())
+            modIndex, effectId, paramId.toFloat(), assignment.amount, assignment.polarity.ordinal.toFloat())
     }
 
     fun updateAssignmentPolarity(modId: String, effectId: Int, paramId: Int) {
@@ -517,7 +523,7 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
                     ((command.value3.toBits() shr 16) and 0xFF).toByte() xor
                     ((command.value3.toBits() shr 24) and 0xFF).toByte()
             */
-            val checksum = 0.toByte(); // TEMP
+            val checksum = 0.toByte() // TEMP
             buffer.put(checksum)
             buffer.putFloat(command.value1)
             buffer.putFloat(command.value2)
