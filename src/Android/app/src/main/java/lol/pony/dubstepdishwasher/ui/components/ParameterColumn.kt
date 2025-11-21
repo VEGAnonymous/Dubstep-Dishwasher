@@ -25,6 +25,7 @@ import lol.pony.dubstepdishwasher.model.core.Modulator
 import lol.pony.dubstepdishwasher.model.core.ParamKey
 import lol.pony.dubstepdishwasher.ui.components.subcomponents.DefaultParameterList
 import lol.pony.dubstepdishwasher.ui.components.subcomponents.DistortionParameterList
+import lol.pony.dubstepdishwasher.ui.components.subcomponents.EqualizerParameterList
 
 @Composable
 fun ParameterColumn(
@@ -81,7 +82,17 @@ fun ParameterColumn(
                         onTogglePolarity = onTogglePolarity
                     )
 
-                    // EffectType.EQUALIZER -> EqualizerParameterList(...)
+                    EffectType.EQUALIZER -> EqualizerParameterList (
+                        effect = effect,
+                        assignments = assignments,
+                        selectedModulator = selectedModulator,
+                        currentModOffsets = currentModOffsets,
+                        onSetParam = onSetParam,
+                        onAssignMod = onAssignMod,
+                        onRemoveMod = onRemoveMod,
+                        onModAmountChange = onModAmountChange,
+                        onTogglePolarity = onTogglePolarity
+                    )
 
                     else -> DefaultParameterList(
                         effect = effect,

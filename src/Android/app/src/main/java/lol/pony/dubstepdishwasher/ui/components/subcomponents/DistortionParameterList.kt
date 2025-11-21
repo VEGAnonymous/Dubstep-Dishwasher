@@ -29,11 +29,8 @@ fun DistortionParameterList(
 ) {
     val params = effect.parameters.toList()
     val mode = params[1].value as DistortionMode
-
     @Suppress("UNCHECKED_CAST")
-    val driveParam = effect.parameters[2] as EffectParameter.Range<Float>
-    val modOffset = currentModOffsets[ParamKey(effect.effectId, driveParam.id)] ?: 0f
-    val drive = (driveParam.value + modOffset).coerceIn(driveParam.range.first, driveParam.range.second)
+    val drive = modValue(effect, params[2] as EffectParameter.Range<Float>, currentModOffsets)
 
     LazyRow(modifier = modifier.fillMaxWidth()) {
         params.forEach { param ->
@@ -60,7 +57,7 @@ fun DistortionParameterList(
                         modifier = Modifier
                             .width(120.dp)
                             .height(80.dp)
-                            .padding(start = 16.dp, end = 8.dp, top = 10.dp)
+                            .padding(start = 16.dp, top = 10.dp)
                     )
                 }
             }

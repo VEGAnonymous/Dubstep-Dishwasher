@@ -35,3 +35,12 @@ fun snapValue(snapToGrid: Boolean = true, value: Float, divisions: Int = 8): Flo
     val step = 1f / divisions
     return (kotlin.math.round(value / step) * step).coerceIn(0f, 1f)
 }
+
+// Normalized mod offset to real value
+fun modValue(effect: Effect, param: EffectParameter.Range<Float>, modOffsets: Map<ParamKey, Float>): Float {
+    val key = ParamKey(effect.effectId, param.id)
+    val offset = modOffsets[key] ?: 0f
+    val baseNorm = param.normalized()
+    val modNorm = (baseNorm + offset).coerceIn(0f, 1f)
+    return param.normalizedTo(modNorm) // Real shit
+}

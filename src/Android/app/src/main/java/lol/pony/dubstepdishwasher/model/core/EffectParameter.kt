@@ -65,6 +65,16 @@ sealed class EffectParameter<T> (
             value = roundToStep(mapped)
         }
 
+        fun normalizedTo(norm: Float): Float {
+            val min = range.first.toFloat(); val max = range.second.toFloat()
+            val lin = norm.pow(exp)
+            return if (min < 0f && max <= 0f) {
+                val absMin = -max; val absMax = -min
+                val absValue = (1f - lin).mapRange(0f..1f, absMin..absMax)
+                -absValue
+            } else lin.mapRange(0f..1f, min..max)
+        }
+
         override fun formatValue(): String {
             val decimalPlaces = when { // Determine rounding precision
                 step.toFloat() >= 1.0f -> 0
