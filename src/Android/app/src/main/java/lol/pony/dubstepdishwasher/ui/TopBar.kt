@@ -148,7 +148,7 @@ fun TopBar (
             )
         }
 
-        Spacer(modifier = Modifier.width(50.dp))
+        Spacer(modifier = Modifier.width(45.dp))
 
         /* BLE STATUS */
         Row(verticalAlignment = Alignment.CenterVertically) {

@@ -71,8 +71,6 @@ fun <T, C : PresetContainer<T>, A> PresetManager(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var presetToDelete by remember { mutableStateOf<Preset<T>?>(null) }
 
-    var currentPreset by remember { mutableStateOf(containerState.currentPreset) }
-
     Row(verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy((-16).dp),
         modifier = Modifier.scale(0.8f)
@@ -97,7 +95,7 @@ fun <T, C : PresetContainer<T>, A> PresetManager(
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        text = (currentPreset?.name ?: "Custom") + (if (currentData != currentPreset?.data) "*" else ""),
+                        text = (containerState.currentPreset?.name ?: "Custom") + (if (currentData != containerState.currentPreset?.data) "*" else ""),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.bodyMedium,
@@ -131,7 +129,9 @@ fun <T, C : PresetContainer<T>, A> PresetManager(
                                 onLoad = onLoad,
                                 onFavorite = { name, favorite -> onFavorite(name, favorite) },
                                 onDelete = null,
-                                presetSetter = { preset -> currentPreset = preset }
+                                onStateChange = onStateChange,
+                                containerState = containerState,
+                                copyContainer = copyContainer
                             )
                         }
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
@@ -146,7 +146,9 @@ fun <T, C : PresetContainer<T>, A> PresetManager(
                                     onLoad = onLoad,
                                     onFavorite = { name, favorite -> onFavorite(name, favorite) },
                                     onDelete = { preset -> presetToDelete = preset; showDeleteDialog = true },
-                                    presetSetter = { preset -> currentPreset = preset }
+                                    onStateChange = onStateChange,
+                                    containerState = containerState,
+                                    copyContainer = copyContainer
                                 )
                             }
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
@@ -162,7 +164,9 @@ fun <T, C : PresetContainer<T>, A> PresetManager(
                                 onLoad = onLoad,
                                 onFavorite = { name, favorite -> onFavorite(name, favorite) },
                                 onDelete = { preset -> presetToDelete = preset; showDeleteDialog = true },
-                                presetSetter = { preset -> currentPreset = preset }
+                                onStateChange = onStateChange,
+                                containerState = containerState,
+                                copyContainer = copyContainer
                             )
                         }
                     }
@@ -241,7 +245,6 @@ fun <T, C : PresetContainer<T>, A> PresetManager(
                     enabled = !categoryError,
                     onClick = {
                         val preset = onSave(nameEntry, categoryEntry.ifBlank { null })
-                        currentPreset = preset
                         onStateChange(copyContainer(containerState, preset))
                         onLoad(preset)
                         showSaveDialog = false
@@ -260,8 +263,8 @@ fun <T, C : PresetContainer<T>, A> PresetManager(
             confirmButton = {
                 TextButton(onClick = {
                     onDelete(presetToDelete!!.name)
-                    if (currentPreset?.name == presetToDelete!!.name)
-                        currentPreset = null
+                    if (containerState.currentPreset?.name == presetToDelete!!.name)
+                        containerState.currentPreset = null
                     showDeleteDialog = false
                 }) { Text(text = "Delete", style = MaterialTheme.typography.bodyMedium) }
             },
@@ -283,12 +286,14 @@ private fun CategoryHeader(name: String) {
 }
 
 @Composable
-private fun <T> PresetRow(
+private fun <T, C : PresetContainer<T>> PresetRow(
     preset: Preset<T>,
     onLoad: (Preset<T>) -> Unit,
     onFavorite: (String, Boolean) -> Unit,
     onDelete: ((Preset<T>) -> Unit)?,
-    presetSetter: (Preset<T>) -> Unit
+    onStateChange: (C) -> Unit,
+    containerState: C,
+    copyContainer: (C, Preset<T>) -> C
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -303,7 +308,7 @@ private fun <T> PresetRow(
                 .weight(1f)
                 .padding(6.dp)
                 .clickable {
-                    presetSetter(preset)
+                    onStateChange(copyContainer(containerState, preset))
                     onLoad(preset)
                 },
             style = MaterialTheme.typography.bodySmall

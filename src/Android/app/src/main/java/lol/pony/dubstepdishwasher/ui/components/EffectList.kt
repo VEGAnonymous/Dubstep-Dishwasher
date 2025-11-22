@@ -1,8 +1,8 @@
 package lol.pony.dubstepdishwasher.ui.components
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -40,7 +40,7 @@ fun EffectList(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(40.dp)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(start = 12.dp, end = 10.dp, top = 6.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
 
@@ -52,17 +52,22 @@ fun EffectList(
                 }
 
                 // Reorder effect buttons
-                // Doesn't show the down arrow currently but I don't care lol
                 // TEMP: Potentially switch to drag and drop
-                Column (modifier = Modifier.fillMaxHeight()) {
+                Row (
+                    modifier = Modifier.padding(start = 6.dp, end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy((-5).dp)
+                ) {
                     IconButton(
                         onClick = { onReorder(fx.effectId, index - 1) },
-                        enabled = index > 0
+                        enabled = index > 0,
+                        modifier = Modifier.width(25.dp).padding(horizontal = 4.dp)
                     ) { Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "Move Up") }
 
                     IconButton(
                         onClick = { onReorder(fx.effectId, index + 1) },
-                        enabled = index < effects.size - 1
+                        enabled = index < (effects.size - 1),
+                        modifier = Modifier.width(25.dp).padding(horizontal = 4.dp)
                     ) { Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Move Down") }
                 }
 
@@ -77,8 +82,10 @@ fun EffectList(
                 )
 
                 // Remove effect button
-                IconButton(onClick = { onRemove(fx.effectId) }, modifier = Modifier.scale(0.8f)) {
-                    Icon(Icons.Filled.Close, contentDescription = "Remove") }
+                IconButton(
+                    onClick = { onRemove(fx.effectId) },
+                    modifier = Modifier.width(50.dp)
+                ) { Icon(Icons.Filled.Close, contentDescription = "Remove") }
             }
 
             HorizontalDivider()

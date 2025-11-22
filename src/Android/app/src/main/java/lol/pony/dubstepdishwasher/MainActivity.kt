@@ -63,7 +63,7 @@ fun App(
 
     // Decide which screen to display
     // Scan for devices if no device is connected
-    @Suppress("SimplifyBooleanWithConstants")
+    @Suppress("SimplifyBooleanWithConstants", "KotlinConstantConditions", "RedundantSuppression")
     if ((connectedDevice != null && connectionState == RxBleConnection.RxBleConnectionState.CONNECTED) || SKIP_BLE /* SET FLAG ABOVE TO SKIP BLE */) {
         /* MAIN GUI */
         Column(modifier = Modifier.fillMaxHeight()) {

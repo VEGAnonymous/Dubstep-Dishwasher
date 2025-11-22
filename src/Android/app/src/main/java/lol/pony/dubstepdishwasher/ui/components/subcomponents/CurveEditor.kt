@@ -88,7 +88,10 @@ fun CurveEditor(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xAA000000))
-            .pointerInput(Unit) { detectTapGestures { onDismiss() } } // Tap outside window to dismiss
+            .pointerInput(Unit) { detectTapGestures {
+                onStateChange(editorState)
+                onDismiss() }
+            } // Tap outside window to dismiss
     ) {
         Box( // Window container
             modifier = Modifier
@@ -173,7 +176,7 @@ fun CurveEditor(
                                         // Tap coordinates
                                         val tapX = offset.x / size.width; val tapY = 1f - (offset.y / size.height)
                                         // Tolerance for dragging
-                                        val pointThreshold = 0.10f; val handleThreshold = 0.13f
+                                        val pointThreshold = 0.11f; val handleThreshold = 0.13f
 
                                         // First check if dragging a point
                                         draggedPointIndex = editedPoints.indexOfFirst { point ->

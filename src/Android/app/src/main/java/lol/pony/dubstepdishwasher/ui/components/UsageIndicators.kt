@@ -27,7 +27,7 @@ fun ResourceMeter(
 ) {
     Column(
         modifier = Modifier
-            .width(110.dp)
+            .width(100.dp)
             .padding(start = 16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {

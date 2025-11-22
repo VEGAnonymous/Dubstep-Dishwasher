@@ -45,7 +45,6 @@ fun CompressorParameterList(
     val threshold = modValue(effect, params[1] as EffectParameter.Range<Float>, currentModOffsets)
     val ratio = modValue(effect, params[2] as EffectParameter.Range<Float>, currentModOffsets)
     val knee = modValue(effect, params[3] as EffectParameter.Range<Float>, currentModOffsets)
-    val makeup = modValue(effect, params[6] as EffectParameter.Range<Float>, currentModOffsets)
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -76,7 +75,6 @@ fun CompressorParameterList(
             threshold = threshold,
             ratio = ratio,
             knee = knee,
-            makeup = makeup,
             modifier = Modifier
                 .width(140.dp)
                 .height(100.dp)
@@ -95,11 +93,10 @@ fun CompressorPlot(
     threshold: Float,
     ratio: Float,
     knee: Float,
-    makeup: Float,
     modifier: Modifier = Modifier
 ) {
-    val samples = remember(threshold, ratio, knee, makeup) {
-        compressorCurve(threshold, ratio, knee, makeup)
+    val samples = remember(threshold, ratio, knee) {
+        compressorCurve(threshold, ratio, knee)
     }
 
     val curveColor = Color(0xFFBF61FA)
@@ -133,13 +130,13 @@ fun CompressorPlot(
     }
 }
 
-fun compressorCurve(threshold: Float, ratio: Float, knee: Float, makeup: Float): List<Pair<Float, Float>> {
+fun compressorCurve(threshold: Float, ratio: Float, knee: Float): List<Pair<Float, Float>> {
     val n = 256
     val step = (MAX_DB_IN - MIN_DB_IN) / (n - 1)
 
     return List(n) { i ->
         val x = MIN_DB_IN + (i * step)
-        val y = compressorGain(x, threshold, ratio, knee) + makeup
+        val y = compressorGain(x, threshold, ratio, knee)
         x to y
     }
 }
