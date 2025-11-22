@@ -1,6 +1,2 @@
 .vscode/
 .pio/
-build/
-platformio.ini
-CMakeLists.txt
-*.wav
