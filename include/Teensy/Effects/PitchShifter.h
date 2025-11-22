@@ -35,7 +35,7 @@ class PitchShifter : public Effect {
         void updateInterval();
 
     public:
-        PitchShifter(float mix = 1.0f, float pitchShift = 0.0f, float grainSize = 200.0f, float grainOverlap = 0.5f, float jitter = 0.2f);
+        PitchShifter(float mix = 1.0f, float pitchShift = 0.0f, float grainSize = 200.0f, float grainOverlap = 0.5f, float jitter = 0.0f);
         ~PitchShifter();
 
         void setMix(float mix); // [0.0, 1.0]

@@ -137,7 +137,7 @@ Simple gain stage utility. Hard-clips the output in case of emergencies.
 
 **Parameters:**
 
-0. **`GAIN`** — Gain in dB `[-60.0, 24.0]`
+0. **`GAIN`** — Gain in dB `[-24.0, 24.0]`
 1. **`CLIP`** — Whether to hard-clip the output to 0 dB `true / false`
 
 ---

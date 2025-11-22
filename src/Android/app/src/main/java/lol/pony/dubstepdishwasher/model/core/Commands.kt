@@ -35,7 +35,6 @@ fun isStateCommand(cmd: CommandType): Boolean {
         CommandType.EFFECT_SET_PARAMETER,
         CommandType.MOD_SET_PARAMETER,
         CommandType.MOD_ASSIGNMENT_SET,
-        CommandType.MOD_SET_CURVE_POINT,
         CommandType.MOD_MAPPING_SET_INPUT -> true
         else -> false
     }

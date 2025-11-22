@@ -52,9 +52,9 @@ void Modulator::setParam(ParamID param, float value) {
             switch (param) {
                 case RATE:
                     if (lfoCurve) { lfoCurve->setFreq(value); } 
-                    else if (lfoRandom) { lfoRandom->setFreq(value); }
+                    if (lfoRandom) { lfoRandom->setFreq(value); }
                     break;
-                case ModulatorParams::MODE: break; // Already set parameters[MODE]
+                case ModulatorParams::MODE: type = static_cast<ModulatorType>(value); break;
                 case RANDOM_MODE: if (lfoRandom) { lfoRandom->setMode(static_cast<RandomMode>(value)); } break;
                 default: break;
             } break;
@@ -75,10 +75,10 @@ void Modulator::setCurve(const std::vector<CurvePoint>& points) {
     }
 }
 
-void Modulator::setCurvePoint(size_t index, float x, float y, float curve) {
+void Modulator::setCurvePoint(float x, float y, float curve) {
     switch (type) {
-        case ModulatorType::LFO_CURVE: if (lfoCurve) { lfoCurve->setCurvePoint(index, x, y, curve); } break;
-        case ModulatorType::MAPPING: if (mappingCurve) { mappingCurve->setCurvePoint(index, x, y, curve); } break;
+        case ModulatorType::LFO_CURVE: if (lfoCurve) { lfoCurve->setCurvePoint(x, y, curve); } break;
+        case ModulatorType::MAPPING: if (mappingCurve) { mappingCurve->setCurvePoint(x, y, curve); } break;
         default: break;
     }
 }
@@ -106,7 +106,7 @@ void Modulator::setMappingInput(float input) { mappingInput = std::clamp(input, 
 
 float Modulator::compute(float dt) { // Compute current output value
     switch (type) {
-        case ModulatorType::LFO_CURVE:
+        case ModulatorType::LFO_CURVE: {
             if (lfoCurve) { /* LFO */
                 // Evaluate at current phase
                 auto& points = lfoCurve->getCurve();
@@ -122,29 +122,50 @@ float Modulator::compute(float dt) { // Compute current output value
                     lfoCurve->setPhase(phase);
                 }
             } break;
-        case ModulatorType::LFO_RANDOM:   
-            if (lfoRandom) { /* RANDOM */
-                output = lfoRandom->next();
-                // Normalize to [0.0, 1.0]
-                output = (output + 1.0f) * 0.5f;
-                output = std::clamp(output, 0.0f, 1.0f);
-                
-                // Adjust phase for dt
-                float phase = lfoRandom->getPhase();
-                float freq = getParam(RATE);
-
-                phase = phase - (1.0f / SAMPLE_RATE) + (freq * dt);
-                while (phase >= 1.0f) phase -= 1.0f; // Wrap
-                while (phase < 0.0f) phase += 1.0f;
-                lfoRandom->setPhase(phase);
+        }
+        case ModulatorType::LFO_RANDOM: {
+            if (lfoRandom) {
+                output = lfoRandom->tick(dt); 
+                output = std::clamp((output + 1.0f) * 0.5f, 0.0f, 1.0f);
             } break;
-        case ModulatorType::MAPPING:
+        }
+        case ModulatorType::MAPPING: {
             if (mappingCurve) {
                 // Evaluate curve at mapping input
                 mappingCurve->setPhase(mappingInput);
                 output = std::clamp(mappingCurve->next(), 0.0f, 1.0f);
             } break;
+        }
     } return output;
 }
 
 float Modulator::getOutput() const { return output; }
+
+
+/* // Debug
+void Modulator::printState() const {
+    Serial.printf("Modulator %d [Type: %d]\n", id, static_cast<int>(type));
+    Serial.printf("  Output: %.3f\n", output);
+    
+    for (const auto& [paramId, value] : parameters) {
+        Serial.printf("  Param %d: %.3f\n", paramId, value);
+    }
+    
+    if (type == ModulatorType::LFO_CURVE && lfoCurve) {
+        Serial.println("  LFO Curve:");
+        lfoCurve->printCurve();
+    }
+    
+    if (type == ModulatorType::LFO_RANDOM && lfoRandom) {
+        Serial.printf("  Random: freq=%.3f, phase=%.3f\n", 
+                        lfoRandom->getFreq(), lfoRandom->getPhase());
+    }
+    
+    if (type == ModulatorType::MAPPING && mappingCurve) {
+        Serial.println("  Mapping Curve:");
+        mappingCurve->printCurve();
+        Serial.printf("  Input: %.3f\n", mappingInput);
+    }
+        
+}
+*/

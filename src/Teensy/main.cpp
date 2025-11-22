@@ -12,9 +12,9 @@
 #include "Handler.h"
 
 /* Testing - Set flags here */
-constexpr bool USB_IO = false,
+constexpr bool USB_IO = true,
                SND_SPECT = false,
-               LOG_RSE = true,
+               LOG_RSE = false,
                LOG_CMD = true;
 
 AudioInputUSB usbIn; 
@@ -106,9 +106,9 @@ void processCommand(const Command& cmd, AudioChain& chain, ModulationEngine& mod
         case CommandType::MOD_SET_CURVE_POINT: { // Set modulator curve point
             Modulator* mod = modEngine.getModulator(cmd.id1);
             if (mod) {
-                mod->setCurvePoint(cmd.id2, cmd.value1, cmd.value2, cmd.value3);
-                if (LOG_CMD) Serial.printf("Set curve point %d for modulator %d: (%.3f, %.3f, %.3f)\n",
-                    cmd.id2, cmd.id1, cmd.value1, cmd.value2, cmd.value3);
+                mod->setCurvePoint(cmd.value1, cmd.value2, cmd.value3);
+                if (LOG_CMD) Serial.printf("Set curve point for modulator %d: (%.3f, %.3f, %.3f)\n",
+                    cmd.id1, cmd.value1, cmd.value2, cmd.value3);
             }
             break;
         }
@@ -169,7 +169,7 @@ void setup() {
 
     /* Setup handler */
     handler.setCallback([](const Command& cmd) {
-    if (LOG_CMD) Serial.printf("cmd: %d | id1: %d | id2: %d | id3: %d | value1: %.3f | value2: %.3f | value3: %.3f | checksum: 0x%02X\n", 
+    if (LOG_CMD) Serial.printf("cmd: %d | id1: %d | id2: %d | value1: %.3f | value2: %.3f | value3: %.3f | checksum: 0x%02X\n", 
                                 cmd.cmd, cmd.id1, cmd.id2, cmd.value1, cmd.value2, cmd.value3, cmd.checksum);
         processCommand(cmd, *chain, *stream->getModEngine());
     });

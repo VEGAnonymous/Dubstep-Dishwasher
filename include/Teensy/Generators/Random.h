@@ -18,9 +18,11 @@ class Random : public Generator {
         Random(float freq, RandomMode mode);
 
         void setFreq(float freq); // Hz, [0.0, SAMPLE_RATE]
+        float getFreq() const;
         void setPhase(float phase); // [0.0, 1.0]
         float getPhase() const;
         void setMode(RandomMode mode);
 
         float next() override;
+        float tick(float dt);
 };

@@ -42,6 +42,17 @@ void ModulationEngine::removeAssignment(ModulatorID modId, EffectID effectId, Pa
             }),
         assignments.end()
     );
+    
+    // Check if parameter has other assignments
+    ParamKey key{effectId, paramId};
+    bool modulated = std::any_of(assignments.begin(), assignments.end(),
+        [&key](const ModAssignment& a) { return a.effectId == key.effectId && a.paramId == key.paramId; });
+    
+    // If not, restore base value
+    if (!modulated) {
+        Effect* effect = audioChain.getEffect(effectId);
+        if (effect && baseValues.count(key)) { effect->setNormalized(paramId, baseValues[key]); }
+    }
 }
 
 void ModulationEngine::setAssignment(ModulatorID modId, EffectID effectId, ParamID paramId, float amount, ModPolarity polarity) {
@@ -55,7 +66,10 @@ void ModulationEngine::setAssignment(ModulatorID modId, EffectID effectId, Param
     addAssignment(ModAssignment(modId, effectId, paramId, amount, polarity)); // Not found, add new
 }
 
-void ModulationEngine::clearAssignments() { assignments.clear(); }
+void ModulationEngine::clearAssignments() { 
+    assignments.clear(); 
+    for (auto& modulator : modulators) if (modulator) modulator->output = 0.0f;
+}
 
 void ModulationEngine::setBaseValue(EffectID effectId, ParamID paramId, float normalized) {
     ParamKey key{effectId, paramId};

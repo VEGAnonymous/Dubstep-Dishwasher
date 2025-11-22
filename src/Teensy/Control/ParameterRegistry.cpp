@@ -131,19 +131,19 @@ ParameterMap createParameterRegistry() {
     // PitchShifter
     registry[EffectName::PITCH_SHIFTER] = {
         {0, {ParamUnit::PERCENT, 0.0f, 1.0f, 1.0f, 1.0f}},      // MIX
-        {3, {ParamUnit::SEMITONES, -24.0f, 24.0f, 1.0f, 0.0f}}, // PITCH_SHIFT
-        {4, {ParamUnit::MS, 20.0f, 500.0f, 2.0f, 200.0f}},      // GRAIN_SIZE
-        {5, {ParamUnit::PERCENT, 0.25f, 0.75f, 1.0f, 0.5f}},    // GRAIN_OVERLAP
-        {6, {ParamUnit::PERCENT, 0.0f, 1.0f, 1.0f, 0.0f}}       // JITTER
+        {1, {ParamUnit::SEMITONES, -24.0f, 24.0f, 1.0f, 0.0f}}, // PITCH_SHIFT
+        {2, {ParamUnit::MS, 20.0f, 500.0f, 2.0f, 200.0f}},      // GRAIN_SIZE
+        {3, {ParamUnit::PERCENT, 0.25f, 0.75f, 1.0f, 0.5f}},    // GRAIN_OVERLAP
+        {4, {ParamUnit::PERCENT, 0.0f, 1.0f, 1.0f, 0.0f}}       // JITTER
     };
  
     // Reverb
     registry[EffectName::REVERB] = {
         {0, {ParamUnit::PERCENT, 0.0f, 1.0f, 1.0f, 1.0f}},     // MIX
-        {3, {ParamUnit::MS, 0.0f, 100.0f, 2.0f, 0.0f}},        // PREDELAY_TIME
-        {4, {ParamUnit::MS, 100.0f, 10000.0f, 3.0f, 3000.0f}}, // DECAY_TIME
-        {5, {ParamUnit::HZ, 0.05f, 5.0f, 2.0f, 0.5f}},         // MOD_RATE
-        {6, {ParamUnit::PERCENT, 0.0f, 1.0f, 1.0f, 0.2f}}      // MOD_DEPTH
+        {1, {ParamUnit::MS, 0.0f, 100.0f, 2.0f, 0.0f}},        // PREDELAY_TIME
+        {2, {ParamUnit::MS, 100.0f, 10000.0f, 3.0f, 3000.0f}}, // DECAY_TIME
+        {3, {ParamUnit::HZ, 0.05f, 5.0f, 2.0f, 0.5f}},         // MOD_RATE
+        {4, {ParamUnit::PERCENT, 0.0f, 1.0f, 1.0f, 0.2f}}      // MOD_DEPTH
     };
 
     // Scrubby
@@ -168,21 +168,21 @@ ParameterMap createParameterRegistry() {
     // Vocoder
     registry[EffectName::VOCODER] = {
         {0, {ParamUnit::PERCENT, 0.0f, 1.0f, 1.0f, 1.0f}},     // MIX
-        {2, {ParamUnit::DIMENSIONLESS, 4, 20, 1.0f, 10}},      // N_BANDS
-        {3, {ParamUnit::HZ, 10.0f, 16000.0f, 4.0f, 80.0f}},    // LOW_FREQ
-        {4, {ParamUnit::HZ, 10.0f, 16000.0f, 4.0f, 12000.0f}}, // HIGH_FREQ
-        {6, {ParamUnit::PERCENT, 0.05f, 4.0f, 1.0f, 0.5f}},    // BANDWIDTH
-        {7, {ParamUnit::PERCENT, 0.0f, 2.0f, 1.0f, 1.0f}},     // DEPTH
-        {8, {ParamUnit::MS, 10.0f, 2000.0f, 2.5f, 2.0f}},      // ATTACK_TIME
-        {9, {ParamUnit::MS, 10.0f, 2000.0f, 2.5f, 35.0f}}      // RELEASE_TIME
+        {1, {ParamUnit::DIMENSIONLESS, 4, 20, 1.0f, 10}},      // N_BANDS
+        {2, {ParamUnit::HZ, 10.0f, 16000.0f, 4.0f, 80.0f}},    // LOW_FREQ
+        {3, {ParamUnit::HZ, 10.0f, 16000.0f, 4.0f, 12000.0f}}, // HIGH_FREQ
+        {4, {ParamUnit::PERCENT, 0.05f, 4.0f, 1.0f, 0.5f}},    // BANDWIDTH
+        {5, {ParamUnit::PERCENT, 0.0f, 2.0f, 1.0f, 1.0f}},     // DEPTH
+        {6, {ParamUnit::MS, 10.0f, 2000.0f, 2.5f, 2.0f}},      // ATTACK_TIME
+        {7, {ParamUnit::MS, 10.0f, 2000.0f, 2.5f, 35.0f}}      // RELEASE_TIME
     };
 
     // Wah
     registry[EffectName::WAH] = {
         {0, {ParamUnit::PERCENT, 0.0f, 1.0f, 1.0f, 1.0f}},       // MIX
-        {2, {ParamUnit::HZ, 20.0f, 1000.0f, 2.0f, 350.0f}},      // MIN_FREQ
-        {3, {ParamUnit::HZ, 1000.0f, 8000.0f, 2.0f, 2500.0f}},   // MAX_FREQ
-        {4, {ParamUnit::DIMENSIONLESS, 0.3f, 6.0f, 2.0f, 1.6f}}, // Q
+        {1, {ParamUnit::HZ, 20.0f, 1000.0f, 2.0f, 350.0f}},      // MIN_FREQ
+        {2, {ParamUnit::HZ, 1000.0f, 8000.0f, 2.0f, 2500.0f}},   // MAX_FREQ
+        {3, {ParamUnit::DIMENSIONLESS, 0.3f, 6.0f, 2.0f, 1.6f}}, // Q
     };
 
     return registry;

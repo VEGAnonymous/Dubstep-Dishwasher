@@ -17,7 +17,7 @@ import lol.pony.dubstepdishwasher.ui.*
 import lol.pony.dubstepdishwasher.ui.theme.DubstepDishwasherTheme
 
 /* SET THIS FLAG TO SKIP BLE - FOR DEVELOPMENT ONLY */
-const val SKIP_BLE = true
+const val SKIP_BLE = false
 
 class MainActivity : ComponentActivity() {
 

@@ -17,8 +17,8 @@ float gainFactor; bool clip;
 
 Gain::Gain(float gainDB) { setGain(gainDB); }
 
-void Gain::setGain(float gainDB) { // dB, [-60.0, 24.0]
-    this->gainDB = std::clamp(gainDB, -60.0f, 24.0f);
+void Gain::setGain(float gainDB) { // dB, [-24.0, 24.0]
+    this->gainDB = std::clamp(gainDB, -24.0f, 24.0f);
     this->gainFactor = dbAmp(this->gainDB); 
 } 
 void Gain::setClip(bool clip) { this->clip = clip; }

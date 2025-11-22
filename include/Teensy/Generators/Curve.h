@@ -21,9 +21,11 @@ class Curve : public Generator {
         void setPhase(float phase);
         float getPhase() const;
         void setCurve(const std::vector<CurvePoint>& points);
-        void setCurvePoint(size_t index, float x, float y, float curve);
+        void setCurvePoint(float x, float y, float curve);
         void clearCurve();
         const std::vector<CurvePoint>& getCurve() const;
         
         float next() override;
+
+        void printCurve() const;
 };

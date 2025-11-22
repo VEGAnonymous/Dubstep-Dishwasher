@@ -81,9 +81,10 @@ void Curve::setCurve(const std::vector<CurvePoint>& points_) {
     if (points.back().x != 1.0f) points.push_back(CurvePoint(1.0f, points.back().y, 0.0f));
 }
 
-void Curve::setCurvePoint(size_t index, float x, float y, float curve) {
-    if (index >= points.size()) return;
-    points[index] = CurvePoint(x, y, curve);
+void Curve::setCurvePoint(float x, float y, float curve) {
+    if (x == 0.0f) points[0] = CurvePoint(x, y, curve);
+    else if (x == 1.0f) points.back() = CurvePoint(x, y, curve);
+    else points.push_back(CurvePoint(x, y, curve));
     // Resort by x if necessary
     std::sort(points.begin(), points.end(), [](const CurvePoint& a, const CurvePoint& b) { return a.x < b.x; });
 }
@@ -105,4 +106,13 @@ float Curve::next() {
     if (phase >= 1.0f) phase -= 1.0f;
     
     return val;
+}
+
+void Curve::printCurve() const {
+    Serial.printf("Curve: %d points, freq=%.3f, phase=%.3f, loop=%d\n", 
+                    points.size(), freq, phase, loop);
+    for (size_t i = 0; i < points.size(); ++i) {
+        Serial.printf("  Point %d: x=%.3f, y=%.3f, curve=%.3f\n", 
+                        i, points[i].x, points[i].y, points[i].curve);
+    }
 }

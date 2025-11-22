@@ -266,7 +266,7 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
         _effects.value = chain.getAll()
         _resourceUsage.value = chain.totalUsage()
         controlQueue.enqueue(EFFECT_ADD, type.ordinal, 0, 0.0f)
-        // Log.d("cmd", "ADD: effectType=${type.name}")
+        // Log.d("cmd", "EFFECT_ADD: effectType=${type.name}")
     }
 
     fun removeEffect(effectId: Int) {
@@ -283,14 +283,14 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
                 MOD_ASSIGNMENT_REMOVE, modIndex, assignment.target.effectId, assignment.target.paramId.toFloat()
             )
         }
-        // Log.d("cmd", "REMOVE: effectId=$effectId")
+        // Log.d("cmd", "EFFECT_REMOVE: effectId=$effectId")
     }
 
     fun reorderEffect(effectId: Int, toIndex: Int) {
         chain.reorderEffect(effectId, toIndex)
         _effects.value = chain.getAll()
         controlQueue.enqueue(EFFECT_REORDER, effectId, toIndex, 0.0f)
-        // Log.d("cmd", "REORDER: effectId=$effectId, toIndex=$toIndex")
+        // Log.d("cmd", "EFFECT_REORDER: effectId=$effectId, toIndex=$toIndex")
     }
 
     fun setParam(effectId: Int, paramId: Int, value: Any) {
@@ -310,15 +310,15 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
         }
 
         controlQueue.enqueue(EFFECT_SET_PARAMETER, effectId, paramId, sendValue)
-        // Log.d("cmd", "SET_PARAM: effectId=$effectId, paramId=$paramId, value=$value")
+        // Log.d("cmd", "EFFECT_SET_PARAMETER: effectId=$effectId, paramId=$paramId, value=$value")
     }
 
     fun toggleBypass(effectId: Int) {
+        val value = if (chain.get(effectId)!!.isBypassed) 0.0f else 1.0f
         chain.setBypass(effectId, !chain.get(effectId)!!.isBypassed)
         _effects.value = chain.getAll()
-        val value = if (chain.get(effectId)!!.isBypassed) 0.0f else 1.0f
         controlQueue.enqueue(EFFECT_BYPASS, effectId, 0, value)
-        // Log.d("cmd", "BYPASS: effectId=$effectId")
+        // Log.d("cmd", "EFFECT_BYPASS: effectId=$effectId")
     }
 
     fun clearChain() {
@@ -327,7 +327,7 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
         _effects.value = chain.getAll()
         _resourceUsage.value = ResourceUsage(0f, 0)
         controlQueue.enqueue(EFFECT_CLEAR, 0, 0, 0.0f)
-        // Log.d("cmd", "CLEAR")
+        // Log.d("cmd", "EFFECT_CLEAR")
     }
 
     // MODULATION
@@ -350,6 +350,7 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
 
         controlQueue.enqueue(MOD_SET_PARAMETER,
             modIndex, paramId, sendValue)
+        // Log.d("cmd", "MOD_SET_PARAMETER: modId=$modIndex, paramId=$paramId, value=$sendValue")
     }
 
     fun updateModulatorCurve(modId: String, curve: List<CurvePoint>) {
@@ -378,6 +379,7 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
         // Reset LFO phase to sync with downstream
         val mod = _modulators.value.find { it.id == modId }
         if (mod is Modulator.LFO) mod.phase = 0f
+        // Log.d("cmd", "MOD_UPDATE_CURVE")
     }
 
     fun addAssignment(modId: String, effectId: Int, paramId: Int) {
@@ -398,6 +400,7 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
             val modIndex = modulatorIdToIndex(modId)
             controlQueue.enqueue(MOD_ASSIGNMENT_ADD,
                 modIndex, effectId, paramId.toFloat(), 0.5f, ModPolarity.Bipolar.ordinal.toFloat())
+            // Log.d("cmd", "MOD_ASSIGNMENT_ADD: effectId=$effectId, paramId=$paramId, amount=0.5, polarity=${ModPolarity.Bipolar.ordinal}")
         }
     }
 
@@ -409,6 +412,7 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
         val modIndex = modulatorIdToIndex(modId)
         controlQueue.enqueue(MOD_ASSIGNMENT_REMOVE,
             modIndex, effectId, paramId.toFloat())
+        // Log.d("cmd", "MOD_ASSIGNMENT_REMOVE: effectId=$effectId, paramId=$paramId")
     }
 
     fun updateAssignmentAmount(modId: String, effectId: Int, paramId: Int, amount: Float) {
@@ -425,6 +429,7 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
 
         controlQueue.enqueue(MOD_ASSIGNMENT_SET,
             modIndex, effectId, paramId.toFloat(), assignment.amount, assignment.polarity.ordinal.toFloat())
+        // Log.d("cmd", "MOD_ASSIGNMENT_SET: effectId=$effectId, paramId=$paramId, amount=${assignment.amount}, polarity=${assignment.polarity.ordinal}")
     }
 
     fun updateAssignmentPolarity(modId: String, effectId: Int, paramId: Int) {
@@ -445,6 +450,7 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
 
         controlQueue.enqueue(MOD_ASSIGNMENT_SET,
             modIndex, effectId, paramId.toFloat(), assignment.amount, assignment.polarity.ordinal.toFloat())
+        // Log.d("cmd", "MOD_ASSIGNMENT_SET: effectId=$effectId, paramId=$paramId, amount=${assignment.amount}, polarity=${assignment.polarity.ordinal}")
     }
 
     /* // Probably unused here - ESP32 should manually send
@@ -488,6 +494,7 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
                 assignment.polarity.ordinal.toFloat()
             )
         }
+        // Log.d("cmd", "SYNC MODULATION")
     }
 
     /* BLE */

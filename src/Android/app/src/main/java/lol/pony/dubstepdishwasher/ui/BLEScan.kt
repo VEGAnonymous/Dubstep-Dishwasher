@@ -52,10 +52,6 @@ fun ScanScreen(
 ) {
     val isScanning by bleManager.isScanning
 
-    LaunchedEffect(isScanning) {
-        Log.d("ScanScreen", "isScanning changed: $isScanning")
-    }
-
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center

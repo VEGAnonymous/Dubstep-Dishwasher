@@ -43,6 +43,7 @@ float Random::binary() {
 Random::Random(float freq, RandomMode mode) { setFreq(freq); setMode(mode); }
 
 void Random::setFreq(float freq) { this->freq = freq; } // Hz
+float Random::getFreq() const { return this->freq; }
 void Random::setPhase(float phase) { this->phase = phase; }
 float Random::getPhase() const { return this->phase; }
 void Random::setMode(RandomMode mode) {
@@ -55,3 +56,35 @@ void Random::setMode(RandomMode mode) {
 }
 
 float Random::next() { return (this->*algorithm)(); }
+
+// HACK: SUPER hacky way to force advance the phase for Random modulators at control rate (dt)
+// Literally just the algorithms above but rehashed lmao
+float Random::tick(float dt) {
+    phase += freq * dt;
+    
+    // Phase wrap and update
+    if (phase >= 1.0f) {
+        phase -= 1.0f;
+        
+        switch (mode) {
+            case RandomMode::PERLIN:
+                currentVal = nextVal;
+                nextVal = uniform();
+                break;
+            case RandomMode::SAMPLE_HOLD: currentVal = uniform(); break;
+            case RandomMode::BINARY: currentVal = (rand() & 1) ? 1.0f : -1.0f; break;
+        }
+    }
+    
+    // Evaluate without phase advancement
+    switch (mode) {
+        case RandomMode::PERLIN: {
+            float smooth = phase * phase * (3.0f - (2.0f * phase));
+            return currentVal + (smooth * (nextVal - currentVal));
+            break;
+        }
+        case RandomMode::SAMPLE_HOLD: return currentVal; break;
+        case RandomMode::BINARY: return currentVal; break;
+        default: return 0.0f; // impossibru
+    }
+}
