@@ -46,7 +46,7 @@ void Flanger::process(const float* in, float* out, size_t n) {
     float* out_ptr = out;
 
     for (size_t i = 0; i < n; ++i) {
-        delayLine.setDelayTime(15 + (LFO.next() * 10.0f * depth)); // Modulate delay with LFO, 5-25 ms
+        delayLine.setDelayTime(15.0f + (LFO.next() * 10.0f * depth)); // Modulate delay with LFO, 5-25 ms
         wetSig = delayLine.read(); // Read from delay line
 
         delayLine.write(*in_ptr + (feedback * wetSig)); // Feedback and write new sample

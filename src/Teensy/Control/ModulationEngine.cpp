@@ -1,4 +1,5 @@
 #include "Teensy/Control/ModulationEngine.h"
+#include "Teensy/Control/ParameterRegistry.h"
 
 /* PRIVATE */
 
@@ -30,7 +31,11 @@ void ModulationEngine::addAssignment(const ModAssignment& assignment) {
     ParamKey key{assignment.effectId, assignment.paramId};
     if (baseValues.find(key) == baseValues.end()) {
         Effect* effect = audioChain.getEffect(assignment.effectId);
-        if (effect) baseValues[key] = effect->getNormalized(assignment.paramId);
+        if (effect) {
+            // Only store base value if parameter is modulatable
+            const ParameterRange* range = getParameterRange(effect->getEffectName(), assignment.paramId);
+            if (range) baseValues[key] = effect->getNormalized(assignment.paramId);
+        }
     }
 }
 
@@ -72,10 +77,14 @@ void ModulationEngine::clearAssignments() {
 }
 
 void ModulationEngine::setBaseValue(EffectID effectId, ParamID paramId, float normalized) {
+    Effect* effect = audioChain.getEffect(effectId);
+    if (!effect) return;
+
+    const ParameterRange* range = getParameterRange(effect->getEffectName(), paramId);
+    if (!range) return; // Skip discrete/boolean parameters
+
     ParamKey key{effectId, paramId};
     baseValues[key] = normalized;
-    
-    Effect* effect = audioChain.getEffect(effectId);
     if (effect) effect->setNormalized(paramId, normalized);
 }
 
