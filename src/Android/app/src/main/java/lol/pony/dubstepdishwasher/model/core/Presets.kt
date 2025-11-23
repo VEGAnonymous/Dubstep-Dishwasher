@@ -14,6 +14,7 @@ data class GlobalPresetData(
     val modulators: List<ModulatorSnapshot>,
     val assignments: List<ModAssignment>,
     val editorStates: Map<String, EditorState>,
+    val parallelChains: Map<Int, ParallelChainSnapshot> = emptyMap()
 )
 
 data class EffectSnapshot(
@@ -27,6 +28,11 @@ data class ModulatorSnapshot(
     val isLFO: Boolean,
     val parameters: List<Any?>,
     val curve: List<CurvePoint>
+)
+
+data class ParallelChainSnapshot(
+    val chainA: List<EffectSnapshot>,
+    val chainB: List<EffectSnapshot>
 )
 
 fun defaultGlobalPresets(): List<GlobalPreset> {
@@ -61,7 +67,8 @@ fun defaultGlobalPresets(): List<GlobalPreset> {
         effects = emptyList(),
         modulators = defaultModSnapshots,
         assignments = emptyList(),
-        editorStates = emptyMap()
+        editorStates = emptyMap(),
+        parallelChains = emptyMap()
     )
 
     return listOf(GlobalPreset(name = "Init", data = data, category = "Factory"))

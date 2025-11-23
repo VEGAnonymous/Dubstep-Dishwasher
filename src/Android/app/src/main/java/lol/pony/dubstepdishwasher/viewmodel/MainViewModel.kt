@@ -1,6 +1,7 @@
 package lol.pony.dubstepdishwasher.viewmodel
 
 // import android.util.Log
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +30,22 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
     private val _resourceError = MutableStateFlow<String?>(null)
     val resourceError: StateFlow<String?> = _resourceError
     fun clearResourceError() { _resourceError.value = null }
+
+    private fun calculateTotalUsage(): ResourceUsage {
+        val mainUsage = chain.totalUsage() // Main chain
+        // Sum all parallel chain usages
+        val parallelUsage = _parallelChains.value.values.fold(ResourceUsage(0f, 0)) { acc, state ->
+            ResourceUsage(
+                compute = acc.compute + state.chainAUsage.compute + state.chainBUsage.compute,
+                memory = acc.memory + state.chainAUsage.memory + state.chainBUsage.memory
+            )
+        }
+
+        return ResourceUsage( // TOTAL
+            compute = mainUsage.compute + parallelUsage.compute,
+            memory = mainUsage.memory + parallelUsage.memory
+        )
+    }
 
     // Effects
     private val chain = EffectChain()
@@ -69,6 +86,11 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
     private val _editorStates = MutableStateFlow<Map<String, EditorState>>(emptyMap())
     val editorStates: StateFlow<Map<String, EditorState>> = _editorStates
 
+    // Parallel
+
+    private val _parallelChains = MutableStateFlow<Map<Int, ParallelChainState>>(emptyMap())
+    val parallelChains: StateFlow<Map<Int, ParallelChainState>> = _parallelChains
+
     // Presets
     private val _globalPresets = MutableStateFlow(defaultGlobalPresets())
     val globalPresets: StateFlow<List<GlobalPreset>> = _globalPresets
@@ -83,8 +105,9 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
             _effects,
             _modulators,
             _modAssignments,
-            _editorStates
-        ) { effects, modulators, assignments, editorStates ->
+            _editorStates,
+            _parallelChains
+        ) { effects, modulators, assignments, editorStates, parallelChains ->
             GlobalPresetData(
                 effects = effects.map {
                     EffectSnapshot(
@@ -102,7 +125,8 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
                     )
                 },
                 assignments = assignments.map { it.copy() },
-                editorStates = editorStates.mapValues { it.value.copy() }
+                editorStates = editorStates.mapValues { it.value.copy() },
+                parallelChains = snapshotParallelChains(parallelChains)
             )
         }.stateIn(
             viewModelScope,
@@ -112,7 +136,8 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
                 effects = emptyList(),
                 modulators = emptyList(),
                 assignments = emptyList(),
-                editorStates = emptyMap()
+                editorStates = emptyMap(),
+                parallelChains = emptyMap()
             )
         )
 
@@ -121,7 +146,8 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
             effects = snapshotEffects(),
             modulators = snapshotModulators(),
             assignments = _modAssignments.value.map { it.copy() },
-            editorStates = _editorStates.value.mapValues { it.value.copy() }
+            editorStates = _editorStates.value.mapValues { it.value.copy() },
+            parallelChains = snapshotParallelChains(_parallelChains.value) // NEW
         )
         val preset = GlobalPreset(name, data, category, false)
         _globalPresets.update { presets -> presets.filterNot { it.name == name } + preset }
@@ -134,6 +160,7 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
 
         clearChain()
         rebuildEffects(data.effects)
+        rebuildParallelChains(data.parallelChains)
         rebuildModulators(data.modulators)
         _modAssignments.value = data.assignments.map { it.copy() }
         _editorStates.value = data.editorStates.mapValues { it.value.copy() }
@@ -170,6 +197,27 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
         }
     }
 
+    private fun snapshotParallelChains(chains: Map<Int, ParallelChainState>): Map<Int, ParallelChainSnapshot> {
+        return chains.mapValues { (_, state) ->
+            ParallelChainSnapshot(
+                chainA = state.chainAEffects.map { effect ->
+                    EffectSnapshot(
+                        effectType = effect.effectType,
+                        parameters = effect.parameters.map { it.value },
+                        isBypassed = effect.isBypassed
+                    )
+                },
+                chainB = state.chainBEffects.map { effect ->
+                    EffectSnapshot(
+                        effectType = effect.effectType,
+                        parameters = effect.parameters.map { it.value },
+                        isBypassed = effect.isBypassed
+                    )
+                }
+            )
+        }
+    }
+
     private fun rebuildEffects(list: List<EffectSnapshot>) {
         list.forEach { snap ->
             addEffect(snap.effectType)
@@ -188,6 +236,44 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
 
             snap.parameters.forEachIndexed { paramId, value -> if (value != null) mod.setParam(paramId, value) }
             mod
+        }
+    }
+
+    private fun rebuildParallelChains(snapshots: Map<Int, ParallelChainSnapshot>) {
+        snapshots.forEach { (parallelId, snapshot) ->
+            // Rebuild chain A
+            snapshot.chainA.forEach { effectSnap ->
+                parallelAddEffect(parallelId, ParallelChain.A, effectSnap.effectType)
+                val effects = _parallelChains.value[parallelId]?.chainAEffects ?: return@forEach
+                val newEffect = effects.lastOrNull() ?: return@forEach
+
+                effectSnap.parameters.forEachIndexed { paramId, value ->
+                    if (value != null) {
+                        parallelSetParam(parallelId, ParallelChain.A, newEffect.effectId, paramId, value)
+                    }
+                }
+
+                if (effectSnap.isBypassed) {
+                    parallelBypassEffect(parallelId, ParallelChain.A, newEffect.effectId)
+                }
+            }
+
+            // Rebuild chain B
+            snapshot.chainB.forEach { effectSnap ->
+                parallelAddEffect(parallelId, ParallelChain.B, effectSnap.effectType)
+                val effects = _parallelChains.value[parallelId]?.chainBEffects ?: return@forEach
+                val newEffect = effects.lastOrNull() ?: return@forEach
+
+                effectSnap.parameters.forEachIndexed { paramId, value ->
+                    if (value != null) {
+                        parallelSetParam(parallelId, ParallelChain.B, newEffect.effectId, paramId, value)
+                    }
+                }
+
+                if (effectSnap.isBypassed) {
+                    parallelBypassEffect(parallelId, ParallelChain.B, newEffect.effectId)
+                }
+            }
         }
     }
 
@@ -257,24 +343,33 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
 
     fun addEffect(type: EffectType) {
         val projected = chain.projectedUsage(type)
-        if (projected.compute > MAX_COMPUTE_USAGE || projected.memory > MAX_MEMORY_USAGE) {
+        val total = calculateTotalUsage()
+        val projectedTotal = ResourceUsage(
+            compute = total.compute + projected.compute - chain.totalUsage().compute,
+            memory = total.memory + projected.memory - chain.totalUsage().memory
+        )
+        if (projectedTotal.compute > MAX_COMPUTE_USAGE || projectedTotal.memory > MAX_MEMORY_USAGE) {
             _resourceError.value = "Could not add ${type.uiName}: resource limit exceeded"
             return
         }
 
         chain.addEffect(type)
         _effects.value = chain.getAll()
-        _resourceUsage.value = chain.totalUsage()
+        _resourceUsage.value = calculateTotalUsage()
         controlQueue.enqueue(EFFECT_ADD, type.ordinal, 0, 0.0f)
+
+        // Init parallel state if applicable
+        if (type == EffectType.PARALLEL) { _parallelChains.update { chains -> chains + (_effects.value.last().effectId to ParallelChainState()) } }
         // Log.d("cmd", "EFFECT_ADD: effectType=${type.name}")
     }
 
     fun removeEffect(effectId: Int) {
+        val effect = chain.get(effectId)
         chain.removeEffect(effectId)
         _modAssignments.value = _modAssignments.value.filterNot { it.target.effectId == effectId } // Also remove mod assignments
 
         _effects.value = chain.getAll()
-        _resourceUsage.value = chain.totalUsage()
+        _resourceUsage.value = calculateTotalUsage()
 
         controlQueue.enqueue(EFFECT_REMOVE, effectId, 0, 0.0f)
         _modAssignments.value.filter { it.target.effectId == effectId }.forEach { assignment -> // And downstream assignments
@@ -283,6 +378,8 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
                 MOD_ASSIGNMENT_REMOVE, modIndex, assignment.target.effectId, assignment.target.paramId.toFloat()
             )
         }
+
+        if (effect?.effectType == EffectType.PARALLEL) { _parallelChains.update { chains -> chains - effectId } } // Clean up any parallel state
         // Log.d("cmd", "EFFECT_REMOVE: effectId=$effectId")
     }
 
@@ -318,13 +415,14 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
         chain.setBypass(effectId, !chain.get(effectId)!!.isBypassed)
         _effects.value = chain.getAll()
         controlQueue.enqueue(EFFECT_BYPASS, effectId, 0, value)
-        // Log.d("cmd", "EFFECT_BYPASS: effectId=$effectId")
+        // Log.d("cmd", "EFFECT_BYPASS: effectId=$effectId, bypass=$value")
     }
 
     fun clearChain() {
         chain.clear()
         _modAssignments.value = emptyList()
         _effects.value = chain.getAll()
+        _parallelChains.value = emptyMap()
         _resourceUsage.value = ResourceUsage(0f, 0)
         controlQueue.enqueue(EFFECT_CLEAR, 0, 0, 0.0f)
         // Log.d("cmd", "EFFECT_CLEAR")
@@ -495,6 +593,111 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
             )
         }
         // Log.d("cmd", "SYNC MODULATION")
+    }
+
+    // PARALLEL
+
+    private fun encodeChainParam(chain: ParallelChain, paramId: Int): Int {
+        val chainBit = if (chain == ParallelChain.B) 1 else 0
+        return (chainBit shl 4) or (paramId and 0x0F)
+    }
+
+    private fun getParallelEffectChain(parallelId: Int, chain: ParallelChain): EffectChain? {
+        val state = _parallelChains.value[parallelId] ?: return null
+        return when (chain) {
+            ParallelChain.A -> state.chainA
+            ParallelChain.B -> state.chainB
+        }
+    }
+
+    private fun updateParallelChainState(parallelId: Int) {
+        _parallelChains.update { chains ->
+            val state = chains[parallelId] ?: return@update chains
+            chains + (parallelId to state.copy(
+                chainAEffects = state.chainA.getAll(),
+                chainBEffects = state.chainB.getAll(),
+                chainAUsage = state.chainA.totalUsage(),
+                chainBUsage = state.chainB.totalUsage()
+            ))
+        }
+    }
+
+    fun parallelAddEffect(parallelId: Int, chain: ParallelChain, effectType: EffectType) {
+        val effectChain = getParallelEffectChain(parallelId, chain) ?: return
+
+        val projected = effectChain.projectedUsage(effectType)
+        val total = calculateTotalUsage()
+        val projectedTotal = ResourceUsage(
+            compute = total.compute + projected.compute - effectChain.totalUsage().compute,
+            memory = total.memory + projected.memory - effectChain.totalUsage().memory
+        )
+        if (projectedTotal.compute > MAX_COMPUTE_USAGE || projectedTotal.memory > MAX_MEMORY_USAGE) {
+            _resourceError.value = "Could not add ${effectType.uiName}: resource limit exceeded"
+            return
+        }
+
+        effectChain.addEffect(effectType)
+        updateParallelChainState(parallelId)
+        _resourceUsage.value = calculateTotalUsage()
+
+        controlQueue.enqueue(PARALLEL_CHAIN_COMMAND,
+            parallelId, encodeChainParam(chain, 0), 0f, 0f, effectType.ordinal.toFloat())
+        // Log.d("cmd", "PARALLEL id=$parallelId - EFFECT_ADD: effectType=$effectType")
+    }
+
+    fun parallelRemoveEffect(parallelId: Int, chain: ParallelChain, effectId: Int) {
+        val effectChain = getParallelEffectChain(parallelId, chain) ?: return
+        effectChain.removeEffect(effectId)
+        updateParallelChainState(parallelId)
+        _resourceUsage.value = calculateTotalUsage()
+
+        controlQueue.enqueue(PARALLEL_CHAIN_COMMAND,
+            parallelId, encodeChainParam(chain, 0), 1f, effectId.toFloat(), 0f)
+        // Log.d("cmd", "PARALLEL id=$parallelId - EFFECT_REMOVE: effectId=$effectId")
+    }
+
+    fun parallelReorderEffect(parallelId: Int, chain: ParallelChain, effectId: Int, toIndex: Int) {
+        val effectChain = getParallelEffectChain(parallelId, chain) ?: return
+        effectChain.reorderEffect(effectId, toIndex)
+        updateParallelChainState(parallelId)
+
+        controlQueue.enqueue(PARALLEL_CHAIN_COMMAND,
+            parallelId, encodeChainParam(chain, 0), 2f, effectId.toFloat(), toIndex.toFloat())
+        // Log.d("cmd", "PARALLEL id=$parallelId - EFFECT_REORDER: effectId=$effectId, toIndex=$toIndex")
+    }
+
+    fun parallelSetParam(parallelId: Int, chain: ParallelChain, effectId: Int, paramId: Int, value: Any) {
+        val effectChain = getParallelEffectChain(parallelId, chain) ?: return
+        effectChain.setParam(effectId, paramId, value)
+        updateParallelChainState(parallelId)
+
+        // Casting to float for value
+        val sendValue = when (value) {
+            is Float -> value
+            is Int -> value.toFloat()
+            is Boolean -> if (value) 1.0f else 0.0f
+
+            is EnvelopeType, is ModulationEffectMode, is DistortionMode, is BiquadType, is ParallelMode, is WavetableType, is ParamUnit
+                -> value.ordinal.toFloat()
+
+            else -> throw IllegalArgumentException("Unsupported value type")
+        }
+
+        controlQueue.enqueue(PARALLEL_CHAIN_COMMAND,
+            parallelId, encodeChainParam(chain, paramId), 3f, effectId.toFloat(), sendValue)
+        // Log.d("cmd", "PARALLEL id=$parallelId - EFFECT_SET_PARAMETER: effectId=$effectId, paramId=$paramId, value=$value")
+    }
+
+    fun parallelBypassEffect(parallelId: Int, chain: ParallelChain, effectId: Int) {
+        val effectChain = getParallelEffectChain(parallelId, chain) ?: return
+        val value = if (effectChain.get(effectId)!!.isBypassed) 0.0f else 1.0f
+        effectChain.setBypass(effectId, !effectChain.get(effectId)!!.isBypassed)
+        updateParallelChainState(parallelId)
+
+        controlQueue.enqueue(PARALLEL_CHAIN_COMMAND,
+            parallelId, encodeChainParam(chain, 0), 4f, effectId.toFloat(), value)
+
+        // Log.d("cmd", "PARALLEL id=$parallelId - EFFECT_BYPASS: effectId=$effectId, bypass=$value")
     }
 
     /* BLE */

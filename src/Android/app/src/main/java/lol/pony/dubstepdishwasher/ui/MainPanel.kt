@@ -32,6 +32,7 @@ import lol.pony.dubstepdishwasher.model.BLEManager
 import lol.pony.dubstepdishwasher.model.core.*
 import lol.pony.dubstepdishwasher.ui.components.*
 import lol.pony.dubstepdishwasher.ui.components.subcomponents.CurveEditor
+import lol.pony.dubstepdishwasher.ui.components.subcomponents.parallel.ParallelEditor
 import lol.pony.dubstepdishwasher.viewmodel.MainViewModel
 import lol.pony.dubstepdishwasher.viewmodel.MainViewModelFactory
 
@@ -49,9 +50,13 @@ fun MainPanel(bleManager: BLEManager) {
     val currentModValues by mainViewModel.currentModValues.collectAsState()
     val currentModOffsets by mainViewModel.currentModOffsets.collectAsState()
 
-    val editorStates by mainViewModel.editorStates.collectAsState()
-    var editorOpen by remember { mutableStateOf<Modulator?>(null) }
+    val parallelChains by mainViewModel.parallelChains.collectAsState()
+
+    val curveEditorStates by mainViewModel.editorStates.collectAsState()
+    var curveEditorOpen by remember { mutableStateOf<Modulator?>(null) }
     val curvePresets by mainViewModel.curvePresets.collectAsState()
+
+    var parallelEditorOpen by remember { mutableStateOf<Int?>(null) } // Parallel effect ID
 
     Box(modifier = Modifier.fillMaxSize()) {
         Row(modifier = Modifier.fillMaxSize()) {
@@ -132,7 +137,7 @@ fun MainPanel(bleManager: BLEManager) {
                                     mod = mod,
                                     currentModValues = currentModValues,
                                     onSetParam = { modId, paramId, value -> mainViewModel.setModulatorParam(modId, paramId, value) },
-                                    onEditCurve = { editorOpen = mod }
+                                    onEditCurve = { curveEditorOpen = mod }
                                 )
                             }
                         } // Modulators column
@@ -152,14 +157,15 @@ fun MainPanel(bleManager: BLEManager) {
                 onAssignMod = { modId, effectId, paramId -> mainViewModel.addAssignment(modId, effectId, paramId) },
                 onRemoveMod = { modId, effectId, paramId -> mainViewModel.removeAssignment(modId, effectId, paramId) },
                 onModAmountChange = { modId, effectId, paramId, amount -> mainViewModel.updateAssignmentAmount(modId, effectId, paramId, amount) },
-                onTogglePolarity = { modId, effectId, paramId -> mainViewModel.updateAssignmentPolarity(modId, effectId, paramId) }
+                onTogglePolarity = { modId, effectId, paramId -> mainViewModel.updateAssignmentPolarity(modId, effectId, paramId) },
+                onOpenParallelEditor = { parallelEffectId -> parallelEditorOpen = parallelEffectId }
             )
         } // Row
 
         // Curve editor overlay
-        editorOpen?.let { mod ->
+        curveEditorOpen?.let { mod ->
             val modId = mod.id
-            val editorState = editorStates[modId] ?: EditorState()
+            val editorState = curveEditorStates[modId] ?: EditorState()
 
             val currentPos = when (mod) {
                 is Modulator.LFO -> mod.phase
@@ -175,15 +181,30 @@ fun MainPanel(bleManager: BLEManager) {
                 onSavePreset = { name, category, points -> mainViewModel.saveCurvePreset(name, category, points) },
                 onDeletePreset = { name -> mainViewModel.deleteCurvePreset(name) },
                 onFavoritePreset = { name, favorite -> mainViewModel.favoriteCurvePreset(name, favorite) },
-                onDismiss = { editorOpen = null },
+                onDismiss = { curveEditorOpen = null },
                 onSave = { curve ->
                     mainViewModel.updateModulatorCurve(modId, curve)
-                    editorOpen = null
+                    curveEditorOpen = null
                 }
 
             )
         }
 
+        // Parallel editor overlay
+        parallelEditorOpen?.let { parallelId ->
+            ParallelEditor(
+                id = parallelId,
+                parallelChains = parallelChains,
+                resourceError = resourceError,
+                onDismissError = { mainViewModel.clearResourceError() },
+                onDismiss = { parallelEditorOpen = null },
+                onParallelAdd = { id, chain, type -> mainViewModel.parallelAddEffect(id, chain, type) },
+                onParallelRemove = { id, chain, effectId -> mainViewModel.parallelRemoveEffect(id, chain, effectId) },
+                onParallelReorder = { id, chain, effectId, toIndex -> mainViewModel.parallelReorderEffect(id, chain, effectId, toIndex) },
+                onParallelBypass = { id, chain, effectId -> mainViewModel.parallelBypassEffect(id, chain, effectId) },
+                onParallelSetParam = { id, chain, effectId, paramId, value -> mainViewModel.parallelSetParam(id, chain, effectId, paramId, value) }
+            )
+        }
     } // Box
 } // MainPanel
 

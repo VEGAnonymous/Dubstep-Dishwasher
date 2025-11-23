@@ -28,6 +28,7 @@ import lol.pony.dubstepdishwasher.ui.components.subcomponents.DefaultParameterLi
 import lol.pony.dubstepdishwasher.ui.components.subcomponents.DistortionParameterList
 import lol.pony.dubstepdishwasher.ui.components.subcomponents.EqualizerParameterList
 import lol.pony.dubstepdishwasher.ui.components.subcomponents.GateParameterList
+import lol.pony.dubstepdishwasher.ui.components.subcomponents.ParallelParameterList
 
 @Composable
 fun ParameterColumn(
@@ -40,7 +41,8 @@ fun ParameterColumn(
     onAssignMod: (String, Int, Int) -> Unit,
     onRemoveMod: (String, Int, Int) -> Unit,
     onModAmountChange: (String, Int, Int, Float) -> Unit,
-    onTogglePolarity: (String, Int, Int) -> Unit
+    onTogglePolarity: (String, Int, Int) -> Unit,
+    onOpenParallelEditor: (Int) -> Unit // Parallel editor
 ) {
     LazyColumn {
         items(effects, key = { it.effectId }) { effect ->
@@ -69,7 +71,6 @@ fun ParameterColumn(
                         modifier = Modifier.width(150.dp)
                     )
                 }
-
 
                 when (effect.effectType) {
                     EffectType.COMPRESSOR -> CompressorParameterList(
@@ -120,6 +121,19 @@ fun ParameterColumn(
                         onTogglePolarity = onTogglePolarity
                     )
 
+                    EffectType.PARALLEL -> ParallelParameterList(
+                        effect = effect,
+                        assignments = assignments,
+                        selectedModulator = selectedModulator,
+                        currentModOffsets = currentModOffsets,
+                        onSetParam = onSetParam,
+                        onAssignMod = onAssignMod,
+                        onRemoveMod = onRemoveMod,
+                        onModAmountChange = onModAmountChange,
+                        onTogglePolarity = onTogglePolarity,
+                        onOpenEditor = { onOpenParallelEditor(effect.effectId) }
+                    )
+
                     // Default parameter list rows
                     else -> DefaultParameterList(
                         effect = effect,
@@ -141,7 +155,7 @@ fun ParameterColumn(
 }
 
 @Composable
-private fun effectLabel(effectType: EffectType): Int? {
+fun effectLabel(effectType: EffectType): Int? {
     return when (effectType) {
         EffectType.CHORUS -> R.drawable.label_fx_chorus
         EffectType.COMPRESSOR -> R.drawable.label_fx_compressor

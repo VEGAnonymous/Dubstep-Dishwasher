@@ -205,33 +205,33 @@ Processes two internal effect chains in parallel. Maximum of 5 effects per chain
 
 **Parameters:**
 
-Uses a unique addressing scheme for internal control and parameters, assuming a `uint_8t` pid and `float` value:
-``` 
-CHAIN A
-0-12:    Effect 1 parameter space
-13-16:   Effect 1 command space
-17-29:   Effect 2 parameter space
-30-33:   Effect 2 command space
-...
-CHAIN B
-85-97:   Effect 1 parameter space
-98-101:   Effect 1 command space
-102-114:  Effect 2 parameter space
-115-118: Effect 2 command space
-...
-```
+1. **`MIX`** — Dry/wet balance `[0.0, 1.0]`
+2. **`MODE`** — Mixdown mode [`ParallelMode` enum]
 
-Where the command space is defined as:
-```
-ADD = 13,
-REMOVE = 14,
-REORDER = 15,
-BYPASS = 16
-```
-Thus, pids 0-169 control the state of the internal chain. pids 170-253 are unused.
+For updating the internal state of each chain, use:
 
-254. **`MIX`** — Dry/wet balance `[0.0, 1.0]`
-255. **`MODE`** — Mixdown mode [`ParallelMode` enum]
+**`chainCommand(chain, command, effectId, paramId, value)`**
+- **`chain`** — Select the chain to operate on [`Chain` enum]
+- **`command`** — The command to execute [`ChainCommand` enum]
+- **`effectId`** — `EffectID` of the effect *within* the internal chain
+- **`paramId`** — `ParamID` for `SET_PARAM` commands
+- **`value`** — Multi-use
+    - `ADD`: `EffectName` to add
+    - `REORDER`: Index to move to
+    - `SET_PARAM`: Value to set the parameter to
+
+With the following definitions:
+
+```
+enum Chain : uint8_t { A, B };
+enum ChainCommand : uint8_t { 
+    ADD, 
+    REMOVE, 
+    REORDER,
+    SET_PARAM, 
+    BYPASS 
+};
+```
 
 ---
 

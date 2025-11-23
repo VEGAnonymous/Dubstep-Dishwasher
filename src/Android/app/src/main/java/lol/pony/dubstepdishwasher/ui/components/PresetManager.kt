@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -324,7 +325,7 @@ private fun <T, C : PresetContainer<T>> PresetRow(
 
         // Delete preset
         if (onDelete != null && preset.category != "Factory") {
-            IconButton(onClick = { onDelete(preset) }) {
+            IconButton(onClick = { onDelete(preset) }, modifier = Modifier.size(18.dp)) {
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = "Delete Preset"

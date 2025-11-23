@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -270,7 +271,7 @@ fun ParameterItem (
             // Switch for toggle parameters
             is EffectParameter.Toggle -> {
                 DDSwitch(
-                    modifier = Modifier.scale(0.8f),
+                    modifier = Modifier.size(42.dp).padding(top = 12.dp),
                     checked = param.value,
                     onCheckedChange = { onSetParam(effect.effectId, param.id, !param.value) },
                     imageRes = R.drawable.control_toggle

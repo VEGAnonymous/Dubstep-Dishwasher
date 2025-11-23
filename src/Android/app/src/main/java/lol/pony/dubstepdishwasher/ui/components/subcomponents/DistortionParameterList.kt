@@ -28,7 +28,8 @@ fun DistortionParameterList(
     onAssignMod: (String, Int, Int) -> Unit,
     onRemoveMod: (String, Int, Int) -> Unit,
     onModAmountChange: (String, Int, Int, Float) -> Unit,
-    onTogglePolarity: (String, Int, Int) -> Unit
+    onTogglePolarity: (String, Int, Int) -> Unit,
+    scrollable: Boolean = false
 ) {
     val params = effect.parameters.toList()
     val mode = params[1].value as DistortionMode
@@ -44,7 +45,7 @@ fun DistortionParameterList(
             modifier = Modifier
                 .weight(1f)
                 .padding(end = 12.dp),
-            userScrollEnabled = false
+            userScrollEnabled = scrollable
         ) {
             items(params, key = { it.id }) { param ->
                 ParameterItem(

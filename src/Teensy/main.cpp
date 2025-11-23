@@ -8,6 +8,7 @@
 #include "Teensy/Control/AudioChain.h"
 #include "Teensy/Control/AudioChainStream.h"
 #include "Teensy/Control/LogMelStream.h"
+#include "Teensy/Effects/Parallel.h"
 
 #include "Handler.h"
 
@@ -153,6 +154,28 @@ void processCommand(const Command& cmd, AudioChain& chain, ModulationEngine& mod
         case CommandType::MOD_MAPPING_SET_INPUT: {
             modEngine.setMappingInput(cmd.id1, cmd.value1); // value1 must be normalized input [0, 1]
             if (LOG_CMD) Serial.printf("Set mapping input for modulator %d to %.3f\n", cmd.id1, cmd.value1);
+            break;
+        }
+
+        case CommandType::PARALLEL_CHAIN_COMMAND: {
+            // Valid only for Parallel Effect instances
+            Effect* effect = chain.getEffect(cmd.id1);
+            if (!effect) break;
+            Parallel* parallel = dynamic_cast<Parallel*>(effect);
+            if (!parallel) break;
+            
+            // HACK: Have to mux paramId addressing since we ran out of command bytes
+            uint8_t chainSelect = (cmd.id2 >> 4) & 0x0F; // Upper nibble
+            ParamID paramId = static_cast<ParamID>(cmd.id2 & 0x0F); // Lower nibble
+            
+            uint8_t command = static_cast<uint8_t>(cmd.value1);
+            EffectID effectId = static_cast<EffectID>(cmd.value2);
+            float value = cmd.value3;
+            
+            parallel->chainCommand(chainSelect, command, effectId, paramId, value);
+            
+            if (LOG_CMD) Serial.printf("Parallel chain %c, cmd=%d, slot=%d, param=%d, value=%.3f\n",
+                chainSelect ? 'B' : 'A', command, effectId, paramId, value);
             break;
         }
 

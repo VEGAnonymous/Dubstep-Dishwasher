@@ -16,7 +16,10 @@ enum class CommandType(val value: Byte) {
     MOD_ASSIGNMENT_ADD(9),
     MOD_ASSIGNMENT_REMOVE(10),
     MOD_ASSIGNMENT_SET(11),
-    MOD_MAPPING_SET_INPUT(12)
+    MOD_MAPPING_SET_INPUT(12),
+
+    // Parallel internal chain command
+    PARALLEL_CHAIN_COMMAND(13)
 }
 
 data class Command(
