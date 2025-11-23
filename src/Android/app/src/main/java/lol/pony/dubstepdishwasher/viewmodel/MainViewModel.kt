@@ -1,7 +1,6 @@
 package lol.pony.dubstepdishwasher.viewmodel
 
 // import android.util.Log
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import lol.pony.dubstepdishwasher.model.ControlQueue
 import lol.pony.dubstepdishwasher.model.EffectChain
 import lol.pony.dubstepdishwasher.model.BLEManager
@@ -19,7 +19,10 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 // import kotlin.experimental.xor
 
-class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
+class MainViewModel(
+    private val bleManager: BLEManager,
+    private val userPresets: UserPresets
+    ) : ViewModel() {
 
     /* DATA STRUCTURES */
 
@@ -112,7 +115,7 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
                 effects = effects.map {
                     EffectSnapshot(
                         effectType = it.effectType,
-                        parameters = it.parameters.map { p -> p.value },
+                        parameters = it.parameters,
                         isBypassed = it.isBypassed
                     )
                 },
@@ -120,7 +123,7 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
                     ModulatorSnapshot(
                         id = it.id,
                         isLFO = it is Modulator.LFO,
-                        parameters = it.parameters.map { p -> p.value },
+                        parameters = it.parameters,
                         curve = it.curve.map { c -> c.copy() }
                     )
                 },
@@ -141,6 +144,14 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
             )
         )
 
+    init {
+        viewModelScope.launch {
+            userPresets.presetsFlow.collect { saved ->
+                _globalPresets.value = saved
+            }
+        }
+    }
+
     fun saveGlobalPreset(name: String, category: String?) : GlobalPreset {
         val data = GlobalPresetData(
             effects = snapshotEffects(),
@@ -151,6 +162,10 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
         )
         val preset = GlobalPreset(name, data, category, false)
         _globalPresets.update { presets -> presets.filterNot { it.name == name } + preset }
+
+        viewModelScope.launch {
+            userPresets.savePresets(_globalPresets.value)
+        }
         return preset
     }
 
@@ -180,7 +195,7 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
         return _effects.value.map { effect ->
             EffectSnapshot(
                 effectType = effect.effectType,
-                parameters = effect.parameters.map { it.value },
+                parameters = effect.parameters,
                 isBypassed = effect.isBypassed
             )
         }
@@ -191,7 +206,7 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
             ModulatorSnapshot(
                 id = mod.id,
                 isLFO = mod is Modulator.LFO,
-                parameters = mod.parameters.map { p -> p.value },
+                parameters = mod.parameters,
                 curve = mod.curve.map { it.copy() }
             )
         }
@@ -203,14 +218,14 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
                 chainA = state.chainAEffects.map { effect ->
                     EffectSnapshot(
                         effectType = effect.effectType,
-                        parameters = effect.parameters.map { it.value },
+                        parameters = effect.parameters,
                         isBypassed = effect.isBypassed
                     )
                 },
                 chainB = state.chainBEffects.map { effect ->
                     EffectSnapshot(
                         effectType = effect.effectType,
-                        parameters = effect.parameters.map { it.value },
+                        parameters = effect.parameters,
                         isBypassed = effect.isBypassed
                     )
                 }
@@ -222,8 +237,9 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
         list.forEach { snap ->
             addEffect(snap.effectType)
             val newEffect = _effects.value.last()
-            snap.parameters.forEachIndexed { paramId, value ->
-                if (value != null) setParam(newEffect.effectId, paramId, value)
+            snap.parameters.forEachIndexed { paramId, param ->
+                val value = param.value ?: return@forEachIndexed
+                setParam(newEffect.effectId, paramId, value)
             }
             if (snap.isBypassed) toggleBypass(newEffect.effectId)
         }
@@ -234,7 +250,9 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
             val mod = if (snap.isLFO) Modulator.LFO(snap.id, curve = snap.curve.map { it.copy() })
             else Modulator.Mapping(snap.id, curve = snap.curve.map { it.copy() })
 
-            snap.parameters.forEachIndexed { paramId, value -> if (value != null) mod.setParam(paramId, value) }
+            snap.parameters.forEachIndexed { paramId, param ->
+                val value = param.value ?: return@forEachIndexed
+                mod.setParam(paramId, value) }
             mod
         }
     }
@@ -248,9 +266,7 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
                 val newEffect = effects.lastOrNull() ?: return@forEach
 
                 effectSnap.parameters.forEachIndexed { paramId, value ->
-                    if (value != null) {
-                        parallelSetParam(parallelId, ParallelChain.A, newEffect.effectId, paramId, value)
-                    }
+                    parallelSetParam(parallelId, ParallelChain.A, newEffect.effectId, paramId, value)
                 }
 
                 if (effectSnap.isBypassed) {
@@ -265,9 +281,7 @@ class MainViewModel(private val bleManager: BLEManager) : ViewModel() {
                 val newEffect = effects.lastOrNull() ?: return@forEach
 
                 effectSnap.parameters.forEachIndexed { paramId, value ->
-                    if (value != null) {
-                        parallelSetParam(parallelId, ParallelChain.B, newEffect.effectId, paramId, value)
-                    }
+                    parallelSetParam(parallelId, ParallelChain.B, newEffect.effectId, paramId, value)
                 }
 
                 if (effectSnap.isBypassed) {

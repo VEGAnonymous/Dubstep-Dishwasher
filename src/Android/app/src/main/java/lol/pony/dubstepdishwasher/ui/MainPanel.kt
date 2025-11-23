@@ -39,9 +39,7 @@ import lol.pony.dubstepdishwasher.viewmodel.MainViewModelFactory
 enum class LeftColumnMode { FX, MOD }
 
 @Composable
-fun MainPanel(bleManager: BLEManager) {
-    val mainViewModel: MainViewModel = viewModel(factory = MainViewModelFactory(bleManager))
-
+fun MainPanel(mainViewModel: MainViewModel) {
     val resourceError = mainViewModel.resourceError.collectAsState().value
 
     val effects by mainViewModel.effects.collectAsState()

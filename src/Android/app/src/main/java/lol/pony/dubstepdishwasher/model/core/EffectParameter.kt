@@ -3,17 +3,29 @@ package lol.pony.dubstepdishwasher.model.core
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import java.math.BigDecimal
 import java.math.RoundingMode
 import kotlin.math.pow
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.CompositeDecoder
+import kotlinx.serialization.encoding.CompositeEncoder
 
+@Serializable
 sealed class EffectParameter<T> (
+    @SerialName("a_id")
     override val id: Int,
+    @SerialName("a_name")
     override val name: String
 ) : Parameter<T> {
     abstract override var value: T
     abstract override val unit: ParamUnit
 
+    @Serializable
     data class Range<T : Number>(
         val effectId: Int,
         override val id: Int,
@@ -103,6 +115,7 @@ sealed class EffectParameter<T> (
         }
     }
 
+    @Serializable
     data class Discrete<T>(
         val effectId: Int,
         override val id: Int,
@@ -116,6 +129,7 @@ sealed class EffectParameter<T> (
         override fun formatValue(): String = ""
     }
 
+    @Serializable
     data class Toggle(
         val effectId: Int,
         override val id: Int,

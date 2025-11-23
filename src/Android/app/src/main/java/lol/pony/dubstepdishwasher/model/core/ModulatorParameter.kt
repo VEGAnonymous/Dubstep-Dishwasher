@@ -3,17 +3,22 @@ package lol.pony.dubstepdishwasher.model.core
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import java.math.BigDecimal
 import java.math.RoundingMode
 import kotlin.math.pow
 
+@Serializable
 sealed class ModulatorParameter<T>(
+    @SerialName("a_id")
     override val id: Int,
+    @SerialName("a_name")
     override val name: String
 ) : Parameter<T> {
     abstract override var value: T
     abstract override val unit: ParamUnit
-
+    @Serializable
     data class Range<T : Number>(
         val modId: String,
         override val id: Int,
@@ -79,7 +84,7 @@ sealed class ModulatorParameter<T>(
             return "$rounded$unitStr"
         }
     }
-
+    @Serializable
     data class Discrete<T>(
         val modId: String,
         override val id: Int,

@@ -1,7 +1,11 @@
 package lol.pony.dubstepdishwasher.model.core
 
+import kotlinx.serialization.Contextual
+import kotlinx.serialization.Serializable
+
 /* GLOBAL PRESETS */
 
+@Serializable
 data class GlobalPreset(
     override val name: String,
     override val data: GlobalPresetData,
@@ -9,6 +13,7 @@ data class GlobalPreset(
     override val favorite: Boolean = false
 ) : Preset<GlobalPresetData>
 
+@Serializable
 data class GlobalPresetData(
     val effects: List<EffectSnapshot>,
     val modulators: List<ModulatorSnapshot>,
@@ -16,20 +21,20 @@ data class GlobalPresetData(
     val editorStates: Map<String, EditorState>,
     val parallelChains: Map<Int, ParallelChainSnapshot> = emptyMap()
 )
-
+@Serializable
 data class EffectSnapshot(
     val effectType: EffectType,
-    val parameters: List<Any?>,
+    val parameters: MutableList<EffectParameter<*>>,
     val isBypassed: Boolean
 )
-
+@Serializable
 data class ModulatorSnapshot(
     val id: String,
     val isLFO: Boolean,
-    val parameters: List<Any?>,
+    val parameters: MutableList<ModulatorParameter<*>>,
     val curve: List<CurvePoint>
 )
-
+@Serializable
 data class ParallelChainSnapshot(
     val chainA: List<EffectSnapshot>,
     val chainB: List<EffectSnapshot>
@@ -57,7 +62,7 @@ fun defaultGlobalPresets(): List<GlobalPreset> {
         ModulatorSnapshot(
             id = mod.id,
             isLFO = mod is Modulator.LFO,
-            parameters = mod.parameters.map { p -> p.value },
+            parameters = mod.parameters,
             curve = mod.curve.map { it.copy() }
         )
     }

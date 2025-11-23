@@ -1,9 +1,11 @@
 package lol.pony.dubstepdishwasher.model.core
 
+import kotlinx.serialization.Serializable
+
 data class GlobalPresetState(
     override var currentPreset: Preset<GlobalPresetData>? = defaultGlobalPresets()[0] // Init
 ) : PresetContainer<GlobalPresetData>
-
+@Serializable
 data class EditorState(
     val snapToGrid: Boolean = false,
     val gridX: Int = 8,

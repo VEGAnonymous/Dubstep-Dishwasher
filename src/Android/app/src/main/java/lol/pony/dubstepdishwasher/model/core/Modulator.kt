@@ -1,5 +1,7 @@
 package lol.pony.dubstepdishwasher.model.core
 
+import kotlinx.serialization.Serializable
+
 enum class LFOMode(override val uiName: String) : UIEnum {
     NORMAL("Normal"),
     RANDOM("Random")
@@ -10,7 +12,7 @@ enum class RandomMode(override val uiName: String) : UIEnum {
     SAMPLE_HOLD("S&H"),
     BINARY("Binary")
 }
-
+@Serializable
 data class CurvePoint(val x: Float, val y: Float, val curve: Float = 0f) // curve = exp
 
 sealed class Modulator(open val id: String) {
