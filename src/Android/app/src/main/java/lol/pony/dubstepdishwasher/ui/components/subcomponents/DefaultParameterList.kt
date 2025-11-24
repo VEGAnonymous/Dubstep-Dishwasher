@@ -19,6 +19,7 @@ fun DefaultParameterList(
     assignments: List<ModAssignment>,
     selectedModulator: Modulator?,
     currentModOffsets: Map<ParamKey, Float>,
+    withinParallel: Boolean = false,
     // Callbacks
     onSetParam: (Int, Int, Any) -> Unit,
     onAssignMod: (String, Int, Int) -> Unit,
@@ -35,6 +36,7 @@ fun DefaultParameterList(
                 assignments = assignments,
                 selectedModulator = selectedModulator,
                 currentModOffsets = currentModOffsets,
+                withinParallel = withinParallel,
                 onSetParam = onSetParam,
                 onAssignMod = onAssignMod,
                 onRemoveMod = onRemoveMod,

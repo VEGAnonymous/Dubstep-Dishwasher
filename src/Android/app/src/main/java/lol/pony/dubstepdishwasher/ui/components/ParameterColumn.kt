@@ -1,5 +1,6 @@
 package lol.pony.dubstepdishwasher.ui.components
 
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -50,7 +51,11 @@ fun ParameterColumn(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(100.dp)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                    .animateItem(
+                        fadeInSpec = tween(durationMillis = 200),
+                        fadeOutSpec = tween(durationMillis = 200),
+                    ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val iconRes = effectLabel(effect.effectType)

@@ -1,5 +1,9 @@
 package lol.pony.dubstepdishwasher.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -39,12 +44,20 @@ fun ResourceMeter(
 @Composable
 private fun ResourceBar(value: Float) {
     val clamped = value.coerceIn(0f, 1f)
+    val animated = animateFloatAsState(
+        targetValue = clamped,
+        animationSpec = tween(durationMillis = 200, easing = LinearOutSlowInEasing),
+        label = "resourceBarAnim"
+    ).value
 
-    val color = when {
-        clamped > 0.9f -> Color(0xFFD96D52)
-        clamped > 0.7f -> Color(0xFFD0C455)
-        else -> MaterialTheme.colorScheme.primary
-    }
+    val color by animateColorAsState(
+        targetValue = when {
+            animated > 0.9f -> Color(0xFFD96D52)
+            animated > 0.7f -> Color(0xFFD0C455)
+            else -> MaterialTheme.colorScheme.primary
+        },
+        animationSpec = tween(durationMillis = 300, easing = LinearOutSlowInEasing),
+    )
 
     Column {
         Box(
@@ -56,7 +69,7 @@ private fun ResourceBar(value: Float) {
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .fillMaxWidth(clamped)
+                    .fillMaxWidth(animated)
                     .background(color)
             )
         }

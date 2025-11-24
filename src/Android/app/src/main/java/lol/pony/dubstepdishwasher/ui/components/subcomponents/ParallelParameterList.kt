@@ -64,7 +64,7 @@ fun ParallelParameterList(
                 modifier = Modifier
                     .width(100.dp)
                     .fillMaxHeight()
-                    .padding(start = 16.dp),
+                    .padding(start = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -72,17 +72,17 @@ fun ParallelParameterList(
                     onClick = onOpenEditor,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    contentPadding = PaddingValues(start = 0.dp, end = 4.dp, top = 4.dp, bottom = 8.dp),
+                    contentPadding = PaddingValues(start = 0.dp, end = 4.dp, top = 2.dp, bottom = 6.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Edit,
                         contentDescription = "Edit",
                         modifier = Modifier
-                            .size(24.dp)
-                            .padding(top = 4.dp))
+                            .size(20.dp)
+                            .padding(top = 4.dp, end = 4.dp))
                     Text(
                         text = "Edit",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         maxLines = 1
                     )
                 }

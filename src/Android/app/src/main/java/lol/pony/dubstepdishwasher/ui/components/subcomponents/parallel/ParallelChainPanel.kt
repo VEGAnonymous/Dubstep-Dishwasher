@@ -1,6 +1,7 @@
 package lol.pony.dubstepdishwasher.ui.components.subcomponents.parallel
 
 import android.media.MediaPlayer
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -123,22 +124,27 @@ fun ParallelChainPanel(
         LazyColumn(modifier = Modifier.fillMaxHeight()) {
             items(
                 count = count,
-                key = { index ->
-                    val effect = effects[index]
-                    "${effect.effectId}-${effect.isBypassed}"
-                }
+                key = { index -> effects[index].effectId }
             ) { index ->
                 val effect = effects[index]
                 val effectId = effect.effectId
-                SlotEditor(
-                    index = index,
-                    effect = effect,
-                    onRemove = { onParallelRemove(id, chain, effectId) },
-                    onReorder = { toIndex -> onParallelReorder(id, chain, effectId, toIndex) },
-                    onBypass = { fxId -> onParallelBypass(id, chain, fxId) },
-                    onSetParam = { paramId, value -> onParallelSetParam(id, chain, effectId, paramId, value) }
-                )
-                HorizontalDivider(modifier = Modifier.padding(bottom = 2.dp))
+                Column (modifier = Modifier
+                    .fillMaxSize()
+                    .animateItem(
+                        fadeInSpec = tween(durationMillis = 200),
+                        fadeOutSpec = tween(durationMillis = 200),
+                    )
+                ) {
+                    SlotEditor(
+                        index = index,
+                        effect = effect,
+                        onRemove = { onParallelRemove(id, chain, effectId) },
+                        onReorder = { toIndex -> onParallelReorder(id, chain, effectId, toIndex) },
+                        onBypass = { fxId -> onParallelBypass(id, chain, fxId) },
+                        onSetParam = { paramId, value -> onParallelSetParam(id, chain, effectId, paramId, value) }
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(bottom = 2.dp))
+                }
             }
         }
 
@@ -228,7 +234,7 @@ private fun SlotEditor(
                 // REMOVE
                 IconButton(
                     onClick = onRemove,
-                    modifier = Modifier.width(40.dp)
+                    modifier = Modifier.width(40.dp).scale(0.8f)
                 ) { Icon(Icons.Filled.Close, contentDescription = "Remove FX") }
             }
         }
@@ -285,6 +291,7 @@ private fun ParallelParameterListUI(
             assignments = emptyList(),
             selectedModulator = null,
             currentModOffsets = emptyMap(),
+            withinParallel = true,
             onSetParam = { _, paramId , value -> onSetParam(paramId, value) },
             onAssignMod = { _, _, _ -> },
             onRemoveMod = { _, _, _ -> },
@@ -296,6 +303,7 @@ private fun ParallelParameterListUI(
             assignments = emptyList(),
             selectedModulator = null,
             currentModOffsets = emptyMap(),
+            withinParallel = true,
             onSetParam = { _, paramId, value -> onSetParam(paramId, value) },
             onAssignMod = { _, _, _ -> },
             onRemoveMod = { _, _, _ -> },
