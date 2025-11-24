@@ -3,8 +3,6 @@ package lol.pony.dubstepdishwasher.model.core
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import java.math.BigDecimal
-import java.math.RoundingMode
 import kotlin.math.pow
 
 sealed class ModulatorParameter<T>(
@@ -53,30 +51,7 @@ sealed class ModulatorParameter<T>(
         }
 
         override fun formatValue(): String {
-            val decimalPlaces = when { // Determine rounding precision
-                step.toFloat() >= 1.0f -> 0
-                step.toFloat() >= 0.1f -> 1
-                step.toFloat() >= 0.01f -> 2
-                step.toFloat() >= 0.001f -> 3
-                else -> 4
-            }
-
-            // Build unit string
-            val (displayValue, displayDecimals, unitStr) = when (unit) {
-                ParamUnit.PERCENT -> Triple(value.toDouble() * 100.0, (decimalPlaces - 2).coerceAtLeast(0), "%")
-                ParamUnit.MS -> {
-                    val v = value.toDouble()
-                    if (v >= 1000.0) Triple(v / 1000.0, (decimalPlaces + 3).coerceAtMost(4), " s")
-                    else Triple(v, decimalPlaces, " ms")
-                }
-                ParamUnit.HZ -> Triple(value.toDouble(), decimalPlaces, " Hz")
-                ParamUnit.DB -> Triple(value.toDouble(), decimalPlaces, " dB")
-                ParamUnit.SEMITONES -> Triple(value.toDouble(), decimalPlaces, " st")
-                ParamUnit.ENUM, ParamUnit.DIMENSIONLESS -> Triple(value.toDouble(), decimalPlaces, "")
-            }
-
-            val rounded = BigDecimal(displayValue).setScale(displayDecimals, RoundingMode.HALF_UP)
-            return "$rounded$unitStr"
+            return formatParamValue(value.toDouble(), unit, step.toFloat())
         }
     }
 

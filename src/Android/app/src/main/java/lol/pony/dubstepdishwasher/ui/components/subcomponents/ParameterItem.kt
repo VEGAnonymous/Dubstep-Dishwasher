@@ -192,7 +192,7 @@ fun ParameterItem (
                     frameCount = 31,
 
                     effectID = param.effectId,
-                    paramID = param.id,
+                    parameter = param,
                     modAssignments = paramMods,
                     selectedModID = selectedModulator?.id,
                     isModulatable = param.isModulatable,
