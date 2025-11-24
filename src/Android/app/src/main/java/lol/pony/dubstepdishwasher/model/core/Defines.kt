@@ -19,26 +19,26 @@ enum class EffectType(
     override val uiName: String,
     val resourceUsage: ResourceUsage
 ) : UIEnum {
-    CHORUS("Chorus", ResourceUsage(0.05f)),
-    COMPRESSOR("Compressor", ResourceUsage(0.05f)),
-    DELAY("Delay", ResourceUsage(0.02f)),
-    DISTORTION("Distortion", ResourceUsage(0.02f)),
-    EQUALIZER("Equalizer", ResourceUsage(0.01f)),
-    FLANGER("Flanger", ResourceUsage(0.01f)),
+    CHORUS("Chorus", ResourceUsage(0.05f, 1)),
+    COMPRESSOR("Compressor", ResourceUsage(0.05f, 1)),
+    DELAY("Delay", ResourceUsage(0.02f, 1)),
+    DISTORTION("Distortion", ResourceUsage(0.02f, 1)),
+    EQUALIZER("Equalizer", ResourceUsage(0.01f, 1)),
+    FLANGER("Flanger", ResourceUsage(0.01f, 1)),
     FORMANT_SHIFTER("Formant Shifter", ResourceUsage(0.19f, 30)),
     FREEZER("Freezer", ResourceUsage(0.16f, 200)),
-    GAIN("Gain", ResourceUsage(0.005f)),
-    GATE("Gate", ResourceUsage(0.04f)),
-    GRANULATOR("Granulator", ResourceUsage(0.13f)),
-    MODULATION("Modulation", ResourceUsage(0.01f)),
-    PARALLEL("Parallel", ResourceUsage(0f)), // Will vary
-    PHASER("Phaser", ResourceUsage(0.08f)),
-    PITCH_SHIFTER("Pitch Shifter", ResourceUsage(0.11f)),
+    GAIN("Gain", ResourceUsage(0.005f, 1)),
+    GATE("Gate", ResourceUsage(0.04f, 1)),
+    GRANULATOR("Granulator", ResourceUsage(0.13f, 1)),
+    MODULATION("Modulation", ResourceUsage(0.01f, 1)),
+    PARALLEL("Parallel", ResourceUsage(0.005f, 1)), // Will vary
+    PHASER("Phaser", ResourceUsage(0.08f, 1)),
+    PITCH_SHIFTER("Pitch Shifter", ResourceUsage(0.11f, 1)),
     REVERB("Reverb", ResourceUsage(0.13f, 150)),
-    SCRUBBY("Scrubby", ResourceUsage(0.04f)),
+    SCRUBBY("Scrubby", ResourceUsage(0.04f, 1)),
     SPECTRAL_GATE("Spectral Gate", ResourceUsage(0.16f, 20)),
-    VOCODER("Vocoder", ResourceUsage(0.22f)),
-    WAH("Wah", ResourceUsage(0.06f))
+    VOCODER("Vocoder", ResourceUsage(0.22f, 5)),
+    WAH("Wah", ResourceUsage(0.06f, 1))
 }
 
 enum class ParamUnit { PERCENT, ENUM, MS, HZ, DB, SEMITONES, DIMENSIONLESS }
