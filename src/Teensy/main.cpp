@@ -160,9 +160,9 @@ void processCommand(const Command& cmd, AudioChain& chain, ModulationEngine& mod
         case CommandType::PARALLEL_CHAIN_COMMAND: {
             // Valid only for Parallel Effect instances
             Effect* effect = chain.getEffect(cmd.id1);
-            if (!effect) break;
-            Parallel* parallel = dynamic_cast<Parallel*>(effect);
-            if (!parallel) break;
+            if (!effect || !effect->isParallel()) break;
+
+            Parallel* parallel = static_cast<Parallel*>(effect);
             
             // HACK: Have to mux paramId addressing since we ran out of command bytes
             uint8_t chainSelect = (cmd.id2 >> 4) & 0x0F; // Upper nibble

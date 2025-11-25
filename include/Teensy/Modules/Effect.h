@@ -15,6 +15,7 @@ class Effect {
         
         void setBypass(bool state);
         bool isBypassed() const;
+        virtual bool isParallel() const;
         void setID(EffectID id);
         EffectID getID() const;
         

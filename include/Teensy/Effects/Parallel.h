@@ -28,6 +28,8 @@ class Parallel : public Effect {
     public:
         Parallel(float mix = 1.0f, ParallelMode mode = ParallelMode::SUM);
         ~Parallel();
+
+        bool isParallel() const override;
         
         void setMix(float mix); // [0.0, 1.0]
         void setMode(ParallelMode mode);

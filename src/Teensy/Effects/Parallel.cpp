@@ -51,6 +51,8 @@ Parallel::Parallel(float mix, ParallelMode mode) {
 }
 Parallel::~Parallel() { if (signalA) extmem_free(signalA); if (signalB) extmem_free(signalB); }
 
+bool Parallel::isParallel() const { return true; }
+
 void Parallel::setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
 void Parallel::setMode(ParallelMode mode) { this->mode = mode; }
 void Parallel::setParam(ParamID param, float value) {
@@ -72,33 +74,33 @@ void Parallel::chainCommand(uint8_t chainSelect, uint8_t command, EffectID effec
     // Select chain
     AudioChain& chain = (chainSelect == Chain::B) ? chainB : chainA;
 
-    size_t effectId = static_cast<EffectID>(effectId);
-    size_t paramId = static_cast<ParamID>(paramId);
+    size_t effectID = static_cast<EffectID>(effectId);
+    size_t paramID = static_cast<ParamID>(paramId);
 
     switch (command) {
         case ChainCommand::ADD: {
             EffectName name = static_cast<EffectName>(static_cast<uint8_t>(value));
             if (name == EffectName::PARALLEL) return; // No thanks
-            Effect* effect = chain.addEffect(name);
+            chain.addEffect(name);
             break;
         }
         case ChainCommand::REMOVE: {
-            chain.removeEffect(effectId);
+            chain.removeEffect(effectID);
             break;
         }
         case ChainCommand::REORDER: {
             size_t toIndex = static_cast<size_t>(value);
-            chain.reorderEffect(effectId, toIndex);
+            chain.reorderEffect(effectID, toIndex);
             break;
         } 
         case ChainCommand::BYPASS: {
-            Effect* effect = chain.getEffect(effectId);
+            Effect* effect = chain.getEffect(effectID);
             if (effect) effect->setBypass(value >= 0.5f);
             break;
         }
         case ChainCommand::SET_PARAM: {
-            Effect* effect = chain.getEffect(effectId);
-            if (effect) effect->setParam(paramId, value);
+            Effect* effect = chain.getEffect(effectID);
+            if (effect) effect->setParam(paramID, value);
             break;
         }
     }

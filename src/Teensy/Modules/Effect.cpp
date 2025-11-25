@@ -15,6 +15,7 @@ bool bypass = false;
 
 void Effect::setBypass(bool state) { bypass = state; }
 bool Effect::isBypassed() const { return bypass; }
+bool Effect::isParallel() const { return false; }
 void Effect::setID(EffectID id) { this->id = id; }
 EffectID Effect::getID() const { return id; }
 
