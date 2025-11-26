@@ -182,7 +182,7 @@ fun ModulatorControls(
                                         knobImageResId = R.drawable.control_knob,
                                         frameCount = 31,
                                         effectID = -1,
-                                        paramID = param.id,
+                                        parameter = param,
                                         modAssignments = emptyList(),
                                         selectedModID = null,
                                         isModulatable = false,

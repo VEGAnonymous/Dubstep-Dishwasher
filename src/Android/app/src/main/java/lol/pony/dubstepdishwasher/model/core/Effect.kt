@@ -1,11 +1,16 @@
 package lol.pony.dubstepdishwasher.model.core
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+
 abstract class Effect {
     abstract val effectId: Int
     abstract val effectType: EffectType
     abstract val resourceUsage: ResourceUsage
     abstract val parameters: MutableList<EffectParameter>
-    var isBypassed = false
+    var isBypassed by mutableStateOf(false)
+        private set
 
     @Suppress("UNCHECKED_CAST")
     fun setParam(paramId: Int, value: Any) {

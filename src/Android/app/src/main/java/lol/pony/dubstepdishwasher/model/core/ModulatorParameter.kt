@@ -72,30 +72,7 @@ sealed class ModulatorParameter() {
         }
 
         override fun formatValue(): String {
-            val decimalPlaces = when { // Determine rounding precision
-                step >= 1.0f -> 0
-                step >= 0.1f -> 1
-                step >= 0.01f -> 2
-                step >= 0.001f -> 3
-                else -> 4
-            }
-
-            // Build unit string
-            val (displayValue, displayDecimals, unitStr) = when (unit) {
-                ParamUnit.PERCENT -> Triple(value.toDouble() * 100.0, (decimalPlaces - 2).coerceAtLeast(0), "%")
-                ParamUnit.MS -> {
-                    val v = value.toDouble()
-                    if (v >= 1000.0) Triple(v / 1000.0, (decimalPlaces + 3).coerceAtMost(4), " s")
-                    else Triple(v, decimalPlaces, " ms")
-                }
-                ParamUnit.HZ -> Triple(value.toDouble(), decimalPlaces, " Hz")
-                ParamUnit.DB -> Triple(value.toDouble(), decimalPlaces, " dB")
-                ParamUnit.SEMITONES -> Triple(value.toDouble(), decimalPlaces, " st")
-                ParamUnit.ENUM, ParamUnit.DIMENSIONLESS -> Triple(value.toDouble(), decimalPlaces, "")
-            }
-
-            val rounded = BigDecimal(displayValue).setScale(displayDecimals, RoundingMode.HALF_UP)
-            return "$rounded$unitStr"
+            return formatParamValue(value.toDouble(), unit, step.toFloat())
         }
     }
     @Serializable(with = DiscreteModSerializer::class)

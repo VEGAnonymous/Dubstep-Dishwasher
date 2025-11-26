@@ -1,7 +1,6 @@
 package lol.pony.dubstepdishwasher.viewmodel
 
 // import android.util.Log
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -382,6 +381,7 @@ class MainViewModel(
         val effect = chain.get(effectId)
         chain.removeEffect(effectId)
         _modAssignments.value = _modAssignments.value.filterNot { it.target.effectId == effectId } // Also remove mod assignments
+        if (effect?.effectType == EffectType.PARALLEL) { _parallelChains.update { chains -> chains - effectId } } // Clean up any parallel state
 
         _effects.value = chain.getAll()
         _resourceUsage.value = calculateTotalUsage()
@@ -393,8 +393,6 @@ class MainViewModel(
                 MOD_ASSIGNMENT_REMOVE, modIndex, assignment.target.effectId, assignment.target.paramId.toFloat()
             )
         }
-
-        if (effect?.effectType == EffectType.PARALLEL) { _parallelChains.update { chains -> chains - effectId } } // Clean up any parallel state
         // Log.d("cmd", "EFFECT_REMOVE: effectId=$effectId")
     }
 

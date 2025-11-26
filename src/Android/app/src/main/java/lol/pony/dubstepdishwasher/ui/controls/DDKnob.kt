@@ -15,14 +15,17 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,13 +51,18 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import lol.pony.dubstepdishwasher.model.core.ModAssignment
 import lol.pony.dubstepdishwasher.model.core.ModPolarity
 import lol.pony.dubstepdishwasher.R
+import lol.pony.dubstepdishwasher.model.core.EffectParameter
+import lol.pony.dubstepdishwasher.model.core.Parameter
+import lol.pony.dubstepdishwasher.model.core.formatParamValue
 import kotlin.math.roundToInt
 
 private enum class DragMode { Vertical, Horizontal }
@@ -72,7 +80,7 @@ fun DDKnob(
 
     // Model stuff
     effectID : Int,
-    paramID : Int,
+    parameter: Parameter<*>,
     modAssignments: List<ModAssignment> = emptyList(),
     selectedModID: String? = null,
     isModulatable: Boolean = false,
@@ -84,6 +92,8 @@ fun DDKnob(
     onModAmountChange: (String, Float) -> Unit,
     onTogglePolarity: (String) -> Unit
 ) {
+    val paramID = parameter.id
+
     // Canvas drawing vars
     val imageBitmap = ImageBitmap.imageResource(id = knobImageResId)
     val frameHeight = imageBitmap.height / frameCount
@@ -117,6 +127,10 @@ fun DDKnob(
         ),
         label = "overlay_fade"
     )
+
+    // Tooltip state vars
+    var showModTooltip by remember { mutableStateOf(false) }
+    var tooltipRange by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     /* MAIN COMPOSE */
     Box(modifier = modifier
@@ -178,14 +192,46 @@ fun DDKnob(
                                         it.modId == selectedModID && it.target.effectId == effectID && it.target.paramId == paramID
                                     }
                                     activeAssignment?.let { assignment ->
-                                        val newAmount = (dragStartMod + deltaAmount).coerceIn(-1f, 1f)
-                                        onModAmountChange(assignment.modId, newAmount)
+                                        val amount = (dragStartMod + deltaAmount).coerceIn(-1f, 1f)
+                                        onModAmountChange(assignment.modId, amount)
+
+                                        // Show tooltip
+                                        showModTooltip = true
+                                        parameter.let { param ->
+                                            if (param is EffectParameter.Range<*>) {
+                                                val norm = param.normalized()
+                                                val (rangeStart, rangeEnd) = when (assignment.polarity) {
+                                                    ModPolarity.Bipolar -> {
+                                                        val half = amount / 2f
+                                                        val startNorm = (norm - half).coerceIn(0f, 1f)
+                                                        val endNorm = (norm + half).coerceIn(0f, 1f)
+                                                        Pair(startNorm, endNorm)
+                                                    }
+                                                    ModPolarity.Unipolar -> {
+                                                        val absAmount = kotlin.math.abs(amount)
+                                                        if (amount > 0) Pair(norm, (norm + absAmount).coerceIn(0f, 1f))
+                                                        else Pair((norm - absAmount).coerceIn(0f, 1f), norm)
+                                                    }
+                                                }
+                                                // Format value
+                                                val startValue = param.normalizedTo(rangeStart)
+                                                val endValue = param.normalizedTo(rangeEnd)
+                                                val startStr = formatParamValue(startValue.toDouble(), param.unit, 0.01f, false)
+                                                val endStr = formatParamValue(endValue.toDouble(), param.unit, 0.01f, false)
+
+                                                tooltipRange = Pair(startStr, endStr)
+                                            }
+                                        }
                                     }
                                 }
                                 null -> Unit
                             }
                         },
-                        onDragEnd = { onValueChangeFinished() }
+                        onDragEnd = {
+                            onValueChangeFinished()
+                            showModTooltip = false
+                            tooltipRange = null
+                        }
                     )
                 }
 
@@ -315,6 +361,7 @@ fun DDKnob(
             )
         }
 
+        // Modulation controls
         modAssignments.filter { it.modId == selectedModID }.forEach { assignment ->
             // Switch for toggling polarity
             DDSwitch(
@@ -335,6 +382,25 @@ fun DDKnob(
                     .padding(start = 10.dp, bottom = 12.dp)
                     .align(Alignment.TopEnd)
             ) { Icon(imageVector = Icons.Filled.Close, contentDescription = "Remove Mod") }
+        }
+
+        // Modulation range tooltip
+        if (showModTooltip && tooltipRange != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .background(Color(0x99000000),
+                shape = RoundedCornerShape(4.dp))
+            ) {
+                Text(
+                    modifier = Modifier.fillMaxWidth(),
+                    text = "${tooltipRange!!.first}\n${tooltipRange!!.second}",
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, textAlign = TextAlign.Center),
+                    minLines = 2, maxLines = 2
+                )
+            }
         }
 
     } // Box

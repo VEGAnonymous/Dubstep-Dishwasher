@@ -1,5 +1,6 @@
 package lol.pony.dubstepdishwasher.ui.components
 
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -40,7 +41,11 @@ fun EffectList(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(40.dp)
-                    .padding(start = 12.dp, end = 10.dp, top = 6.dp, bottom = 6.dp),
+                    .padding(start = 12.dp, end = 10.dp, top = 6.dp, bottom = 6.dp)
+                    .animateItem(
+                        fadeInSpec = tween(durationMillis = 200),
+                        fadeOutSpec = tween(durationMillis = 200),
+                    ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
 
@@ -52,7 +57,6 @@ fun EffectList(
                 }
 
                 // Reorder effect buttons
-                // TEMP: Potentially switch to drag and drop
                 Row (
                     modifier = Modifier.padding(start = 6.dp, end = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -75,7 +79,7 @@ fun EffectList(
 
                 // Bypass switch
                 DDSwitch(
-                    modifier = Modifier.scale(1f).padding(end = 8.dp),
+                    modifier = Modifier.scale(0.8f).padding(end = 8.dp),
                     checked = fx.isBypassed,
                     onCheckedChange = { onToggleBypass(fx.effectId) },
                     imageRes = R.drawable.control_bypass

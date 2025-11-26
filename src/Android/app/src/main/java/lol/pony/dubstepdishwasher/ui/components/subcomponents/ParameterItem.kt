@@ -63,6 +63,7 @@ fun ParameterItem (
     assignments: List<ModAssignment>,
     selectedModulator: Modulator?,
     currentModOffsets: Map<ParamKey, Float>,
+    withinParallel: Boolean = false, // Hack shit
     // Callbacks
     onSetParam: (Int, Int, Any) -> Unit,
     onAssignMod: (String, Int, Int) -> Unit,
@@ -191,7 +192,7 @@ fun ParameterItem (
                     frameCount = 31,
 
                     effectID = param.effectId,
-                    paramID = param.id,
+                    parameter = param,
                     modAssignments = paramMods,
                     selectedModID = selectedModulator?.id,
                     isModulatable = param.isModulatable,
@@ -271,7 +272,7 @@ fun ParameterItem (
             // Switch for toggle parameters
             is EffectParameter.Toggle -> {
                 DDSwitch(
-                    modifier = Modifier.size(42.dp).padding(top = 12.dp),
+                    modifier = Modifier.size(42.dp).padding(top = if (withinParallel) 22.dp else 12.dp),
                     checked = param.value,
                     onCheckedChange = { onSetParam(effect.effectId, param.id, !param.value) },
                     imageRes = R.drawable.control_toggle
