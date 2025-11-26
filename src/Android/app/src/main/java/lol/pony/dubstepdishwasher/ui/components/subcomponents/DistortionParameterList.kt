@@ -2,11 +2,19 @@ package lol.pony.dubstepdishwasher.ui.components.subcomponents
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -14,8 +22,20 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
-import lol.pony.dubstepdishwasher.model.core.*
-import kotlin.math.*
+import lol.pony.dubstepdishwasher.model.core.DistortionMode
+import lol.pony.dubstepdishwasher.model.core.Effect
+import lol.pony.dubstepdishwasher.model.core.EffectParameter
+import lol.pony.dubstepdishwasher.model.core.ModAssignment
+import lol.pony.dubstepdishwasher.model.core.Modulator
+import lol.pony.dubstepdishwasher.model.core.ParamKey
+import lol.pony.dubstepdishwasher.model.core.modValue
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.atan
+import kotlin.math.exp
+import kotlin.math.min
+import kotlin.math.round
+import kotlin.math.tanh
 
 @Composable
 fun DistortionParameterList(
@@ -28,8 +48,7 @@ fun DistortionParameterList(
     onAssignMod: (String, Int, Int) -> Unit,
     onRemoveMod: (String, Int, Int) -> Unit,
     onModAmountChange: (String, Int, Int, Float) -> Unit,
-    onTogglePolarity: (String, Int, Int) -> Unit,
-    scrollable: Boolean = false
+    onTogglePolarity: (String, Int, Int) -> Unit
 ) {
     val params = effect.parameters.toList()
     val mode = params[1].getValueAny() as DistortionMode
@@ -43,9 +62,8 @@ fun DistortionParameterList(
 
         LazyRow(
             modifier = Modifier
-                .weight(1f)
-                .padding(end = 12.dp),
-            userScrollEnabled = scrollable
+                .weight(1f),
+            contentPadding = PaddingValues(end = 12.dp)
         ) {
             items(params, key = { it.id }) { param ->
                 ParameterItem(
@@ -84,7 +102,10 @@ fun DistortionPlot(
 
     val curveColor = Color(0xFFFF9C58)
     val gradColor = curveColor.copy(alpha = 0.35f)
-    Canvas(modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
+    Canvas(modifier = modifier
+        .background(MaterialTheme.colorScheme.surfaceVariant)
+        .fillMaxSize()
+    ) {
         val w = size.width; val h = size.height
         val midY = h / 2f; val midX = w / 2f
 

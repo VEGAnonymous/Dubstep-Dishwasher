@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -127,7 +126,7 @@ fun <T, C : PresetContainer<T>, A> PresetManager(
                         favoritePresets.forEach { preset ->
                             PresetRow(
                                 preset = preset,
-                                onLoad = onLoad,
+                                onLoad = { expanded = false; onLoad(it) },
                                 onFavorite = { name, favorite -> onFavorite(name, favorite) },
                                 onDelete = null,
                                 onStateChange = onStateChange,
@@ -144,7 +143,7 @@ fun <T, C : PresetContainer<T>, A> PresetManager(
                             presetsByCategory[category]!!.forEach { preset ->
                                 PresetRow(
                                     preset = preset,
-                                    onLoad = onLoad,
+                                    onLoad = { expanded = false; onLoad(it) },
                                     onFavorite = { name, favorite -> onFavorite(name, favorite) },
                                     onDelete = { preset -> presetToDelete = preset; showDeleteDialog = true },
                                     onStateChange = onStateChange,
@@ -162,7 +161,7 @@ fun <T, C : PresetContainer<T>, A> PresetManager(
                         noCategory.forEach { preset ->
                             PresetRow(
                                 preset = preset,
-                                onLoad = onLoad,
+                                onLoad = { expanded = false; onLoad(it) },
                                 onFavorite = { name, favorite -> onFavorite(name, favorite) },
                                 onDelete = { preset -> presetToDelete = preset; showDeleteDialog = true },
                                 onStateChange = onStateChange,
@@ -319,7 +318,9 @@ private fun <T, C : PresetContainer<T>> PresetRow(
         DDSwitch(
             modifier = Modifier.size(20.dp),
             checked = preset.favorite,
-            onCheckedChange = { checked -> onFavorite(preset.name, checked) },
+            onCheckedChange = { checked ->
+//                Log.e("favorite", "${preset.name} $checked")
+                onFavorite(preset.name, checked) },
             imageRes = R.drawable.control_star
         )
 

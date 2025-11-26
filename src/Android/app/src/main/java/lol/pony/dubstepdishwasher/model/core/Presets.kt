@@ -1,6 +1,5 @@
 package lol.pony.dubstepdishwasher.model.core
 
-import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 
 /* GLOBAL PRESETS */

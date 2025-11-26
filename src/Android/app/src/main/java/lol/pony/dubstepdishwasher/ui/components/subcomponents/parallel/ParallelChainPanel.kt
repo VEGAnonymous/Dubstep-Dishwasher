@@ -3,7 +3,18 @@ package lol.pony.dubstepdishwasher.ui.components.subcomponents.parallel
 import android.media.MediaPlayer
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -11,8 +22,21 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -24,7 +48,11 @@ import lol.pony.dubstepdishwasher.model.core.EffectType
 import lol.pony.dubstepdishwasher.model.core.ParallelChain
 import lol.pony.dubstepdishwasher.model.core.lerp
 import lol.pony.dubstepdishwasher.ui.components.resourceColor
-import lol.pony.dubstepdishwasher.ui.components.subcomponents.*
+import lol.pony.dubstepdishwasher.ui.components.subcomponents.CompressorParameterList
+import lol.pony.dubstepdishwasher.ui.components.subcomponents.DefaultParameterList
+import lol.pony.dubstepdishwasher.ui.components.subcomponents.DistortionParameterList
+import lol.pony.dubstepdishwasher.ui.components.subcomponents.EqualizerParameterList
+import lol.pony.dubstepdishwasher.ui.components.subcomponents.GateParameterList
 import lol.pony.dubstepdishwasher.ui.controls.DDSwitch
 
 const val MAX_PARALLEL_EFFECTS = 5
@@ -272,8 +300,7 @@ private fun ParallelParameterListUI(
             onAssignMod = { _, _, _ -> },
             onRemoveMod = { _, _, _ -> },
             onModAmountChange = { _, _, _, _ -> },
-            onTogglePolarity = { _, _, _ -> },
-            scrollable = true
+            onTogglePolarity = { _, _, _ -> }
         )
         EffectType.EQUALIZER -> EqualizerParameterList(
             effect = effect,

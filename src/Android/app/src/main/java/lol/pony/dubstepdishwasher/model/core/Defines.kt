@@ -89,3 +89,10 @@ enum class BiquadType(override val uiName: String) : UIEnum {
     PEAK("Peak"),
     NOTCH("Notch")
 }
+@Serializable
+enum class FFTSize(override val uiName: String, val value: Float) : UIEnum {
+    SIZE_128("128 Samples", 128f),
+    SIZE_256("256 Samples", 256f),
+    SIZE_512("512 Samples", 512f),
+    SIZE_1024("1024 Samples", 1024f)
+}

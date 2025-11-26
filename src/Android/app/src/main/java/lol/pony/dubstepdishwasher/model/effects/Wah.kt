@@ -1,6 +1,9 @@
 package lol.pony.dubstepdishwasher.model.effects
 
-import lol.pony.dubstepdishwasher.model.core.*
+import lol.pony.dubstepdishwasher.model.core.Effect
+import lol.pony.dubstepdishwasher.model.core.EffectParameter
+import lol.pony.dubstepdishwasher.model.core.EffectType
+import lol.pony.dubstepdishwasher.model.core.ParamUnit
 
 class Wah(id: Int) : Effect() {
     override val effectId = id

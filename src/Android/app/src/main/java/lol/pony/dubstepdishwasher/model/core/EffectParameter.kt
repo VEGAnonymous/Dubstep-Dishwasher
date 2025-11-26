@@ -14,17 +14,15 @@ import kotlinx.serialization.descriptors.element
 import kotlinx.serialization.encoding.CompositeDecoder
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import java.math.BigDecimal
-import java.math.RoundingMode
 import kotlin.math.pow
 
 @Serializable
-sealed class EffectParameter() {
+sealed class EffectParameter() : Parameter {
     abstract val effectId: Int
-    abstract val id: Int
-    abstract val name: String
-    abstract val unit: ParamUnit
-    abstract fun formatValue(): String
+    abstract override val id: Int
+    abstract override val name: String
+    abstract override val unit: ParamUnit
+    abstract override fun formatValue(): String
 
     abstract fun getValueAny(): Any
     abstract fun setValueAny(newValue: Any)
@@ -94,7 +92,7 @@ sealed class EffectParameter() {
         }
 
         override fun formatValue(): String {
-            return formatParamValue(value.toDouble(), unit, step.toFloat())
+            return formatParamValue(value.toDouble(), unit, step)
         }
     }
 
@@ -184,7 +182,7 @@ object DiscreteEffectSerializer : KSerializer<EffectParameter.Discrete<out Enum<
         lateinit var value: String
 
         loop@ while (true) {
-            when (val index = dec.decodeElementIndex(descriptor)) {
+            when (dec.decodeElementIndex(descriptor)) {
                 CompositeDecoder.DECODE_DONE -> break@loop
                 0 -> effectId = dec.decodeIntElement(descriptor, 0)
                 1 -> id = dec.decodeIntElement(descriptor, 1)

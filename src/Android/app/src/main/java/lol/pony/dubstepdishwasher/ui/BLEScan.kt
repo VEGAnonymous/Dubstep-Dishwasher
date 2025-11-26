@@ -39,8 +39,8 @@ import coil.request.ImageRequest
 import coil.size.Size
 import com.polidea.rxandroidble3.RxBleDevice
 import com.polidea.rxandroidble3.scan.ScanResult
-import lol.pony.dubstepdishwasher.model.BLEManager
 import lol.pony.dubstepdishwasher.R
+import lol.pony.dubstepdishwasher.model.BLEManager
 
 @Composable
 fun ScanScreen(

@@ -14,17 +14,15 @@ import kotlinx.serialization.descriptors.element
 import kotlinx.serialization.encoding.CompositeDecoder
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import java.math.BigDecimal
-import java.math.RoundingMode
 import kotlin.math.pow
 
 @Serializable
-sealed class ModulatorParameter() {
+sealed class ModulatorParameter() : Parameter {
     abstract val modId: String
-    abstract val id: Int
-    abstract val name: String
-    abstract val unit: ParamUnit
-    abstract fun formatValue(): String
+    abstract override val id: Int
+    abstract override val name: String
+    abstract override val unit: ParamUnit
+    abstract override fun formatValue(): String
 
     abstract fun getValueAny(): Any
     abstract fun setValueAny(newValue: Any)
@@ -72,7 +70,7 @@ sealed class ModulatorParameter() {
         }
 
         override fun formatValue(): String {
-            return formatParamValue(value.toDouble(), unit, step.toFloat())
+            return formatParamValue(value.toDouble(), unit, step)
         }
     }
     @Serializable(with = DiscreteModSerializer::class)
@@ -144,7 +142,7 @@ object DiscreteModSerializer : KSerializer<ModulatorParameter.Discrete<out Enum<
         lateinit var value: String
 
         loop@ while (true) {
-            when (val index = dec.decodeElementIndex(descriptor)) {
+            when (dec.decodeElementIndex(descriptor)) {
                 CompositeDecoder.DECODE_DONE -> break@loop
                 0 -> modId = dec.decodeStringElement(descriptor, 0)
                 1 -> id = dec.decodeIntElement(descriptor, 1)

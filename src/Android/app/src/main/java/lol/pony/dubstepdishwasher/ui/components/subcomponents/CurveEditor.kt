@@ -36,13 +36,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import lol.pony.dubstepdishwasher.model.core.CurvePoint
-import lol.pony.dubstepdishwasher.model.core.Modulator
-import lol.pony.dubstepdishwasher.model.core.applyCurve
 import lol.pony.dubstepdishwasher.R
+import lol.pony.dubstepdishwasher.model.core.CurvePoint
 import lol.pony.dubstepdishwasher.model.core.CurvePreset
 import lol.pony.dubstepdishwasher.model.core.CurveRandomArgs
 import lol.pony.dubstepdishwasher.model.core.EditorState
+import lol.pony.dubstepdishwasher.model.core.Modulator
+import lol.pony.dubstepdishwasher.model.core.applyCurve
 import lol.pony.dubstepdishwasher.model.core.lerp
 import lol.pony.dubstepdishwasher.model.core.snapValue
 import lol.pony.dubstepdishwasher.ui.components.PresetManager

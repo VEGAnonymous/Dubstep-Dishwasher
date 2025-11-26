@@ -36,7 +36,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.ImageLoader
 import coil.compose.rememberAsyncImagePainter
 import coil.decode.GifDecoder
@@ -44,16 +43,13 @@ import coil.decode.ImageDecoderDecoder
 import coil.request.ImageRequest
 import coil.size.Size
 import com.polidea.rxandroidble3.RxBleDevice
-import lol.pony.dubstepdishwasher.model.BLEManager
+import lol.pony.dubstepdishwasher.R
 import lol.pony.dubstepdishwasher.model.core.GlobalPresetState
 import lol.pony.dubstepdishwasher.model.core.MAX_COMPUTE_USAGE
 import lol.pony.dubstepdishwasher.model.core.MAX_MEMORY_USAGE
-import lol.pony.dubstepdishwasher.R
-import lol.pony.dubstepdishwasher.model.core.UserPresets
 import lol.pony.dubstepdishwasher.ui.components.PresetManager
 import lol.pony.dubstepdishwasher.ui.components.ResourceMeter
 import lol.pony.dubstepdishwasher.viewmodel.MainViewModel
-import lol.pony.dubstepdishwasher.viewmodel.MainViewModelFactory
 
 @Composable
 fun TopBar (

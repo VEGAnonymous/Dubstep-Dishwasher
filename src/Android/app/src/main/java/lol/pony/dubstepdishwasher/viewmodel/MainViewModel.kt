@@ -10,13 +10,62 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import lol.pony.dubstepdishwasher.model.BLEManager
 import lol.pony.dubstepdishwasher.model.ControlQueue
 import lol.pony.dubstepdishwasher.model.EffectChain
-import lol.pony.dubstepdishwasher.model.BLEManager
-import lol.pony.dubstepdishwasher.model.core.*
-import lol.pony.dubstepdishwasher.model.core.CommandType.*
+import lol.pony.dubstepdishwasher.model.core.BiquadType
+import lol.pony.dubstepdishwasher.model.core.CONTROL_RATE
+import lol.pony.dubstepdishwasher.model.core.Command
+import lol.pony.dubstepdishwasher.model.core.CommandType.EFFECT_ADD
+import lol.pony.dubstepdishwasher.model.core.CommandType.EFFECT_BYPASS
+import lol.pony.dubstepdishwasher.model.core.CommandType.EFFECT_CLEAR
+import lol.pony.dubstepdishwasher.model.core.CommandType.EFFECT_REMOVE
+import lol.pony.dubstepdishwasher.model.core.CommandType.EFFECT_REORDER
+import lol.pony.dubstepdishwasher.model.core.CommandType.EFFECT_SET_PARAMETER
+import lol.pony.dubstepdishwasher.model.core.CommandType.MOD_ASSIGNMENT_ADD
+import lol.pony.dubstepdishwasher.model.core.CommandType.MOD_ASSIGNMENT_REMOVE
+import lol.pony.dubstepdishwasher.model.core.CommandType.MOD_ASSIGNMENT_SET
+import lol.pony.dubstepdishwasher.model.core.CommandType.MOD_CLEAR_CURVE
+import lol.pony.dubstepdishwasher.model.core.CommandType.MOD_SET_CURVE_POINT
+import lol.pony.dubstepdishwasher.model.core.CommandType.MOD_SET_PARAMETER
+import lol.pony.dubstepdishwasher.model.core.CommandType.PARALLEL_CHAIN_COMMAND
+import lol.pony.dubstepdishwasher.model.core.CurvePoint
+import lol.pony.dubstepdishwasher.model.core.CurvePreset
+import lol.pony.dubstepdishwasher.model.core.DistortionMode
+import lol.pony.dubstepdishwasher.model.core.EditorState
+import lol.pony.dubstepdishwasher.model.core.Effect
+import lol.pony.dubstepdishwasher.model.core.EffectSnapshot
+import lol.pony.dubstepdishwasher.model.core.EffectType
+import lol.pony.dubstepdishwasher.model.core.EnvelopeType
+import lol.pony.dubstepdishwasher.model.core.FFTSize
+import lol.pony.dubstepdishwasher.model.core.GlobalPreset
+import lol.pony.dubstepdishwasher.model.core.GlobalPresetData
+import lol.pony.dubstepdishwasher.model.core.LFOMode
+import lol.pony.dubstepdishwasher.model.core.LFO_UPDATE_RATE
+import lol.pony.dubstepdishwasher.model.core.MAX_COMPUTE_USAGE
+import lol.pony.dubstepdishwasher.model.core.MAX_MEMORY_USAGE
+import lol.pony.dubstepdishwasher.model.core.ModAssignment
+import lol.pony.dubstepdishwasher.model.core.ModEngine
+import lol.pony.dubstepdishwasher.model.core.ModPolarity
+import lol.pony.dubstepdishwasher.model.core.ModRouter
+import lol.pony.dubstepdishwasher.model.core.ModulationEffectMode
+import lol.pony.dubstepdishwasher.model.core.Modulator
+import lol.pony.dubstepdishwasher.model.core.ModulatorSnapshot
+import lol.pony.dubstepdishwasher.model.core.ParallelChain
+import lol.pony.dubstepdishwasher.model.core.ParallelChainSnapshot
+import lol.pony.dubstepdishwasher.model.core.ParallelChainState
+import lol.pony.dubstepdishwasher.model.core.ParallelMode
+import lol.pony.dubstepdishwasher.model.core.ParamKey
+import lol.pony.dubstepdishwasher.model.core.ParamUnit
+import lol.pony.dubstepdishwasher.model.core.RandomMode
+import lol.pony.dubstepdishwasher.model.core.ResourceUsage
+import lol.pony.dubstepdishwasher.model.core.UserPresets
+import lol.pony.dubstepdishwasher.model.core.WavetableType
+import lol.pony.dubstepdishwasher.model.core.defaultCurvePresets
+import lol.pony.dubstepdishwasher.model.core.defaultGlobalPresets
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+
 // import kotlin.experimental.xor
 
 class MainViewModel(
@@ -163,9 +212,7 @@ class MainViewModel(
         val preset = GlobalPreset(name, data, category, false)
         _globalPresets.update { presets -> presets.filterNot { it.name == name } + preset }
 
-        viewModelScope.launch {
-            userPresets.savePresets(_globalPresets.value)
-        }
+        updateDataStore()
         return preset
     }
 
@@ -185,10 +232,20 @@ class MainViewModel(
 
     fun deleteGlobalPreset(name: String) {
         _globalPresets.update { it.filterNot { preset -> preset.name == name } }
+
+        updateDataStore()
     }
 
     fun favoriteGlobalPreset(name: String, favorite: Boolean) {
         _globalPresets.update { list -> list.map { preset -> if (preset.name == name) preset.copy(favorite = favorite) else preset } }
+
+        updateDataStore()
+    }
+
+    fun updateDataStore() {
+        viewModelScope.launch {
+            userPresets.savePresets(_globalPresets.value)
+        }
     }
 
     private fun snapshotEffects(): List<EffectSnapshot> {
@@ -413,6 +470,7 @@ class MainViewModel(
             is Int -> value.toFloat()
             is Boolean -> if (value) 1.0f else 0.0f
 
+            is FFTSize -> value.value
             is EnvelopeType, is ModulationEffectMode, is DistortionMode, is BiquadType, is ParallelMode, is WavetableType, is ParamUnit
                 -> value.ordinal.toFloat()
 
@@ -726,7 +784,7 @@ class MainViewModel(
         val buffer = ByteBuffer.allocate(commands.size * 16).order(ByteOrder.LITTLE_ENDIAN)
 
         for (command in commands) {
-            Log.e("cmd", "Sending command: $command")
+//            Log.e("cmd", "Sending command: $command")
             buffer.put(command.type.value)
             buffer.put(command.id1.toByte())
             buffer.put(command.id2.toByte())

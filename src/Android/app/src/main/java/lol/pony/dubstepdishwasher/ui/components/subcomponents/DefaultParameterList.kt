@@ -1,11 +1,13 @@
 package lol.pony.dubstepdishwasher.ui.components.subcomponents
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import lol.pony.dubstepdishwasher.model.core.Effect
 import lol.pony.dubstepdishwasher.model.core.ModAssignment
 import lol.pony.dubstepdishwasher.model.core.Modulator
@@ -28,7 +30,10 @@ fun DefaultParameterList(
     onTogglePolarity: (String, Int, Int) -> Unit
 ) {
     val params = effect.parameters.toList()
-    LazyRow(modifier.fillMaxWidth()) {
+    LazyRow(
+        modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(end = 12.dp)
+    ) {
         items(items = params, key = { it.id }) { param ->
             ParameterItem(
                 effect = effect,
