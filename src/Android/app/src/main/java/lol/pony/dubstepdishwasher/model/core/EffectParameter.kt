@@ -27,7 +27,7 @@ sealed class EffectParameter() : Parameter {
     abstract fun getValueAny(): Any
     abstract fun setValueAny(newValue: Any)
 
-    @Serializable
+    @Serializable(with = RangeEffectSerializer::class)
     @SerialName("range")
     data class Range(
         override val effectId: Int,
@@ -114,7 +114,7 @@ sealed class EffectParameter() : Parameter {
         override fun formatValue(): String = ""
     }
 
-    @Serializable
+    @Serializable(with = ToggleEffectSerializer::class)
     @SerialName("toggle")
     data class Toggle(
         override val effectId: Int,
@@ -221,6 +221,155 @@ object DiscreteEffectSerializer : KSerializer<EffectParameter.Discrete<out Enum<
             initialValue = tInitial
         ).apply {
             this.value = tValue
+        }
+    }
+}
+object RangeEffectSerializer : KSerializer<EffectParameter.Range> {
+
+    override val descriptor = buildClassSerialDescriptor("range") {
+        element<Int>("effectId")
+        element<Int>("id")
+        element<String>("name")
+        element<String>("unit")
+
+        element<Float>("rangeMin")
+        element<Float>("rangeMax")
+        element<Float>("exp")
+        element<Float>("step")
+        element<Float>("initialValue")
+        element<Boolean>("isModulatable")
+
+        element<Float>("value") // CURRENT VALUE
+    }
+
+    override fun serialize(encoder: Encoder, value: EffectParameter.Range) {
+        val composite = encoder.beginStructure(descriptor)
+
+        composite.encodeIntElement(descriptor, 0, value.effectId)
+        composite.encodeIntElement(descriptor, 1, value.id)
+        composite.encodeStringElement(descriptor, 2, value.name)
+        composite.encodeStringElement(descriptor, 3, value.unit.name)
+
+        composite.encodeFloatElement(descriptor, 4, value.range.first)
+        composite.encodeFloatElement(descriptor, 5, value.range.second)
+        composite.encodeFloatElement(descriptor, 6, value.exp)
+        composite.encodeFloatElement(descriptor, 7, value.step)
+        composite.encodeFloatElement(descriptor, 8, value.initialValue)
+        composite.encodeBooleanElement(descriptor, 9, value.isModulatable)
+
+        composite.encodeFloatElement(descriptor, 10, value.value)
+
+        composite.endStructure(descriptor)
+    }
+
+    override fun deserialize(decoder: Decoder): EffectParameter.Range {
+        val dec = decoder.beginStructure(descriptor)
+
+        var effectId = 0
+        var id = 0
+        lateinit var name: String
+        lateinit var unit: String
+
+        var rangeMin = 0f
+        var rangeMax = 0f
+        var exp = 1f
+        var step = 0f
+        var initialValue = 0f
+        var isModulatable = true
+
+        var currentValue = 0f
+
+        loop@ while (true) {
+            when (dec.decodeElementIndex(descriptor)) {
+                CompositeDecoder.DECODE_DONE -> break@loop
+                0 -> effectId = dec.decodeIntElement(descriptor, 0)
+                1 -> id = dec.decodeIntElement(descriptor, 1)
+                2 -> name = dec.decodeStringElement(descriptor, 2)
+                3 -> unit = dec.decodeStringElement(descriptor, 3)
+
+                4 -> rangeMin = dec.decodeFloatElement(descriptor, 4)
+                5 -> rangeMax = dec.decodeFloatElement(descriptor, 5)
+                6 -> exp = dec.decodeFloatElement(descriptor, 6)
+                7 -> step = dec.decodeFloatElement(descriptor, 7)
+                8 -> initialValue = dec.decodeFloatElement(descriptor, 8)
+                9 -> isModulatable = dec.decodeBooleanElement(descriptor, 9)
+
+                10 -> currentValue = dec.decodeFloatElement(descriptor, 10)
+            }
+        }
+
+        dec.endStructure(descriptor)
+
+        return EffectParameter.Range(
+            effectId = effectId,
+            id = id,
+            name = name,
+            unit = ParamUnit.valueOf(unit),
+            range = rangeMin to rangeMax,
+            exp = exp,
+            step = step,
+            initialValue = initialValue,
+            isModulatable = isModulatable
+        ).apply {
+            this.value = currentValue
+        }
+    }
+}
+object ToggleEffectSerializer : KSerializer<EffectParameter.Toggle> {
+
+    override val descriptor = buildClassSerialDescriptor("toggle") {
+        element<Int>("effectId")
+        element<Int>("id")
+        element<String>("name")
+
+        element<Boolean>("initialValue")
+
+        element<Boolean>("value")  // CURRENT VALUE
+    }
+
+    override fun serialize(encoder: Encoder, value: EffectParameter.Toggle) {
+        val composite = encoder.beginStructure(descriptor)
+
+        composite.encodeIntElement(descriptor, 0, value.effectId)
+        composite.encodeIntElement(descriptor, 1, value.id)
+        composite.encodeStringElement(descriptor, 2, value.name)
+
+        composite.encodeBooleanElement(descriptor, 3, value.initialValue)
+
+        composite.encodeBooleanElement(descriptor, 4, value.value)
+
+        composite.endStructure(descriptor)
+    }
+
+    override fun deserialize(decoder: Decoder): EffectParameter.Toggle {
+        val dec = decoder.beginStructure(descriptor)
+
+        var effectId = 0
+        var id = 0
+        lateinit var name: String
+        var initialValue = false
+        var currentValue = false
+
+        loop@ while (true) {
+            when (dec.decodeElementIndex(descriptor)) {
+                CompositeDecoder.DECODE_DONE -> break@loop
+                0 -> effectId = dec.decodeIntElement(descriptor, 0)
+                1 -> id = dec.decodeIntElement(descriptor, 1)
+                2 -> name = dec.decodeStringElement(descriptor, 2)
+                3 -> initialValue = dec.decodeBooleanElement(descriptor, 3)
+                4 -> currentValue = dec.decodeBooleanElement(descriptor, 4)
+            }
+        }
+
+        dec.endStructure(descriptor)
+
+        return EffectParameter.Toggle(
+            effectId = effectId,
+            id = id,
+            name = name,
+            initialValue = initialValue
+        ).apply {
+            this.value = currentValue
         }
     }
 }

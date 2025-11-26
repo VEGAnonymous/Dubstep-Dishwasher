@@ -27,7 +27,7 @@ sealed class ModulatorParameter() : Parameter {
     abstract fun getValueAny(): Any
     abstract fun setValueAny(newValue: Any)
 
-    @Serializable
+    @Serializable(with = RangeModSerializer::class)
     @SerialName("Range")
     data class Range(
         override val modId: String,
@@ -181,6 +181,92 @@ object DiscreteModSerializer : KSerializer<ModulatorParameter.Discrete<out Enum<
             initialValue = tInitial
         ).apply {
             this.value = tValue
+        }
+    }
+}
+object RangeModSerializer : KSerializer<ModulatorParameter.Range> {
+
+    override val descriptor = buildClassSerialDescriptor("mod_range") {
+        element<String>("modId")
+        element<Int>("id")
+        element<String>("name")
+        element<String>("unit")
+
+        element<Float>("rangeMin")
+        element<Float>("rangeMax")
+        element<Float>("exp")
+        element<Float>("step")
+        element<Float>("initialValue")
+
+        element<Float>("value") // current value
+    }
+
+    override fun serialize(encoder: Encoder, value: ModulatorParameter.Range) {
+        val composite = encoder.beginStructure(descriptor)
+
+        composite.encodeStringElement(descriptor, 0, value.modId)
+        composite.encodeIntElement(descriptor, 1, value.id)
+        composite.encodeStringElement(descriptor, 2, value.name)
+        composite.encodeStringElement(descriptor, 3, value.unit.name)
+
+        composite.encodeFloatElement(descriptor, 4, value.range.first)
+        composite.encodeFloatElement(descriptor, 5, value.range.second)
+        composite.encodeFloatElement(descriptor, 6, value.exp)
+        composite.encodeFloatElement(descriptor, 7, value.step)
+        composite.encodeFloatElement(descriptor, 8, value.initialValue)
+
+        composite.encodeFloatElement(descriptor, 9, value.value)
+
+        composite.endStructure(descriptor)
+    }
+
+    override fun deserialize(decoder: Decoder): ModulatorParameter.Range {
+        val dec = decoder.beginStructure(descriptor)
+
+        lateinit var modId: String
+        var id = 0
+        lateinit var name: String
+        lateinit var unit: String
+
+        var rangeMin = 0f
+        var rangeMax = 0f
+        var exp = 1f
+        var step = 0f
+        var initialValue = 0f
+
+        var currentValue = 0f
+
+        loop@ while (true) {
+            when (dec.decodeElementIndex(descriptor)) {
+                CompositeDecoder.DECODE_DONE -> break@loop
+                0 -> modId = dec.decodeStringElement(descriptor, 0)
+                1 -> id = dec.decodeIntElement(descriptor, 1)
+                2 -> name = dec.decodeStringElement(descriptor, 2)
+                3 -> unit = dec.decodeStringElement(descriptor, 3)
+
+                4 -> rangeMin = dec.decodeFloatElement(descriptor, 4)
+                5 -> rangeMax = dec.decodeFloatElement(descriptor, 5)
+                6 -> exp = dec.decodeFloatElement(descriptor, 6)
+                7 -> step = dec.decodeFloatElement(descriptor, 7)
+                8 -> initialValue = dec.decodeFloatElement(descriptor, 8)
+
+                9 -> currentValue = dec.decodeFloatElement(descriptor, 9)
+            }
+        }
+
+        dec.endStructure(descriptor)
+
+        return ModulatorParameter.Range(
+            modId = modId,
+            id = id,
+            name = name,
+            unit = ParamUnit.valueOf(unit),
+            range = (rangeMin to rangeMax),
+            exp = exp,
+            step = step,
+            initialValue = initialValue
+        ).apply {
+            this.value = currentValue
         }
     }
 }
