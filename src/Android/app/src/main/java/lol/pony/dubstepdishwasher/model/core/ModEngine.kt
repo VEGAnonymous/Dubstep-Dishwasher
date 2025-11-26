@@ -5,9 +5,9 @@ object ModEngine {
 
     /* LFO */
     fun lfoValue(lfo: Modulator.LFO, dt: Float): Float {
-        val rateHz = lfo.parameters.find { it.name == "Rate" }?.value as Float
-        val mode = lfo.parameters.find { it.name == "Mode" }?.value as LFOMode
-        val randomMode = lfo.parameters.find { it.name == "Random" }?.value as RandomMode
+        val rateHz = lfo.parameters.find { it.name == "Rate" }?.getValueAny() as Float
+        val mode = lfo.parameters.find { it.name == "Mode" }?.getValueAny() as LFOMode
+        val randomMode = lfo.parameters.find { it.name == "Random" }?.getValueAny() as RandomMode
 
         lfo.phase = (lfo.phase + (rateHz * dt)) % 1f
 

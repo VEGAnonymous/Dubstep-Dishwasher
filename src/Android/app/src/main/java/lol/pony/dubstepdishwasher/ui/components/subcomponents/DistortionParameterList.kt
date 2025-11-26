@@ -32,9 +32,9 @@ fun DistortionParameterList(
     scrollable: Boolean = false
 ) {
     val params = effect.parameters.toList()
-    val mode = params[1].value as DistortionMode
+    val mode = params[1].getValueAny() as DistortionMode
     @Suppress("UNCHECKED_CAST")
-    val drive = modValue(effect, params[2] as EffectParameter.Range<Float>, currentModOffsets)
+    val drive = modValue(effect, params[2] as EffectParameter.Range, currentModOffsets)
 
     Row(
         modifier = modifier.fillMaxWidth(),

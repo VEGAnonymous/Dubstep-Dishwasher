@@ -29,8 +29,8 @@ fun GateParameterList(
 ) {
     val params = effect.parameters.toList()
     @Suppress("UNCHECKED_CAST")
-    val threshold = modValue(effect, params[1] as EffectParameter.Range<Float>, currentModOffsets)
-    val invert = params[5].value as Boolean
+    val threshold = modValue(effect, params[1] as EffectParameter.Range, currentModOffsets)
+    val invert = params[5].getValueAny() as Boolean
 
     Row(
         modifier = modifier.fillMaxWidth(),

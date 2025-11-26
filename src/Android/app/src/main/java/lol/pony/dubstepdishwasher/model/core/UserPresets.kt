@@ -13,7 +13,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class GlobalPresetStore(
-    val presets: List<GlobalPreset> = emptyList()
+    val presets: List<GlobalPreset> = defaultGlobalPresets()
 )
 
 object GlobalPresetSerializer : Serializer<GlobalPresetStore> {

@@ -44,16 +44,16 @@ fun EqualizerParameterList(
     val params = effect.parameters.toList()
 
     // Band 1
-    val b1Type = params[1].value as BiquadType
-    val b1Cutoff = modValue(effect, params[2] as EffectParameter.Range<Float>, currentModOffsets)
-    val b1Q = modValue(effect, params[3] as EffectParameter.Range<Float>, currentModOffsets)
-    val b1Gain = modValue(effect, params[4] as EffectParameter.Range<Float>, currentModOffsets)
+    val b1Type = params[1].getValueAny() as BiquadType
+    val b1Cutoff = modValue(effect, params[2] as EffectParameter.Range, currentModOffsets)
+    val b1Q = modValue(effect, params[3] as EffectParameter.Range, currentModOffsets)
+    val b1Gain = modValue(effect, params[4] as EffectParameter.Range, currentModOffsets)
 
     // Band 2
-    val b2Type = params[5].value as BiquadType
-    val b2Cutoff = modValue(effect, params[6] as EffectParameter.Range<Float>, currentModOffsets)
-    val b2Q = modValue(effect, params[7] as EffectParameter.Range<Float>, currentModOffsets)
-    val b2Gain = modValue(effect, params[8] as EffectParameter.Range<Float>, currentModOffsets)
+    val b2Type = params[5].getValueAny() as BiquadType
+    val b2Cutoff = modValue(effect, params[6] as EffectParameter.Range, currentModOffsets)
+    val b2Q = modValue(effect, params[7] as EffectParameter.Range, currentModOffsets)
+    val b2Gain = modValue(effect, params[8] as EffectParameter.Range, currentModOffsets)
 
     Row(
         modifier = modifier.fillMaxWidth(),

@@ -1,6 +1,7 @@
 package lol.pony.dubstepdishwasher.viewmodel
 
 // import android.util.Log
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -238,7 +239,7 @@ class MainViewModel(
             addEffect(snap.effectType)
             val newEffect = _effects.value.last()
             snap.parameters.forEachIndexed { paramId, param ->
-                val value = param.value ?: return@forEachIndexed
+                val value = param.getValueAny()
                 setParam(newEffect.effectId, paramId, value)
             }
             if (snap.isBypassed) toggleBypass(newEffect.effectId)
@@ -251,7 +252,7 @@ class MainViewModel(
             else Modulator.Mapping(snap.id, curve = snap.curve.map { it.copy() })
 
             snap.parameters.forEachIndexed { paramId, param ->
-                val value = param.value ?: return@forEachIndexed
+                val value = param.getValueAny()
                 mod.setParam(paramId, value) }
             mod
         }
@@ -582,7 +583,7 @@ class MainViewModel(
         _modulators.value.forEachIndexed { index, mod ->
             // Parameters
             mod.parameters.forEachIndexed { paramId, param ->
-                when (val value = param.value) {
+                when (val value = param.getValueAny()) {
                     is Float -> controlQueue.enqueue(MOD_SET_PARAMETER, index, paramId, value)
                     is LFOMode -> controlQueue.enqueue(MOD_SET_PARAMETER, index, paramId, value.ordinal.toFloat())
                     is RandomMode -> controlQueue.enqueue(MOD_SET_PARAMETER, index, paramId, value.ordinal.toFloat())
@@ -727,6 +728,7 @@ class MainViewModel(
         val buffer = ByteBuffer.allocate(commands.size * 16).order(ByteOrder.LITTLE_ENDIAN)
 
         for (command in commands) {
+            Log.e("cmd", "Sending command: $command")
             buffer.put(command.type.value)
             buffer.put(command.id1.toByte())
             buffer.put(command.id2.toByte())

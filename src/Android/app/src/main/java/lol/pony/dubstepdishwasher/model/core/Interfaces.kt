@@ -5,13 +5,13 @@ package lol.pony.dubstepdishwasher.model.core
 interface UIEnum { val uiName: String }
 
 // Parameters
-interface Parameter<T> {
-    val id: Int
-    val name: String
-    var value: T
-    val unit: ParamUnit
-    fun formatValue(): String
-}
+//interface Parameter<T> {
+//    val id: Int
+//    val name: String
+//    var value: T
+//    val unit: ParamUnit
+//    fun formatValue(): String
+//}
 
 interface NumericParam { val unit: ParamUnit }
 

@@ -79,7 +79,7 @@ fun ModulatorControls(
                 .filter { param ->
                     // Only show Random param in Random mode
                     !(param.id == 2 && mod is Modulator.LFO &&
-                            (mod.parameters.find { it.name == "Mode" }?.value as? LFOMode) != LFOMode.RANDOM)
+                            (mod.parameters.find { it.name == "Mode" }?.getValueAny() as? LFOMode) != LFOMode.RANDOM)
                 }
                 .forEach { param ->
                     key("${mod.id}:${param.id}") {
@@ -128,10 +128,10 @@ fun ModulatorControls(
                                                 TextButton(
                                                     onClick = {
                                                         textValue.toFloatOrNull()?.let { newValue ->
-                                                            val clamped = newValue.coerceIn(param.range.first.toFloat(), param.range.second.toFloat())
+                                                            val clamped = newValue.coerceIn(param.range.first, param.range.second)
                                                             param.fromNormalized(
                                                                 clamped.mapRange(
-                                                                    inRange = param.range.first.toFloat()..param.range.second.toFloat(),
+                                                                    inRange = param.range.first..param.range.second,
                                                                     outRange = 0f..1f
                                                                 ).pow(1 / param.exp)
                                                             )
@@ -163,7 +163,7 @@ fun ModulatorControls(
                                                         param.fromNormalized(
                                                             param.initialValue
                                                                 .mapRange(
-                                                                    inRange = param.range.first.toFloat()..param.range.second.toFloat(),
+                                                                    inRange = param.range.first..param.range.second,
                                                                     outRange = 0f..1f
                                                                 )
                                                                 .pow(1f / param.exp)
@@ -258,7 +258,7 @@ fun ModulatorControls(
             val lineColor = MaterialTheme.colorScheme.secondary
             when (mod) {
                 is Modulator.LFO -> {
-                    when (mod.parameters.find { it.name == "Mode" }?.value) {
+                    when (mod.parameters.find { it.name == "Mode" }?.getValueAny()) {
                         LFOMode.NORMAL -> {
                             CurveDisplay(
                                 points = mod.curve,
@@ -304,7 +304,7 @@ fun ModulatorControls(
             }
 
             // Edit button overlay
-            if (mod !is Modulator.LFO || mod.parameters.find { it.name == "Mode" }?.value != LFOMode.RANDOM) {
+            if (mod !is Modulator.LFO || mod.parameters.find { it.name == "Mode" }?.getValueAny() != LFOMode.RANDOM) {
                 IconButton(
                     onClick = { onEditCurve() },
                     modifier = Modifier

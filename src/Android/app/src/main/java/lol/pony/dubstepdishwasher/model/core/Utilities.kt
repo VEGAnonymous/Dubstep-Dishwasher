@@ -37,7 +37,7 @@ fun snapValue(snapToGrid: Boolean = true, value: Float, divisions: Int = 8): Flo
 }
 
 // Normalized mod offset to real value
-fun modValue(effect: Effect, param: EffectParameter.Range<Float>, modOffsets: Map<ParamKey, Float>): Float {
+fun modValue(effect: Effect, param: EffectParameter.Range, modOffsets: Map<ParamKey, Float>): Float {
     val key = ParamKey(effect.effectId, param.id)
     val offset = modOffsets[key] ?: 0f
     val baseNorm = param.normalized()

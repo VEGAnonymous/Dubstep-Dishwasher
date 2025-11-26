@@ -24,14 +24,14 @@ data class GlobalPresetData(
 @Serializable
 data class EffectSnapshot(
     val effectType: EffectType,
-    val parameters: MutableList<EffectParameter<*>>,
+    val parameters: MutableList<EffectParameter>,
     val isBypassed: Boolean
 )
 @Serializable
 data class ModulatorSnapshot(
     val id: String,
     val isLFO: Boolean,
-    val parameters: MutableList<ModulatorParameter<*>>,
+    val parameters: MutableList<ModulatorParameter>,
     val curve: List<CurvePoint>
 )
 @Serializable

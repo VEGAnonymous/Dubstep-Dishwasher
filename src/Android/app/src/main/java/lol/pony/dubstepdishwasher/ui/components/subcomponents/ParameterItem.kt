@@ -59,7 +59,7 @@ import kotlin.math.pow
 @Composable
 fun ParameterItem (
     effect: Effect,
-    param: EffectParameter<*>,
+    param: EffectParameter,
     assignments: List<ModAssignment>,
     selectedModulator: Modulator?,
     currentModOffsets: Map<ParamKey, Float>,

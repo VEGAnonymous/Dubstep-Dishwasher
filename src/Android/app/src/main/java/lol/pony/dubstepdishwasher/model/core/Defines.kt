@@ -1,5 +1,7 @@
 package lol.pony.dubstepdishwasher.model.core
 
+import kotlinx.serialization.Serializable
+
 /* DEFINES */
 
 const val SAMPLE_RATE = 44100.0
@@ -43,6 +45,7 @@ enum class EffectType(
 
 enum class ParamUnit { PERCENT, ENUM, MS, HZ, DB, SEMITONES, DIMENSIONLESS }
 
+@Serializable
 enum class EnvelopeType(override val uiName: String) : UIEnum {
     HANN("Hann"),
     HAMMING("Hamming"),
@@ -50,23 +53,24 @@ enum class EnvelopeType(override val uiName: String) : UIEnum {
     TRI("Triangle"),
     PERC("Perc"),
     SMOOTH_RECT("Smooth Rect") }
-
+@Serializable
 enum class WavetableType(override val uiName: String) : UIEnum {
     SINE("Sine"),
     TRI("Triangle"),
     SAW("Saw"),
     SQUARE("Square")
 }
-
+@Serializable
 enum class ParallelMode(override val uiName: String) : UIEnum {
     SUM("Sum"),
     CROSSFADE("Crossfade")
 }
-
+@Serializable
 enum class ModulationEffectMode(override val uiName: String) : UIEnum {
     AM("AM"),
     RM("RM")
 }
+@Serializable
 enum class DistortionMode(override val uiName: String) : UIEnum {
     TUBE("Tube"),
     SOFT_CLIP("Soft Clip"),
@@ -76,6 +80,7 @@ enum class DistortionMode(override val uiName: String) : UIEnum {
     RECTIFY("Rectify"),
     SATURATE("Saturate")
 }
+@Serializable
 enum class BiquadType(override val uiName: String) : UIEnum {
     LOW_PASS("Low Pass"),
     HIGH_PASS("High Pass"),
