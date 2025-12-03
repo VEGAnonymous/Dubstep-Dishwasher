@@ -1,6 +1,7 @@
 package lol.pony.dubstepdishwasher.viewmodel
 
 // import android.util.Log
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -195,8 +196,9 @@ class MainViewModel(
 
     init {
         viewModelScope.launch {
-            userPresets.presetsFlow.collect { saved ->
-                _globalPresets.value = saved
+            userPresets.userPresetsFlow.collect { saved ->
+                _globalPresets.value = saved.globalPresets
+                _curvePresets.value = saved.curvePresets
             }
         }
     }
@@ -244,7 +246,7 @@ class MainViewModel(
 
     fun updateDataStore() {
         viewModelScope.launch {
-            userPresets.savePresets(_globalPresets.value)
+            userPresets.savePresets(_globalPresets.value, _curvePresets.value)
         }
     }
 
@@ -295,8 +297,7 @@ class MainViewModel(
             addEffect(snap.effectType)
             val newEffect = _effects.value.last()
             snap.parameters.forEachIndexed { paramId, param ->
-                val value = param.getValueAny()
-                setParam(newEffect.effectId, paramId, value)
+                setParam(newEffect.effectId, paramId, param.getValueAny())
             }
             if (snap.isBypassed) toggleBypass(newEffect.effectId)
         }
@@ -308,8 +309,7 @@ class MainViewModel(
             else Modulator.Mapping(snap.id, curve = snap.curve.map { it.copy() })
 
             snap.parameters.forEachIndexed { paramId, param ->
-                val value = param.getValueAny()
-                mod.setParam(paramId, value) }
+                mod.setParam(paramId, param.getValueAny()) }
             mod
         }
     }
@@ -322,8 +322,8 @@ class MainViewModel(
                 val effects = _parallelChains.value[parallelId]?.chainAEffects ?: return@forEach
                 val newEffect = effects.lastOrNull() ?: return@forEach
 
-                effectSnap.parameters.forEachIndexed { paramId, value ->
-                    parallelSetParam(parallelId, ParallelChain.A, newEffect.effectId, paramId, value)
+                effectSnap.parameters.forEachIndexed { paramId, param ->
+                    parallelSetParam(parallelId, ParallelChain.A, newEffect.effectId, paramId, param.getValueAny())
                 }
 
                 if (effectSnap.isBypassed) {
@@ -337,8 +337,8 @@ class MainViewModel(
                 val effects = _parallelChains.value[parallelId]?.chainBEffects ?: return@forEach
                 val newEffect = effects.lastOrNull() ?: return@forEach
 
-                effectSnap.parameters.forEachIndexed { paramId, value ->
-                    parallelSetParam(parallelId, ParallelChain.B, newEffect.effectId, paramId, value)
+                effectSnap.parameters.forEachIndexed { paramId, param ->
+                    parallelSetParam(parallelId, ParallelChain.B, newEffect.effectId, paramId, param.getValueAny())
                 }
 
                 if (effectSnap.isBypassed) {
@@ -353,15 +353,21 @@ class MainViewModel(
     fun saveCurvePreset(name: String, category: String?, points: List<CurvePoint>) : CurvePreset {
         val preset = CurvePreset(name, data = points, category, false)
         _curvePresets.update { presets -> presets.filterNot { it.name == name } + preset } // Add new preset or overwrite if same name
+
+        updateDataStore()
         return preset
     }
 
     fun deleteCurvePreset(name: String) {
         _curvePresets.update { it.filterNot { p -> p.name == name } }
+
+        updateDataStore()
     }
 
     fun favoriteCurvePreset(name: String, favorite: Boolean) {
         _curvePresets.update { list -> list.map { preset -> if (preset.name == name) preset.copy(favorite = favorite) else preset } }
+
+        updateDataStore()
     }
 
     /* UI */

@@ -126,7 +126,7 @@ fun <T, C : PresetContainer<T>, A> PresetManager(
                         favoritePresets.forEach { preset ->
                             PresetRow(
                                 preset = preset,
-                                onLoad = { expanded = false; onLoad(it) },
+                                onLoad = onLoad,
                                 onFavorite = { name, favorite -> onFavorite(name, favorite) },
                                 onDelete = null,
                                 onStateChange = onStateChange,
@@ -143,7 +143,7 @@ fun <T, C : PresetContainer<T>, A> PresetManager(
                             presetsByCategory[category]!!.forEach { preset ->
                                 PresetRow(
                                     preset = preset,
-                                    onLoad = { expanded = false; onLoad(it) },
+                                    onLoad = onLoad,
                                     onFavorite = { name, favorite -> onFavorite(name, favorite) },
                                     onDelete = { preset -> presetToDelete = preset; showDeleteDialog = true },
                                     onStateChange = onStateChange,
@@ -161,7 +161,7 @@ fun <T, C : PresetContainer<T>, A> PresetManager(
                         noCategory.forEach { preset ->
                             PresetRow(
                                 preset = preset,
-                                onLoad = { expanded = false; onLoad(it) },
+                                onLoad = onLoad,
                                 onFavorite = { name, favorite -> onFavorite(name, favorite) },
                                 onDelete = { preset -> presetToDelete = preset; showDeleteDialog = true },
                                 onStateChange = onStateChange,
@@ -319,7 +319,7 @@ private fun <T, C : PresetContainer<T>> PresetRow(
             modifier = Modifier.size(20.dp),
             checked = preset.favorite,
             onCheckedChange = { checked ->
-//                Log.e("favorite", "${preset.name} $checked")
+//                Log.e("favorite", "${preset.name} $checked")x`
                 onFavorite(preset.name, checked) },
             imageRes = R.drawable.control_star
         )

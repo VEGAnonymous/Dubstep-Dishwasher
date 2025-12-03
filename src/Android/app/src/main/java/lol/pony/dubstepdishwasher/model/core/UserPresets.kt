@@ -12,18 +12,19 @@ import java.io.InputStream
 import java.io.OutputStream
 
 @Serializable
-data class GlobalPresetStore(
-    val presets: List<GlobalPreset> = defaultGlobalPresets()
+data class UserPresetStore(
+    val globalPresets: List<GlobalPreset> = defaultGlobalPresets(),
+    val curvePresets: List<CurvePreset> = defaultCurvePresets()
 )
 
-object GlobalPresetSerializer : Serializer<GlobalPresetStore> {
+object UserPresetSerializer : Serializer<UserPresetStore> {
 
-    override val defaultValue: GlobalPresetStore = GlobalPresetStore()
+    override val defaultValue: UserPresetStore = UserPresetStore()
 
-    override suspend fun readFrom(input: InputStream): GlobalPresetStore =
+    override suspend fun readFrom(input: InputStream): UserPresetStore =
         try {
             Json.decodeFromString(
-                GlobalPresetStore.serializer(),
+                UserPresetStore.serializer(),
                 input.readBytes().decodeToString()
             )
         } catch (e: Exception) {
@@ -31,27 +32,33 @@ object GlobalPresetSerializer : Serializer<GlobalPresetStore> {
             defaultValue
         }
 
-    override suspend fun writeTo(t: GlobalPresetStore, output: OutputStream) {
+    override suspend fun writeTo(t: UserPresetStore, output: OutputStream) {
         output.write(
-            Json.encodeToString(GlobalPresetStore.serializer(), t)
+            Json.encodeToString(UserPresetStore.serializer(), t)
                 .encodeToByteArray()
         )
     }
 }
 
-val Context.globalPresetDataStore: DataStore<GlobalPresetStore> by dataStore(
-    fileName = "global_presets.json",
-    serializer = GlobalPresetSerializer
+val Context.userPresetDataStore: DataStore<UserPresetStore> by dataStore(
+    fileName = "user_presets.json",
+    serializer = UserPresetSerializer
 )
 
 class UserPresets(private val context: Context) {
 
-    val presetsFlow: Flow<List<GlobalPreset>> =
-        context.globalPresetDataStore.data.map { it.presets }
+    val userPresetsFlow: Flow<UserPresetStore> =
+        context.userPresetDataStore.data.map { it }
 
-    suspend fun savePresets(newList: List<GlobalPreset>) {
-        context.globalPresetDataStore.updateData { current ->
-            current.copy(presets = newList)
+    suspend fun savePresets(
+        newGlobalPresets: List<GlobalPreset>,
+        newCurvePresets: List<CurvePreset>
+        ) {
+        context.userPresetDataStore.updateData { current ->
+            current.copy(
+                globalPresets = newGlobalPresets,
+                curvePresets = newCurvePresets
+                )
         }
     }
 }

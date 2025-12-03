@@ -1,10 +1,12 @@
 package lol.pony.dubstepdishwasher.model.core
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /* GLOBAL PRESETS */
 
 @Serializable
+@SerialName("GlobalPreset")
 data class GlobalPreset(
     override val name: String,
     override val data: GlobalPresetData,
@@ -80,6 +82,7 @@ fun defaultGlobalPresets(): List<GlobalPreset> {
 
 /* Curve presets */
 
+@Serializable
 data class CurveRandomArgs(
     val snapToGrid: Boolean,
     val gridX: Int,
@@ -87,12 +90,14 @@ data class CurveRandomArgs(
     val lockEndpoints: Boolean
 )
 
+@Serializable
+@SerialName("CurvePreset")
 data class CurvePreset (
     override val name: String,
     override val data: List<CurvePoint>,
     override val category: String? = null,
     override val favorite: Boolean = false
-) : RandomizablePreset<List<CurvePoint>, CurveRandomArgs> {
+) : Preset<List<CurvePoint>>, RandomizablePreset<List<CurvePoint>, CurveRandomArgs> {
     override fun randomized(args: CurveRandomArgs?): CurvePreset {
 
         fun r() = Math.random().toFloat()

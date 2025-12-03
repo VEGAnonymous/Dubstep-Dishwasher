@@ -27,7 +27,7 @@ import lol.pony.dubstepdishwasher.viewmodel.MainViewModel
 import lol.pony.dubstepdishwasher.viewmodel.MainViewModelFactory
 
 /* SET THIS FLAG TO SKIP BLE - FOR DEVELOPMENT ONLY */
-const val SKIP_BLE = true
+const val SKIP_BLE = false
 
 class MainActivity : ComponentActivity() {
 
