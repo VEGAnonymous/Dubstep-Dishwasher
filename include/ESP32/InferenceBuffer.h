@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Handler.h"
+#include "Inference.h"
 
 #include <Arduino.h>
 #include <cmath>
@@ -13,6 +14,8 @@ class InferenceBuffer {
 
         float* buffer; // Full spectrogram buffer
         int m_currentFrame;
+
+        Inference nn; // NN for inference
 
         void processBuffer();
         
