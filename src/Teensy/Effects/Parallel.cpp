@@ -1,22 +1,5 @@
 #include "Teensy/Effects/Parallel.h"
 
-/*  ADDRESSING SCHEME
-    CHAIN A
-    0-12:    Effect 1 parameter space
-    13-16:   Effect 1 command space
-    17-29:   Effect 2 parameter space
-    30-33:   Effect 2 command space
-    ...
-    CHAIN B
-    85-97:   Effect 1 parameter space
-    98-101:   Effect 1 command space
-    102-114:  Effect 2 parameter space
-    115-118: Effect 2 command space
-    ...
-    254: Mix
-    255: Mode
-*/
-
 /* PRIVATE */
 
 /* 

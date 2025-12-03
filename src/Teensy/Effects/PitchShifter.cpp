@@ -8,7 +8,7 @@
 /*
 
 enum Params : ParamID { MIX, PITCH_SHIFT, GRAIN_SIZE, GRAIN_OVERLAP, JITTER };
-const float bufSize = 501.0f * SAMPLE_RATE / 1000.0f; // 200ms max
+static constexpr size_t bufSize = (SAMPLE_RATE * 501) / 1000; // 500ms
 const size_t maxGrains = 16;
 
 float mix, pitchShift, grainSize, grainOverlap, jitter;
@@ -41,8 +41,9 @@ void PitchShifter::spawnGrain() {
     // Calculate start position
     float grainStartPos = (float)writePos - grainSizeSamples;
     grainStartPos += jitterer.next() * ((grainSizeSamples * 0.25f) * (jitter * jitter)); // Add random start jitter
-    while (grainStartPos < 0.0f) grainStartPos += (float)bufSize;
-    if (grainStartPos >= bufSize) grainStartPos = fmodf(grainStartPos, bufSize);
+    float bufSizef = (float)bufSize;
+    while (grainStartPos < 0.0f) grainStartPos += bufSizef;
+    if (grainStartPos >= bufSizef) grainStartPos = fmodf(grainStartPos, bufSizef);
 
     // Init
     freeGrain->active = true;
@@ -52,15 +53,16 @@ void PitchShifter::spawnGrain() {
 
 float PitchShifter::processGrain(Grain& grain) {
     float readPos = grain.startPos + grain.playhead; // Current position in grain
-    if (readPos >= bufSize) readPos = fmodf(readPos, bufSize);
-    else if (readPos < 0.0f) readPos = fmodf(readPos + bufSize, bufSize);
+    float bufSizef = (float)bufSize;
+    if (readPos >= bufSizef) readPos = fmodf(readPos, bufSizef);
+    else if (readPos < 0.0f) readPos = fmodf(readPos + bufSizef, bufSizef);
 
     float envelopeValue = getEnvelopeValue(grain.playhead / grainSizeSamples, EnvelopeType::HANN);
 
     grain.playhead += pitchRatio * (1.0f + (0.02f * jitterer.next() * (jitter * jitter))); // Advance playhead at rate according to pitch shift
     if (grain.playhead >= grainSizeSamples) grain.active = false; // Free if done
     
-    return lerp(inBuf, readPos, bufSize) * envelopeValue;
+    return lerp(inBuf, readPos, bufSizef) * envelopeValue;
 }
 
 void PitchShifter::updateInterval() {

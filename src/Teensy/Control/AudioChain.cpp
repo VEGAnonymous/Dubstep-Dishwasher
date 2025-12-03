@@ -26,7 +26,7 @@
 /*
 
 std::vector<std::unique_ptr<Effect>> effects; // Effect chain
-std::map<EffectID, Effect*> fxMap;
+std::map<EffectID, size_t> fxMap;
 EffectID nextID = 0; std::queue<EffectID> freeIDs;
 
 std::map<EffectName, std::function<std::unique_ptr<Effect>()>> effectInits; // Function pointers (factories) to instantiate effects
@@ -79,40 +79,57 @@ Effect* AudioChain::addEffect(EffectName name) {
 
     effect->setID(assignedID);
     
-    fxMap[assignedID] = effect.get();
     effects.push_back(std::move(effect));
-
-    return effect.get();
+    fxMap[assignedID] = effects.size() - 1;
+    return effects.back().get();
 }
 
 void AudioChain::removeEffect(EffectID id) {
     // Search for effect by ID
-    auto it = std::find_if(effects.begin(), effects.end(), [id](const std::unique_ptr<Effect>& effect){ return effect->getID() == id; });
-    if (it == effects.end()) return; // Not found
+    auto it = fxMap.find(id);
+    if (it == fxMap.end()) return;
 
+    size_t idx = it->second;
     // Delete that shit
-    fxMap.erase((*it)->getID());
-    freeIDs.push((*it)->getID()); // Free the ID
-    effects.erase(it);
+    fxMap.erase(it);
+    freeIDs.push(id); // Free the ID
+    effects.erase(effects.begin() + idx);
+
+    // Update all indices
+    for (auto &p : fxMap) if (p.second > idx) p.second--;
 }
 
 Effect* AudioChain::getEffect(EffectID id) {
     auto it = fxMap.find(id);
-    return (it != fxMap.end()) ? it->second : nullptr;
+    if (it == fxMap.end()) return nullptr;
+
+    size_t idx = it->second;
+    if (idx >= effects.size()) return nullptr;
+
+    return effects[idx].get();
 }
 
 void AudioChain::reorderEffect(EffectID id, size_t pos) {
-    if (pos < 0) pos = 0; // Pointless safety check
+    // Find current index
+    auto it = fxMap.find(id);
+    if (it == fxMap.end()) return;
 
-    auto it = std::find_if(effects.begin(), effects.end(), [id](const std::unique_ptr<Effect>& effect) { return effect->getID() == id; });
-    if (it == effects.end()) return;
+    Serial.printf("Reordering effect %d to position %d", id, pos);
+
+    size_t oldPos = it->second;
+    Serial.println(oldPos);
+    if (pos > effects.size()) pos = effects.size();
 
     // Extract the effect from the vector
-    auto effectPtr = std::move(*it);
-    effects.erase(it);
+    auto effectPtr = std::move(effects[oldPos]);
+    effects.erase(effects.begin() + oldPos);
 
     // Insert at new position
     effects.insert(effects.begin() + pos, std::move(effectPtr));
+
+    // Reindex everything
+    for (size_t i = 0; i < effects.size(); i++)
+        fxMap[effects[i]->getID()] = i;
 }
 
 void AudioChain::clear() {

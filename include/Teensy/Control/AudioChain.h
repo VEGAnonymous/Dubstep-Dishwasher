@@ -11,7 +11,7 @@
 class AudioChain {
     private:
         std::vector<std::unique_ptr<Effect>> effects; // Effect chain
-        std::map<EffectID, Effect*> fxMap;
+        std::map<EffectID, size_t> fxMap;
         EffectID nextID = 0; std::queue<EffectID> freeIDs;
 
         std::map<EffectName, std::function<std::unique_ptr<Effect>()>> effectInits; // Function pointers (factories) to instantiate effects

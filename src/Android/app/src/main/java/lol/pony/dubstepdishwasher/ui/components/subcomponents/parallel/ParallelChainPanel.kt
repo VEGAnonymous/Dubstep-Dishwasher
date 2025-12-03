@@ -138,6 +138,7 @@ fun ParallelChainPanel(
                     SlotEditor(
                         index = index,
                         effect = effect,
+                        effects = effects,
                         onRemove = { onParallelRemove(id, chain, effectId) },
                         onReorder = { toIndex -> onParallelReorder(id, chain, effectId, toIndex) },
                         onBypass = { fxId -> onParallelBypass(id, chain, fxId) },
@@ -172,6 +173,7 @@ fun ParallelChainPanel(
 @Composable
 private fun SlotEditor(
     index: Int,
+    effects: List<Effect>,
     effect: Effect,
     onRemove: () -> Unit,
     onReorder: (Int) -> Unit,
@@ -216,7 +218,7 @@ private fun SlotEditor(
 
                     IconButton(
                         onClick = { onReorder(index + 1) },
-                        enabled = index < (MAX_PARALLEL_EFFECTS - 1),
+                        enabled = (index < (MAX_PARALLEL_EFFECTS - 1)) && (index != effects.size - 1),
                         modifier = Modifier.width(30.dp).padding(horizontal = 4.dp)
                     ) { Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Move Down") }
 

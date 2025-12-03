@@ -56,4 +56,8 @@ class ControlQueue(
 
         if (toSend.isNotEmpty()) onFlush(toSend)
     }
+
+    fun flushNow() {
+        flush()
+    }
 }

@@ -4,10 +4,10 @@ class SpectralGate : public Phase_Vocoder {
     private:
         enum Params : ParamID { THRESHOLD = 2, TILT, INVERT };
 
-        float threshold, tilt; bool invert;
+        float thresholdDB, threshold, tilt; bool invert;
         
     public:
-        SpectralGate(float mix = 1.0f, float thresholdDB = -10.0f, float tilt = 0.5f, 
+        SpectralGate(float mix = 1.0f, float thresholdDB = -10.0f, float tilt = 0.5f, bool invert = 0,
             size_t fftSize = 512, size_t hopFactor = 4);
         
         void setThreshold(float thresholdDB); // dB, [-100.0, 0.0]

@@ -8,7 +8,7 @@ class PitchShifter : public Effect {
     // https://kilohearts.com/products/pitch_shifter
     private:
         enum Params : ParamID { MIX, PITCH_SHIFT, GRAIN_SIZE, GRAIN_OVERLAP, JITTER };
-        const float bufSize = 501.0f * SAMPLE_RATE / 1000.0f; // 200ms max
+        static constexpr size_t bufSize = (SAMPLE_RATE * 501) / 1000; // 500ms
         const size_t maxGrains = 16;
 
         float mix, pitchShift, grainSize, grainOverlap, jitter;
