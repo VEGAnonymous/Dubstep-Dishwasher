@@ -13,7 +13,7 @@ std::unique_ptr<Curve> lfoCurve;
 std::unique_ptr<Random> lfoRandom;
 
 // Mapping
-float mappingInput;
+float mappingInput, targetMappingInput;
 std::unique_ptr<Curve> mappingCurve;
 
 // Cached
@@ -37,6 +37,7 @@ Modulator::Modulator(ModulatorID id, ModulatorType type) : id(id), type(type), m
             break; 
         case ModulatorType::MAPPING:
             mappingCurve = std::make_unique<Curve>(0.621f, false);
+            mappingInput = 0.0f; targetMappingInput = 0.0f;
             break;
     }
 }
@@ -102,7 +103,7 @@ float Modulator::getPhase() const {
     return 0.0f;
 }
 
-void Modulator::setMappingInput(float input) { mappingInput = std::clamp(input, 0.0f, 1.0f); }
+void Modulator::setMappingInput(float input) { targetMappingInput = std::clamp(input, 0.0f, 1.0f); }
 
 float Modulator::compute(float dt) { // Compute current output value
     switch (type) {
@@ -131,6 +132,13 @@ float Modulator::compute(float dt) { // Compute current output value
         }
         case ModulatorType::MAPPING: {
             if (mappingCurve) {
+                // Smooth mapping input
+                constexpr float smoothTime = 0.5f;
+                const float alpha = 1.0f - expf(-dt / smoothTime); // 500ms time constant
+                if (fabsf(mappingInput - targetMappingInput) > 1e-4f) {
+                     mappingInput = (alpha * targetMappingInput) + ((1.0f - alpha) * mappingInput); // 1st order LPF
+                } else mappingInput = targetMappingInput;
+
                 // Evaluate curve at mapping input
                 mappingCurve->setPhase(mappingInput);
                 output = std::clamp(mappingCurve->next(), 0.0f, 1.0f);

@@ -20,7 +20,7 @@ class Modulator {
         std::unique_ptr<Random> lfoRandom;
         
         // Mapping
-        float mappingInput;
+        float mappingInput, targetMappingInput;
         std::unique_ptr<Curve> mappingCurve;
         
         // Cached
