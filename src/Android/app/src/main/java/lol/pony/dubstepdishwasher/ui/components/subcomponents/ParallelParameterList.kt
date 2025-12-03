@@ -42,7 +42,10 @@ fun ParallelParameterList(
 ) {
     val params = effect.parameters.toList()
 
-    LazyRow(modifier.fillMaxWidth()) {
+    LazyRow(
+        modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(end = 12.dp)
+    ) {
         items(items = params, key = { it.id }) { param ->
             ParameterItem(
                 effect = effect,

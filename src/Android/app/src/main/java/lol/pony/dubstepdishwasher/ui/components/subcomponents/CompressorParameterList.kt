@@ -42,9 +42,9 @@ fun CompressorParameterList(
 ) {
     val params = effect.parameters.toList()
 
-    val threshold = modValue(effect, params[1] as EffectParameter.Range<Float>, currentModOffsets)
-    val ratio = modValue(effect, params[2] as EffectParameter.Range<Float>, currentModOffsets)
-    val knee = modValue(effect, params[3] as EffectParameter.Range<Float>, currentModOffsets)
+    val threshold = modValue(effect, params[1] as EffectParameter.Range, currentModOffsets)
+    val ratio = modValue(effect, params[2] as EffectParameter.Range, currentModOffsets)
+    val knee = modValue(effect, params[3] as EffectParameter.Range, currentModOffsets)
 
     Row(
         modifier = modifier.fillMaxWidth(),

@@ -34,9 +34,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import lol.pony.dubstepdishwasher.R
 import lol.pony.dubstepdishwasher.model.core.EffectType
 import lol.pony.dubstepdishwasher.model.core.lerp
-import lol.pony.dubstepdishwasher.R
 
 @Composable
 fun EffectChainControls(

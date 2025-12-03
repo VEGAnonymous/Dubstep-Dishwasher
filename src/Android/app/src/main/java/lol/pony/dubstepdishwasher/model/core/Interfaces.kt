@@ -1,14 +1,15 @@
 package lol.pony.dubstepdishwasher.model.core
 
+import kotlinx.serialization.Serializable
+
 /* INTERFACES */
 
 interface UIEnum { val uiName: String }
 
 // Parameters
-interface Parameter<T> {
+interface Parameter {
     val id: Int
     val name: String
-    var value: T
     val unit: ParamUnit
     fun formatValue(): String
 }
@@ -25,7 +26,8 @@ interface ModulatableParam {
 }
 
 // Presets
-interface Preset<T> {
+@Serializable
+sealed interface Preset<T> {
     val name: String
     val data: T
     val category: String?

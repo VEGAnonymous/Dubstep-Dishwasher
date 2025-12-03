@@ -1,8 +1,29 @@
 package lol.pony.dubstepdishwasher.model
 
 import androidx.compose.runtime.toMutableStateList
-import lol.pony.dubstepdishwasher.model.core.*
-import lol.pony.dubstepdishwasher.model.effects.*
+import lol.pony.dubstepdishwasher.model.core.Effect
+import lol.pony.dubstepdishwasher.model.core.EffectType
+import lol.pony.dubstepdishwasher.model.core.ResourceUsage
+import lol.pony.dubstepdishwasher.model.effects.Chorus
+import lol.pony.dubstepdishwasher.model.effects.Compressor
+import lol.pony.dubstepdishwasher.model.effects.Delay
+import lol.pony.dubstepdishwasher.model.effects.Distortion
+import lol.pony.dubstepdishwasher.model.effects.Equalizer
+import lol.pony.dubstepdishwasher.model.effects.Flanger
+import lol.pony.dubstepdishwasher.model.effects.FormantShifter
+import lol.pony.dubstepdishwasher.model.effects.Freezer
+import lol.pony.dubstepdishwasher.model.effects.Gain
+import lol.pony.dubstepdishwasher.model.effects.Gate
+import lol.pony.dubstepdishwasher.model.effects.Granulator
+import lol.pony.dubstepdishwasher.model.effects.Modulation
+import lol.pony.dubstepdishwasher.model.effects.Parallel
+import lol.pony.dubstepdishwasher.model.effects.Phaser
+import lol.pony.dubstepdishwasher.model.effects.PitchShifter
+import lol.pony.dubstepdishwasher.model.effects.Reverb
+import lol.pony.dubstepdishwasher.model.effects.Scrubby
+import lol.pony.dubstepdishwasher.model.effects.SpectralGate
+import lol.pony.dubstepdishwasher.model.effects.Vocoder
+import lol.pony.dubstepdishwasher.model.effects.Wah
 
 class EffectChain {
     private var nextIdx = 0

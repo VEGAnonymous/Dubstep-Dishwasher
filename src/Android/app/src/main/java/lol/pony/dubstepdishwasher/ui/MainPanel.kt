@@ -27,21 +27,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import lol.pony.dubstepdishwasher.model.BLEManager
-import lol.pony.dubstepdishwasher.model.core.*
-import lol.pony.dubstepdishwasher.ui.components.*
+import lol.pony.dubstepdishwasher.model.core.EditorState
+import lol.pony.dubstepdishwasher.model.core.Modulator
+import lol.pony.dubstepdishwasher.ui.components.EffectChainControls
+import lol.pony.dubstepdishwasher.ui.components.EffectList
+import lol.pony.dubstepdishwasher.ui.components.ModulatorControls
+import lol.pony.dubstepdishwasher.ui.components.ModulatorTabs
+import lol.pony.dubstepdishwasher.ui.components.ParameterColumn
 import lol.pony.dubstepdishwasher.ui.components.subcomponents.CurveEditor
 import lol.pony.dubstepdishwasher.ui.components.subcomponents.parallel.ParallelEditor
 import lol.pony.dubstepdishwasher.viewmodel.MainViewModel
-import lol.pony.dubstepdishwasher.viewmodel.MainViewModelFactory
 
 enum class LeftColumnMode { FX, MOD }
 
 @Composable
-fun MainPanel(bleManager: BLEManager) {
-    val mainViewModel: MainViewModel = viewModel(factory = MainViewModelFactory(bleManager))
-
+fun MainPanel(mainViewModel: MainViewModel) {
     val resourceError = mainViewModel.resourceError.collectAsState().value
 
     val effects by mainViewModel.effects.collectAsState()

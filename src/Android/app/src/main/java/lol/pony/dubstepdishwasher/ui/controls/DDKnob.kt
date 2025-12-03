@@ -57,10 +57,10 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import lol.pony.dubstepdishwasher.model.core.ModAssignment
-import lol.pony.dubstepdishwasher.model.core.ModPolarity
 import lol.pony.dubstepdishwasher.R
 import lol.pony.dubstepdishwasher.model.core.EffectParameter
+import lol.pony.dubstepdishwasher.model.core.ModAssignment
+import lol.pony.dubstepdishwasher.model.core.ModPolarity
 import lol.pony.dubstepdishwasher.model.core.Parameter
 import lol.pony.dubstepdishwasher.model.core.formatParamValue
 import kotlin.math.roundToInt
@@ -80,7 +80,7 @@ fun DDKnob(
 
     // Model stuff
     effectID : Int,
-    parameter: Parameter<*>,
+    parameter: Parameter,
     modAssignments: List<ModAssignment> = emptyList(),
     selectedModID: String? = null,
     isModulatable: Boolean = false,
@@ -198,7 +198,7 @@ fun DDKnob(
                                         // Show tooltip
                                         showModTooltip = true
                                         parameter.let { param ->
-                                            if (param is EffectParameter.Range<*>) {
+                                            if (param is EffectParameter.Range) {
                                                 val norm = param.normalized()
                                                 val (rangeStart, rangeEnd) = when (assignment.polarity) {
                                                     ModPolarity.Bipolar -> {

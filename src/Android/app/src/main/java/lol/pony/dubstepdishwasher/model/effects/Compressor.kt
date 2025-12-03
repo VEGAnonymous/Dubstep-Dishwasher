@@ -1,12 +1,15 @@
 package lol.pony.dubstepdishwasher.model.effects
 
-import lol.pony.dubstepdishwasher.model.core.*
+import lol.pony.dubstepdishwasher.model.core.Effect
+import lol.pony.dubstepdishwasher.model.core.EffectParameter
+import lol.pony.dubstepdishwasher.model.core.EffectType
+import lol.pony.dubstepdishwasher.model.core.ParamUnit
 
 class Compressor(id: Int) : Effect() {
     override val effectId = id
     override val effectType = EffectType.COMPRESSOR
     override val resourceUsage = effectType.resourceUsage
-    override val parameters = mutableListOf<EffectParameter<*>>(
+    override val parameters = mutableListOf<EffectParameter>(
         EffectParameter.Range(effectId = id, id = 0, name = "Mix", unit = ParamUnit.PERCENT, range = 0.0f to 1.0f, exp = 1f, step = 0.01f, initialValue = 1.0f),
         EffectParameter.Range(effectId = id, id = 1, name = "Threshold", unit = ParamUnit.DB, range = -60.0f to 0.0f, exp = 0.5f, step = 0.1f, initialValue = -18.0f),
         EffectParameter.Range(effectId = id, id = 2, name = "Ratio", unit = ParamUnit.DIMENSIONLESS, range = 1.0f to 100.0f, exp = 2f, step = 0.01f, initialValue = 4.0f),

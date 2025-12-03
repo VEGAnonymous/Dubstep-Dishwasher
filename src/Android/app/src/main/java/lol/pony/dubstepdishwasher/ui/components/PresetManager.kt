@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -319,7 +318,9 @@ private fun <T, C : PresetContainer<T>> PresetRow(
         DDSwitch(
             modifier = Modifier.size(20.dp),
             checked = preset.favorite,
-            onCheckedChange = { checked -> onFavorite(preset.name, checked) },
+            onCheckedChange = { checked ->
+//                Log.e("favorite", "${preset.name} $checked")x`
+                onFavorite(preset.name, checked) },
             imageRes = R.drawable.control_star
         )
 
