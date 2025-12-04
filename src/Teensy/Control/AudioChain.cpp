@@ -21,6 +21,8 @@
 #include "Teensy/Effects/SpectralGate.h"
 #include "Teensy/Effects/FormantShifter.h"
 
+#include <Audio.h>
+
 /* PRIVATE */
 
 /*
@@ -85,6 +87,7 @@ Effect* AudioChain::addEffect(EffectName name) {
 }
 
 void AudioChain::removeEffect(EffectID id) {
+    AudioNoInterrupts();
     // Search for effect by ID
     auto it = fxMap.find(id);
     if (it == fxMap.end()) return;
@@ -97,6 +100,7 @@ void AudioChain::removeEffect(EffectID id) {
 
     // Update all indices
     for (auto &p : fxMap) if (p.second > idx) p.second--;
+    AudioInterrupts();
 }
 
 Effect* AudioChain::getEffect(EffectID id) {
