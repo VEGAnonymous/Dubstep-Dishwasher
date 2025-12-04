@@ -34,8 +34,8 @@ class Vocoder : public Effect {
         // Peak-based makeup gain
         float peakDry = 0.0f, peakWet = 0.0f;
         float smoothedGain = 1.0f; 
-        const float peakDecay = exp(-1.0f / (100.0f * SAMPLE_RATE / 1000.0f)); // 100ms
-        const float gainSmooth = exp(-1.0f / (100.0f * SAMPLE_RATE / 1000.0f)); // 50ms
+        const float peakDecay = exp(-1.0f / msSamples(100.0f)); // 100ms
+        const float gainSmooth = exp(-1.0f / msSamples(50.0f)); // 50ms
 
         void setBands();
 

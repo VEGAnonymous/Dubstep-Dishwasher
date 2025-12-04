@@ -23,9 +23,9 @@ class ModulationEngine {
         
         Modulator* getModulator(ModulatorID id);
 
-        void setMode(ModulatorID modId, ModulatorType mode);
         void addAssignment(const ModAssignment& assignment);
         void removeAssignment(ModulatorID modId, EffectID effectId, ParamID paramId);
+        void removeEffect(EffectID effectid);
         void setAssignment(ModulatorID modId, EffectID effectId, ParamID paramId, float amount, ModPolarity polarity);
         void clearAssignments();
         void setBaseValue(EffectID effectId, ParamID paramId, float value);

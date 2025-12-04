@@ -48,7 +48,7 @@ void Granulator::spawnGrain() {
     if (grainStartPos < 0) grainStartPos += bufSize;
     
     float grainLength = std::clamp(length * (1.0f + (uniform() * lengthRand)), 5.0f, 1000.0f);
-    int grainLengthSamples = std::min((int)(grainLength * SAMPLE_RATE / 1000.0f), (int)bufSize - 1);
+    int grainLengthSamples = std::min((int)(msSamples(grainLength)), (int)bufSize - 1);
 
     float grainLevel = std::clamp(level + (uniform() * 0.25f * levelRand), 0.0f, 1.0f) * 0.5f;
     
@@ -148,7 +148,7 @@ void Granulator::process(const float* in, float* out, size_t n) {
         inBuf[writePos] = in[i];
         ++grainCounter;
         
-        float timeSamples = (rate + (rate * rateRand * uniform())) * SAMPLE_RATE / 1000.0f; // Compute interval for next grain
+        float timeSamples = msSamples(rate + (rate * rateRand * uniform())); // Compute interval for next grain
         if (grainCounter >= timeSamples) { // Time to spawn a grain!
             spawnGrain();
             grainCounter = 0.0f;

@@ -116,7 +116,7 @@ void Scrubby::process(const float* in, float* out, size_t n) {
             currentSeekDur = (size_t)(seekDur * (float)(seekInterval * SAMPLE_RATE));
             
             // Set random target
-            targetPos = writePos - (((seekRange / 1000.0f) * SAMPLE_RATE) * uniform());
+            targetPos = writePos - (msSamples(seekRange) * uniform());
             while (targetPos < 0) targetPos += bufSize;
             
             // Compute constant speed

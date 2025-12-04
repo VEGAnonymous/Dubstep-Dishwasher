@@ -83,12 +83,12 @@ void Vocoder::setBandwidth(float bandwidthFactor) { this->bandwidthFactor = std:
 void Vocoder::setDepth(float depth) { this->depth = std::clamp(depth, 0.0f, 2.0f); } // [0.0, 2.0]
 void Vocoder::setAttackTime(float attackTime) { // ms, [10.0, 1000.0]
     this->attackTime = attackTime;
-    attackCoeff = 1.0f - exp(-1.0f / (std::clamp(attackTime, 10.0f, 1000.0f) * SAMPLE_RATE / 1000.0f)); 
+    attackCoeff = 1.0f - exp(-1.0f / msSamples(std::clamp(attackTime, 10.0f, 1000.0f))); 
     for (Band& band : bands) { band.attackCoeff = attackCoeff; }
 }
 void Vocoder::setReleaseTime(float releaseTime) { // ms, [10.0, 2000.0]
     this->releaseTime = releaseTime;
-    releaseCoeff = 1.0f - exp(-1.0f / (std::clamp(releaseTime, 10.0f, 2000.0f) * SAMPLE_RATE / 1000.0f)); 
+    releaseCoeff = 1.0f - exp(-1.0f / msSamples(std::clamp(releaseTime, 10.0f, 2000.0f))); 
     for (Band& band : bands) band.releaseCoeff = releaseCoeff;
 }
 void Vocoder::setParam(ParamID param, float value) {

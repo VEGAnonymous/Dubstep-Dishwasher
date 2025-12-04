@@ -49,7 +49,8 @@ void processCommand(const Command& cmd, AudioChain& chain, ModulationEngine& mod
         }
 
         case CommandType::EFFECT_REMOVE: { // Remove effect
-            chain.removeEffect(cmd.id1); 
+            chain.removeEffect(cmd.id1);
+            modEngine.removeEffect(cmd.id1);
             if (LOG_CMD) Serial.printf("Removed effect %d\n", cmd.id1);
             break;
         }

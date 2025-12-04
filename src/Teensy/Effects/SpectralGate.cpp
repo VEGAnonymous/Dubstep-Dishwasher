@@ -22,7 +22,6 @@ void SpectralGate::setThreshold(float thresholdDB) { // dB, [-100.0, 0.0]
 void SpectralGate::setTilt(float tilt) { this->tilt = std::clamp(tilt, -1.0f, 1.0f) * 2.0f; } // [-1.0, 1.0]
 void SpectralGate::setInvert(bool invert) { this->invert = invert; }
 void SpectralGate::setParam(ParamID param, float value) {
-    Serial.printf("Set param %d to %f\n", param, value);
     switch (param) {
         case THRESHOLD: setThreshold(value); break;
         case TILT: setTilt(value); break;

@@ -12,6 +12,8 @@
 inline float dbAmp(float dB) { return pow(10.0f, dB / 20.0f); }
 inline float ampDB(float amp) { return 20.0f * log10(amp + 1e-12); }
 
+inline float msSamples(float ms) { return ms * SAMPLE_RATE / 1000.0f; }
+
 inline float uniform() { // Random float [-1, 1]
     static thread_local std::mt19937 rng(std::random_device{}());
     static thread_local std::uniform_real_distribution<float> dist(-1.0f, 1.0f);

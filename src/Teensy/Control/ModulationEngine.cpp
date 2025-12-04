@@ -60,6 +60,21 @@ void ModulationEngine::removeAssignment(ModulatorID modId, EffectID effectId, Pa
     }
 }
 
+void ModulationEngine::removeEffect(EffectID effectId) { // Remove all assignments / base values for effect
+    assignments.erase(
+        std::remove_if(assignments.begin(), assignments.end(),
+            [effectId](const ModAssignment& a) {
+                return a.effectId == effectId;
+            }),
+        assignments.end()
+    );
+
+    for (auto it = baseValues.begin(); it != baseValues.end(); ) {
+        if (it->first.effectId == effectId) it = baseValues.erase(it);
+        else ++it;
+    }
+}
+
 void ModulationEngine::setAssignment(ModulatorID modId, EffectID effectId, ParamID paramId, float amount, ModPolarity polarity) {
     for (auto& assignment : assignments) {
         if (assignment.modId == modId && assignment.effectId == effectId && assignment.paramId == paramId) {

@@ -85,7 +85,7 @@ void Chorus::process(const float* in, float* out, size_t n) {
             float modDelay = vc.baseDelay + (vc.depth * vc.mod.next()); // Modulate delay time
             modDelay = std::clamp(modDelay, 0.01f, 50.0f);
 
-            float voiceSig = vc.delayLine.read(modDelay * SAMPLE_RATE / 1000.0f); // Tap
+            float voiceSig = vc.delayLine.read(msSamples(modDelay)); // Tap
             vc.delayLine.write(*in_ptr + (feedback * voiceSig)); // Write new sample and feedback
             wetSig += voiceSig * vc.mix; // Accumulate output
         }

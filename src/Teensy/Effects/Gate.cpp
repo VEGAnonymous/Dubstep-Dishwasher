@@ -29,15 +29,15 @@ void Gate::setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.
 void Gate::setThreshold(float threshold) { this->threshold = std::clamp(threshold, -100.0f, 0.0f); } // dB, [-100.0, 0.0]
 void Gate::setAttackTime(float attackTime) { // ms, [0.01, 250.0]
     this->attackTime = attackTime; 
-    attackCoeff = exp(-2.2f / (std::clamp(attackTime, 0.01f, 250.0f) * SAMPLE_RATE / 1000.0f)); 
+    attackCoeff = exp(-2.2f / msSamples(std::clamp(attackTime, 0.01f, 250.0f))); 
 } 
 void Gate::setReleaseTime(float releaseTime) { // ms, [0.01, 1500.0]
     this->releaseTime = releaseTime;
-    releaseCoeff = exp(-2.2f / (std::clamp(releaseTime, 0.01f, 1500.0f) * SAMPLE_RATE / 1000.0f)); 
+    releaseCoeff = exp(-2.2f / msSamples(std::clamp(releaseTime, 0.01f, 1500.0f))); 
 } 
 void Gate::setHoldTime(float holdTime) { // ms, [1.0, 1500.0]
     this->holdTime = holdTime;
-    holdSamples = (size_t)(std::clamp(holdTime, 1.0f, 1500.0f) * SAMPLE_RATE / 1000.0f); 
+    holdSamples = (size_t)(msSamples(std::clamp(holdTime, 1.0f, 1500.0f))); 
 } 
 void Gate::setInvert(bool invert) { this->invert = invert; }
 void Gate::setParam(ParamID param, float value) {

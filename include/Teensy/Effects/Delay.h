@@ -11,6 +11,16 @@ class Delay : public Effect {
         float mix, delayTime, feedback;
         DelayLine delayLine;
 
+        float currentDelaySamples;
+        float targetDelaySamples;
+
+        bool isCrossfading = false;
+        int fadeCounter = 0;
+        static constexpr int fadeLength = 32;
+
+        float oldDelaySamples;
+        float newDelaySamples;
+
     public:
         Delay(float mix = 0.3f, float delayTime = 200.0f, float feedback = 0.4f);
 

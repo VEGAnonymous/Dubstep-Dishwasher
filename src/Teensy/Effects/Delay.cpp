@@ -16,12 +16,22 @@ DelayLine delayLine;
 /* PUBLIC */
 
 Delay::Delay(float mix, float delayTime, float feedback) :
-delayLine(delayTime, maxDelayTime) { setMix(mix); setFeedback(feedback); }
+delayLine(delayTime, maxDelayTime) { 
+    setMix(mix); setFeedback(feedback); 
+    currentDelaySamples = msSamples(delayTime);
+    targetDelaySamples = currentDelaySamples;
+}
 
 void Delay::setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
 void Delay::setDelayTime(float delayTime) { // ms, [1.0, 500.0]
-    this->delayTime = delayTime;
-    delayLine.setDelayTime(std::clamp(delayTime, 1.0f, maxDelayTime)); 
+    targetDelaySamples = msSamples(std::clamp(delayTime, 1.0f, maxDelayTime));
+    if (!isCrossfading) {
+        // Begin a new crossfade
+        oldDelaySamples = currentDelaySamples;
+        newDelaySamples = targetDelaySamples;
+        fadeCounter = 0;
+        isCrossfading = true;
+    }
 } 
 void Delay::setFeedback(float feedback) { this->feedback = std::clamp(feedback, -0.95f, 0.95f); } // [-0.95, 0.95]
 void Delay::setParam(ParamID param, float value) {
@@ -41,13 +51,22 @@ float Delay::getParam(ParamID param) const {
 }
 
 void Delay::process(const float* in, float* out, size_t n) {
-    const float* in_ptr = in;
-    float* out_ptr = out;
-
-    float delaySig;
     for (size_t i = 0; i < n; ++i) {
-        delaySig = delayLine.read(); // Read from delay line
-        delayLine.write(*in_ptr + (delaySig * feedback)); // Feedback and write new sample
-        *out_ptr++ = dryWetMix(*in_ptr++, delaySig, mix); // Mix
+        float delaySig;
+        if (isCrossfading) {
+            float t = fadeCounter / float(fadeLength);
+            float tapA = delayLine.read(oldDelaySamples);
+            float tapB = delayLine.read(newDelaySamples);
+            delaySig = lerp(tapA, tapB, t);
+            
+            fadeCounter++;
+            if (fadeCounter >= fadeLength) {
+                isCrossfading = false;
+                currentDelaySamples = newDelaySamples;
+            }
+        } else delaySig = delayLine.read(currentDelaySamples);
+
+        delayLine.write(in[i] + delaySig * feedback); // Feedback and write new sample
+        out[i] = dryWetMix(in[i], delaySig, mix); // Mix
     }
 }

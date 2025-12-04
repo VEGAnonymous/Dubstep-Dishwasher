@@ -91,7 +91,7 @@ void PitchShifter::setPitchShift(float pitchShift) {
 }
 void PitchShifter::setGrainSize(float grainSize) { // ms, [20.0, 500.0]
     this->grainSize = std::clamp(grainSize, 20.0f, 200.0f); 
-    grainSizeSamples = grainSize * SAMPLE_RATE / 1000.0f;
+    grainSizeSamples = msSamples(grainSize);
     updateInterval();
 }
 void PitchShifter::setGrainOverlap(float grainOverlap) { // [0.25, 0.75]

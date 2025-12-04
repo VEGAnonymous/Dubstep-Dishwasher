@@ -37,7 +37,7 @@ Compressor::Compressor(float mix, float threshold, float ratio, float knee, floa
     setMix(mix); setThreshold(threshold); setRatio(ratio); setKnee(knee); 
     setAttackTime(attack); setReleaseTime(release); setMakeupGain(makeupGain); setAutoMakeup(autoMakeup);
     inBuffer.setDelayTime(L);
-    makeupCoeff = exp(-2.2f / (100.0f * SAMPLE_RATE / 1000.0f)); // Auto-makeup smoothing factor
+    makeupCoeff = exp(-2.2f / msSamples(100.0f)); // Auto-makeup smoothing factor
 }
 
 void Compressor::setMix(float mix) { this->mix = std::clamp(mix, 0.0f, 1.0f); } // [0.0, 1.0]
@@ -46,11 +46,11 @@ void Compressor::setRatio(float ratio) { this->ratio = std::clamp(ratio, 1.0f, 1
 void Compressor::setKnee(float knee) { this->knee = std::clamp(knee, 0.0f, 40.0f); } // dB, [0.0, 40.0]
 void Compressor::setAttackTime(float attackTime) { // ms, [0.01, 250.0]
     this->attackTime = attackTime;
-    attackCoeff = exp(-2.2f / (std::clamp(attackTime, 0.01f, 250.0f) * SAMPLE_RATE / 1000.0f)); 
+    attackCoeff = exp(-2.2f / msSamples(std::clamp(attackTime, 0.01f, 250.0f))); 
 } 
 void Compressor::setReleaseTime(float releaseTime) { // ms, [10.0, 2500.0]
     this->releaseTime = releaseTime;
-    releaseCoeff = exp(-2.2f / (std::clamp(releaseTime, 10.0f, 2500.0f) * SAMPLE_RATE / 1000.0f)); 
+    releaseCoeff = exp(-2.2f / msSamples(std::clamp(releaseTime, 10.0f, 2500.0f))); 
 } 
 void Compressor::setMakeupGain(float makeupGain) { this->makeupGain = std::clamp(makeupGain, -72.0f, 36.0f); } // dB, [-72.0, 36.0]
 void Compressor::setAutoMakeup(bool autoMakeup) { 
