@@ -72,14 +72,14 @@ class Callbacks: public BLECharacteristicCallbacks {
 /* UART */
 
 Handler<MelFrame, Command> handler(Serial1); // Packet handler (send commands / receive frames)
-InferenceBuffer inferenceBuffer; // Buffer and process incoming mel frames for RT inference 
+// InferenceBuffer inferenceBuffer; // Buffer and process incoming mel frames for RT inference 
 
 void setup() {
     Serial.begin(115200);
     Serial1.begin(230400, SERIAL_8N1, RX_PIN, TX_PIN);
 
     /* Setup UART handler */
-    handler.setCallback([](const MelFrame& frame) { inferenceBuffer.addFrame(frame); });
+    // handler.setCallback([](const MelFrame& frame) { inferenceBuffer.addFrame(frame); });
 
     /* BLE setup */
     BLEDevice::init("Dubstep Dishwasher MCU");

@@ -15,8 +15,8 @@
 /* Testing - Set flags here */
 constexpr bool USB_IO = false,
                SND_SPECT = false,
-               LOG_RSE = true,
-               LOG_CMD = true;
+               LOG_RSE = false,
+               LOG_CMD = false;
 
 AudioInputUSB usbIn; 
 AudioOutputUSB usbOut;
@@ -214,7 +214,7 @@ void setup() {
         patch2 = std::make_unique<AudioConnection>(*stream, 0, usbOut, 0);
         if (SND_SPECT) patch3 = std::make_unique<AudioConnection>(usbIn, 0, *logMelStream, 0);
     } else {
-        patch1 = std::make_unique<AudioConnection>(usbIn, 0, *stream, 0);
+        patch1 = std::make_unique<AudioConnection>(adcIn, 0, *stream, 0);
         patch2 = std::make_unique<AudioConnection>(*stream, 0, dacOut, 0);
         if (SND_SPECT) patch3 = std::make_unique<AudioConnection>(adcIn, 0, *logMelStream, 0);
     }
