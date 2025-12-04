@@ -12,8 +12,8 @@ Log_Mel logMel;
 /* PUBLIC */
 
 LogMelStream::LogMelStream() : AudioStream(1, _inputQueueArray), logMel() {}
+LogMelStream::~LogMelStream() {}
 
-void LogMelStream::setMelCallback(std::function<void(const float*, size_t)> callback) { logMel.setMelCallback(callback); }
 void LogMelStream::update() {
     audio_block_t *inBlock = receiveReadOnly(0); // Receive block from upstream
     if (!inBlock) return;

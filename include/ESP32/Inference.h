@@ -7,7 +7,7 @@
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 
-constexpr int kTensorArenaSize = 245 * 1024; // 245 kB, arbitrary
+constexpr int kTensorArenaSize = 250 * 1024; // 250 kB
 
 class Inference {
     private:

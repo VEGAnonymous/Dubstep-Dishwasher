@@ -16,10 +16,11 @@ struct Command {
 } __attribute__((packed));
 
 struct MelFrame {
+    uint16_t sync;       // 0xAA55
     uint32_t index;      // Frame counter
     uint32_t numMels;    // Number of mel bins
-    uint8_t checksum;    // Checksum (XOR)
     float mel[NUM_MELS]; // Mel data
+    uint8_t checksum;    // Checksum (XOR)
 } __attribute__((packed));
 
 /* FUNCTIONS */
@@ -48,6 +49,12 @@ class Handler { // Handle sending and receiving different packet types over UART
         size_t bufferPos;
         std::function<void(const InPacket&)> rcvCallback;
 
+        // Sync helper
+        template <typename T, typename = void>
+        struct has_sync : std::false_type {};
+        template <typename T>
+        struct has_sync<T, std::void_t<decltype(std::declval<T>().sync)>> : std::true_type {};
+
     public:
         Handler(HardwareSerial& serial) : serial(serial), bufferPos(0) {}
 
@@ -58,10 +65,25 @@ class Handler { // Handle sending and receiving different packet types over UART
                 if (bufferPos < sizeof(InPacket)) buffer[bufferPos++] = serial.read(); // Write byte to buffer
                 if (bufferPos == sizeof(InPacket)) { // Full packet received
                     InPacket pkt; memcpy(&pkt, buffer, sizeof(InPacket));
-                    if (verifyChecksum<InPacket>(pkt)) {
-                        if (rcvCallback) rcvCallback(pkt);
-                    } else return; // Drop invalid packets
-                    bufferPos = 0;
+
+                    constexpr bool hasSync = has_sync<InPacket>::value; // Packet type requires sync
+                    bool validSync = true;
+                    if constexpr (hasSync) {
+                        validSync = (pkt.sync == 0xAA55); // Has sync field - check and resync if invalid
+                        if (validSync && verifyChecksum<InPacket>(pkt)) {
+                            if (rcvCallback) rcvCallback(pkt);
+                            bufferPos = 0;
+                        } else {
+                            // Invalid - shift buffer and resync
+                            memmove(buffer, buffer + 1, sizeof(InPacket) - 1);
+                            bufferPos = sizeof(InPacket) - 1;
+                        }
+                    } else {
+                        if (verifyChecksum<InPacket>(pkt)) {
+                            if (rcvCallback) rcvCallback(pkt);
+                        } else { bufferPos = 0; return; } // Drop invalid packets
+                        bufferPos = 0;
+                    }
                 }
             }
         }

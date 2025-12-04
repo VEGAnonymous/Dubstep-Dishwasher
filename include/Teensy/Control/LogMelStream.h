@@ -11,7 +11,11 @@ class LogMelStream : public AudioStream {
 
     public:
         LogMelStream();
+        virtual ~LogMelStream();
 
-        virtual void setMelCallback(std::function<void(const float*, size_t)> callback);
+        bool isFrameReady() const { return logMel.isFrameReady(); }
+        void clearReady() { logMel.clearReady(); }
+        MelFrame getFrame() const { return logMel.getFrame(); }
+
         virtual void update() override;
 };

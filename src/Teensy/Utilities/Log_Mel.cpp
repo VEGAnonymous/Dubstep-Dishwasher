@@ -41,8 +41,13 @@ void Log_Mel::processSpectrum(STFT::FFTFrame& frame) { // Turn STFT spectrogram 
     // Take log of mel spectrum -> log-mel
     for (size_t m = 0; m < NUM_MELS; ++m) { melEnergies[m] = logf(melEnergies[m] + 1e-6f); }
 
-    // Ready to send a new frame!
-    if (melCallback) melCallback(melEnergies, NUM_MELS);
+    // Ready to send a new frame
+    if (!melFrameReady) { // Only update if the previous frame has been sent
+        melFrame.index = melFrameCounter++;
+        melFrame.numMels = NUM_MELS;
+        memcpy(melFrame.mel, melEnergies, NUM_MELS * sizeof(float));
+        melFrameReady = true;
+    }
 }
 
 /* PUBLIC */
@@ -53,7 +58,10 @@ Log_Mel::Log_Mel() : stft(fftSize, hopFactor, ((FFT_MAX_SIZE / (float)hopFactor)
     stft.setProcessCallback([this](STFT::FFTFrame& frame) { processSpectrum(frame); });
 }
 
-void Log_Mel::setMelCallback(std::function<void(const float*, size_t)> callback) { melCallback = callback; }
+bool Log_Mel::isFrameReady() const { return melFrameReady; }
+void Log_Mel::clearReady() { melFrameReady = false; }
+MelFrame Log_Mel::getFrame() const { return melFrame; }
+
 void Log_Mel::processBlock(const float* in, size_t n) {
     for (size_t i = 0; i < n; ++i) { stft.forward(in[i]); }
 }

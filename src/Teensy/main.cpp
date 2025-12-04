@@ -36,7 +36,6 @@ std::unique_ptr<AudioConnection> patch1, patch2, patch3; // Connections
 /* CONTROL */
 
 Handler<Command, MelFrame> handler(Serial1); // Packet handler (send frames / receive commands)
-uint32_t frameCounter = 0; // Log-mel frame index
 
 void processCommand(const Command& cmd, AudioChain& chain, ModulationEngine& modEngine) {
     switch (static_cast<CommandType>(cmd.cmd)) {
@@ -208,16 +207,7 @@ void setup() {
     /* Instantiate DSP chain */
     chain = std::make_unique<AudioChain>();
     stream = std::make_unique<AudioChainStream>(*chain);
-    if (SND_SPECT) {
-        logMelStream = std::make_unique<LogMelStream>();
-        logMelStream->setMelCallback([&](const float* melEnergies, size_t numMels) { // Send mel-frames over Serial1 when ready
-            MelFrame frame{};
-            frame.index = frameCounter++;
-            frame.numMels = numMels;
-            memcpy(frame.mel, melEnergies, numMels * sizeof(float));
-            handler.send(frame);
-        });
-    }
+    if (SND_SPECT) logMelStream = std::make_unique<LogMelStream>();
 
     if (USB_IO) {
         patch1 = std::make_unique<AudioConnection>(usbIn, 0, *stream, 0);
@@ -243,7 +233,16 @@ void setup() {
 void loop() {
 
     handler.listen();
+
+    // Send log-mel frames
+    if (SND_SPECT && logMelStream && logMelStream->isFrameReady()) {
+        MelFrame frame = logMelStream->getFrame();
+        frame.sync = 0xAA55;
+        handler.send(frame);
+        logMelStream->clearReady();
+    }
     
+    // Blink LED and log resource usage
     if (millis() - logTime >= 1000) {
         logTime = millis();
         digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
