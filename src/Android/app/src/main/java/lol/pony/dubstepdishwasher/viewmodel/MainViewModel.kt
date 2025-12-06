@@ -313,10 +313,9 @@ class MainViewModel(
             val mod = if (snap.isLFO) Modulator.LFO(snap.id, curve = snap.curve.map { it.copy() })
             else Modulator.Mapping(snap.id, curve = snap.curve.map { it.copy() })
 
-            snap.parameters.forEachIndexed { paramId, param -> {
-                    mod.setParam(paramId, param.getValueAny())
-                    controlQueue.flushNow()
-                }
+            snap.parameters.forEachIndexed { paramId, param ->
+                mod.setParam(paramId, param.getValueAny())
+                controlQueue.flushNow()
             }
             mod
         }
