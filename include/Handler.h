@@ -6,10 +6,22 @@
 /* DATA */
 
 struct Command {
+    uint16_t sync;    // 0xAA55
     uint8_t cmd;      // Command type (see include/Teensy/Defines.h)
     uint8_t id1;      // Primary ID (EffectID, ModulatorID...)
     uint8_t id2;      // Secondary ID (ParamID, CurvePoint index...)
     uint8_t checksum; // Checksum (XOR)
+    float value1;
+    float value2;
+    float value3;
+} __attribute__((packed));
+
+struct CommandBLE { // HACK: App should send full Command struct
+    // No sync
+    uint8_t cmd;
+    uint8_t id1;   
+    uint8_t id2;
+    uint8_t checksum;
     float value1;
     float value2;
     float value3;
@@ -67,10 +79,9 @@ class Handler { // Handle sending and receiving different packet types over UART
                     InPacket pkt; memcpy(&pkt, buffer, sizeof(InPacket));
 
                     constexpr bool hasSync = has_sync<InPacket>::value; // Packet type requires sync
-                    bool validSync = true;
                     if constexpr (hasSync) {
-                        validSync = (pkt.sync == 0xAA55); // Has sync field - check and resync if invalid
-                        if (validSync && verifyChecksum<InPacket>(pkt)) {
+                        // Has sync field - check and resync if invalid
+                        if (pkt.sync == 0xAA55 && verifyChecksum<InPacket>(pkt)) {
                             if (rcvCallback) rcvCallback(pkt);
                             bufferPos = 0;
                         } else {
@@ -78,7 +89,7 @@ class Handler { // Handle sending and receiving different packet types over UART
                             memmove(buffer, buffer + 1, sizeof(InPacket) - 1);
                             bufferPos = sizeof(InPacket) - 1;
                         }
-                    } else {
+                    } else { // No sync
                         if (verifyChecksum<InPacket>(pkt)) {
                             if (rcvCallback) rcvCallback(pkt);
                         } else { bufferPos = 0; return; } // Drop invalid packets
@@ -89,6 +100,8 @@ class Handler { // Handle sending and receiving different packet types over UART
         }
 
         void send(OutPacket& pkt) { // Send packet over UART
+            constexpr bool hasSync = has_sync<OutPacket>::value;
+            if constexpr (hasSync) pkt.sync = 0xAA55; // Set sync marker
             pkt.checksum = computeChecksum<OutPacket>(pkt);
             serial.write(reinterpret_cast<const uint8_t*>(&pkt), sizeof(OutPacket));
         }

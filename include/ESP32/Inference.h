@@ -1,13 +1,11 @@
 #pragma once
 
-#include "Model.h"
-
 #include "tensorflow/lite/micro/all_ops_resolver.h"
 #include "tensorflow/lite/micro/micro_error_reporter.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 
-constexpr int kTensorArenaSize = 250 * 1024; // 250 kB
+constexpr int kTensorArenaSize = 120 * 1024; // 120 kB
 
 class Inference {
     private:
@@ -16,50 +14,17 @@ class Inference {
         tflite::MicroInterpreter* interpreter = nullptr;
         TfLiteTensor* input = nullptr;
         TfLiteTensor* output = nullptr;
-        tflite::AllOpsResolver resolver;
+        tflite::MicroMutableOpResolver<12> resolver;
         
-        uint8_t *tensorArena;
+        alignas(16) static uint8_t tensorArena[kTensorArenaSize];
+
+        int8_t quantize(float x, float scale, int zero_point);
 
     public:
-        Inference() { tensorArena = new uint8_t[kTensorArenaSize]; }
+        Inference() {}
+        friend class InferenceBuffer;
 
-        bool setup() {
-            static tflite::MicroErrorReporter microErrorReporter;
-            errorReporter = &microErrorReporter;
+        bool setup();
 
-            // Load model
-            model = tflite::GetModel(model_data);
-            if (model->version() != TFLITE_SCHEMA_VERSION) {
-                TF_LITE_REPORT_ERROR(errorReporter, "Model version mismatch");
-                return false;
-            }
-
-            // Init interpreter
-            static tflite::MicroInterpreter staticInterpreter(model, resolver, tensorArena, kTensorArenaSize, errorReporter);
-            interpreter = &staticInterpreter;
-
-            // Allocate tensors
-            TfLiteStatus allocateStatus = interpreter->AllocateTensors();
-            if (allocateStatus != kTfLiteOk) {
-                TF_LITE_REPORT_ERROR(errorReporter, "AllocateTensors() failed");
-                return false;
-            }
-
-            // Get pointers
-            input = interpreter->input(0);
-            output = interpreter->output(0);
-
-            return true;
-        }
-
-        float* getInputBuffer() { return input->data.f; }
-
-        float* predict() {
-            TfLiteStatus invokeStatus = interpreter->Invoke();
-            if (invokeStatus != kTfLiteOk) {
-                TF_LITE_REPORT_ERROR(errorReporter, "Invoke failed");
-                return nullptr;
-            }
-            return output->data.f;
-        }
+        float* predict(const float* normalized_input, size_t input_size);
 };

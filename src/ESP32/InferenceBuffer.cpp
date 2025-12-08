@@ -1,24 +1,22 @@
 #include "ESP32/InferenceBuffer.h"
 #include "Handler.h"
 
+extern Handler<MelFrame, Command> handler;
+
 /* PRIVATE */
 
 /*
 
 static constexpr size_t INFERENCE_NUM_MELS = 64;
-static constexpr size_t INFERENCE_NUM_FRAMES = 690; // (88200 // 128) + 1
+static constexpr size_t INFERENCE_NUM_FRAMES = 87; // ((44100 * 0.25s) // 128) + 1
 static constexpr size_t INFERENCE_BUFFER_SIZE = INFERENCE_NUM_MELS * INFERENCE_NUM_FRAMES;
 
-float* buffer;       // Full spectrogram buffer
+float* buffer; // Full spectrogram buffer
 int m_currentFrame;
 
 Inference nn; // NN for inference
 
 */
-
-// TODO: Remove all debug prints + time tracking
-
-extern Handler<MelFrame, Command> handler;
 
 // Brightness / Warmth / Intensity / Percussive / Speed
 static constexpr uint8_t modulatorIds[] = {6, 7, 8, 9, 10};
@@ -26,10 +24,10 @@ static constexpr uint8_t modulatorIds[] = {6, 7, 8, 9, 10};
 void InferenceBuffer::processBuffer() {
     if (!buffer) return;
 
-    unsigned long startTime = millis(); // TEMP
+    // unsigned long startTime = millis();
 
     // Compute mean and std. dev.
-    float sum = 0.0f; float sum_sq = 0.0f;
+    float sum = 0.0f, sum_sq = 0.0f;
     for (size_t i = 0; i < BUFFER_SIZE; ++i) {
         float val = buffer[i];
         sum += val;
@@ -39,32 +37,43 @@ void InferenceBuffer::processBuffer() {
     float mean = sum / BUFFER_SIZE;
     float variance = (sum_sq / BUFFER_SIZE) - (mean * mean);
     float std_dev = sqrt(fmaxf(0.0f, variance));
+
+    // Serial.printf("Mean: %f, Std Dev: %f\n", mean, std_dev);
     
-    // Normalize (in place)
-    for (size_t i = 0; i < BUFFER_SIZE; ++i) buffer[i] = (buffer[i] - mean) / (std_dev + 1e-7f);
+    // Normalize
+    for (size_t i = 0; i < BUFFER_SIZE; ++i) {
+        buffer[i] = (buffer[i] - mean) / (std_dev + 1e-7f);
+    }
 
     // RUN INFERENCE
-    float* output = nn.predict();
+    float* output = nn.predict(buffer, BUFFER_SIZE);
 
-    unsigned long endTime = millis();
+    // unsigned long endTime = millis();
     if (output != nullptr) {
-        Serial.printf("Inference: %lu ms\n", endTime - startTime);
-        const char* qualities[] = {"Bright", "Warmth", "Intensity", "Percussive", "Speed"};
+        // Serial.printf("Inference: %lu ms\n", endTime - startTime);
+        // const char* qualities[] = {"Bright", "Warmth", "Intensity", "Percussive", "Speed"};
 
         // Send mapping values commands
         Command cmd = {};
         for (int i = 0; i < 5; ++i) {
-            float value = max(0.0f, min(1.0f, output[i])); // clamp doesn't work for some reason
+            float value = max(0.0f, min(1.0f, output[i]));
             uint8_t modId = modulatorIds[i];
             
-            Serial.printf("%s: %.2f (-> modulator %d)\n", qualities[i], value, modId);
+            // Serial.printf("%s: %.2f ", qualities[i], value, modId);
 
             // Build command
             cmd.cmd = static_cast<uint8_t>(CommandType::MOD_MAPPING_SET_INPUT); 
-            cmd.id1 = modId; cmd.value1 = value; cmd.id2 = 0; cmd.value2 = 0.0f; cmd.value3 = 0.0f;
+            cmd.id1 = modId; 
+            cmd.value1 = value; 
+            cmd.id2 = 0; 
+            cmd.value2 = 0.0f; 
+            cmd.value3 = 0.0f;
 
             handler.send(cmd);
+            // Serial.printf("Sent cmd: cmd=%d id1=%d id2=%d v1=%.3f v2=%.3f v3=%.3f chk=0x%02X\n",
+            //     cmd.cmd, cmd.id1, cmd.id2, cmd.value1, cmd.value2, cmd.value3, cmd.checksum);
         }
+        Serial.println();
     }
 }
 
@@ -72,25 +81,25 @@ void InferenceBuffer::processBuffer() {
         
 InferenceBuffer::InferenceBuffer() : m_currentFrame(0), buffer(nullptr) {
     // Setup inference
-    if (!nn.setup()) { Serial.println("Inference setup failed"); return; }
-    buffer = nn.getInputBuffer(); // Point buffer to input tensor
+    if (!nn.setup()) return;
+
+    buffer = new float[INFERENCE_BUFFER_SIZE];
+    if (buffer == nullptr) return;
     
-    // DEBUG
-    if (buffer == nullptr) Serial.println("Failed to get input buffer");
-    else Serial.println("Inference ready");
+    Serial.println("Inference ready");
 }
 
 void InferenceBuffer::addFrame(const MelFrame& frame) {
     if (buffer == nullptr) return;
     if (m_currentFrame >= INFERENCE_NUM_FRAMES) return;
 
-    // Copy the incoming mel data into the correct slot in the large buffer
-    memcpy(buffer + (m_currentFrame * NUM_MELS), frame.mel, NUM_MELS * sizeof(float));
+    // Copy the incoming mel data into the correct slot
+    size_t offset = m_currentFrame * NUM_MELS;
+    memcpy(buffer + offset, frame.mel, NUM_MELS * sizeof(float));
     m_currentFrame++;
 
-    // Check if the buffer is now full
+    // If buffer is full, run inference
     if (m_currentFrame == INFERENCE_NUM_FRAMES) {
-        // Serial.println("Processing buffer");
         processBuffer();
         m_currentFrame = 0;
     }

@@ -14,9 +14,9 @@
 
 /* Testing - Set flags here */
 constexpr bool USB_IO = false,
-               SND_SPECT = false,
+               SND_SPECT = true,
                LOG_RSE = false,
-               LOG_CMD = false;
+               LOG_CMD = true;
 
 AudioInputUSB usbIn; 
 AudioOutputUSB usbOut;
@@ -152,7 +152,7 @@ void processCommand(const Command& cmd, AudioChain& chain, ModulationEngine& mod
         }
 
         case CommandType::MOD_MAPPING_SET_INPUT: {
-            modEngine.setMappingInput(cmd.id1, cmd.value1); // value1 must be normalized input [0, 1]
+            modEngine.setMappingInput(cmd.id1, std::clamp(cmd.value1, 0.0f, 1.0f)); // value1 must be normalized input [0, 1]
             if (LOG_CMD) Serial.printf("Set mapping input for modulator %d to %.3f\n", cmd.id1, cmd.value1);
             break;
         }

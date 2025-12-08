@@ -36,8 +36,9 @@ class ServerCallbacks: public BLEServerCallbacks {
         Serial.println("Device connected");
 
         // Clear on connect
-        Command cmd = {};
-        cmd.cmd = static_cast<uint8_t>(CommandType::EFFECT_CLEAR); cmd.id1 = 0; cmd.id2 = 0; cmd.value1 = 0.0f; cmd.value2 = 0.0f; cmd.value3 = 0.0f;
+        Command cmd; memset(&cmd, 0, sizeof(Command));
+        cmd.sync = 0xAA55; cmd.cmd = static_cast<uint8_t>(CommandType::EFFECT_CLEAR);
+        cmd.id1 = 0; cmd.id2 = 0; cmd.value1 = 0.0f; cmd.value2 = 0.0f; cmd.value3 = 0.0f;
         handler.send(cmd); 
     }
 
@@ -46,8 +47,9 @@ class ServerCallbacks: public BLEServerCallbacks {
         Serial.println("Device disconnected");
 
         // Clear on disconnect
-        Command cmd = {};
-        cmd.cmd = static_cast<uint8_t>(CommandType::EFFECT_CLEAR); cmd.id1 = 0; cmd.id2 = 0; cmd.value1 = 0.0f; cmd.value2 = 0.0f; cmd.value3 = 0.0f;
+        Command cmd; memset(&cmd, 0, sizeof(Command));
+        cmd.sync = 0xAA55; cmd.cmd = static_cast<uint8_t>(CommandType::EFFECT_CLEAR); cmd.id1 = 0; cmd.id2 = 0; 
+        cmd.value1 = 0.0f; cmd.value2 = 0.0f; cmd.value3 = 0.0f;
         handler.send(cmd);
     }
 };
@@ -59,12 +61,7 @@ class Callbacks: public BLECharacteristicCallbacks {
         // Return on invalid writes
         if (value.length() % sizeof(Command) != 0) return;
 
-        // if (lastTime) {
-        //     Serial.printf("millis %lu\n", millis() - lastTime);
-        // }
-        // lastTime = millis();
-
-        // Sends written bytes to helper function
+        // Sends written bytes
         processIncomingBytes((const uint8_t*)value.data(), value.length());
     }
 };
@@ -72,14 +69,15 @@ class Callbacks: public BLECharacteristicCallbacks {
 /* UART */
 
 Handler<MelFrame, Command> handler(Serial1); // Packet handler (send commands / receive frames)
-// InferenceBuffer inferenceBuffer; // Buffer and process incoming mel frames for RT inference 
+InferenceBuffer* inferenceBuffer = nullptr; // Buffer and process incoming mel frames for RT inference 
 
 void setup() {
     Serial.begin(115200);
     Serial1.begin(230400, SERIAL_8N1, RX_PIN, TX_PIN);
 
-    /* Setup UART handler */
-    // handler.setCallback([](const MelFrame& frame) { inferenceBuffer.addFrame(frame); });
+    /* Setup UART handler + inference */
+    inferenceBuffer = new InferenceBuffer();
+    handler.setCallback([](const MelFrame& frame) { inferenceBuffer->addFrame(frame); });
 
     /* BLE setup */
     BLEDevice::init("Dubstep Dishwasher MCU");
@@ -120,17 +118,7 @@ void loop() {
         oldDeviceConnected = deviceConnected;
     }
 
-    if (deviceConnected && !oldDeviceConnected) {
-        oldDeviceConnected = deviceConnected;
-    }
-
-    // #if DEBUG
-    // // Debug: Read from Serial and process incoming bytes
-    // while (Serial.available()) {
-    //   uint8_t serialData = Serial.read();
-    //   processIncomingBytes(&serialData, 1);  
-    // }
-    // #endif
+    if (deviceConnected && !oldDeviceConnected) oldDeviceConnected = deviceConnected;
 
     handler.listen();
 }
