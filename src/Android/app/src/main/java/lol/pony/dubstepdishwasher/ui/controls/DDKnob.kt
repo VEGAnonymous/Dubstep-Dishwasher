@@ -132,6 +132,16 @@ fun DDKnob(
     var showModTooltip by remember { mutableStateOf(false) }
     var tooltipRange by remember { mutableStateOf<Pair<String, String>?>(null) }
 
+    // Modulation indicator smoothing (mapping modulators)
+    val animatedModOffset by animateFloatAsState(
+        targetValue = currentModOffset,
+        animationSpec = tween(
+            durationMillis = if (selectedModID?.let { it in listOf("Bright", "Warmth", "Intensity", "Perc", "Speed", "Expr") } == true) 180 else 0,
+            easing = FastOutSlowInEasing
+        ),
+        label = "mapping_smoothing"
+    )
+
     /* MAIN COMPOSE */
     Box(modifier = modifier
         .aspectRatio(frameWidth.toFloat() / frameHeight)
@@ -224,7 +234,7 @@ fun DDKnob(
                                         }
                                     }
                                 }
-                                null -> Unit
+                                else -> Unit
                             }
                         },
                         onDragEnd = {
@@ -331,7 +341,7 @@ fun DDKnob(
                 val arcSize = Size(width = size.width - insetPx * 2, height = size.height - insetPx * 2)
 
                 val indicatorSpan = 10f
-                val modulatedValue = (value + currentModOffset).coerceIn(0f, 1f)
+                val modulatedValue = (value + animatedModOffset).coerceIn(0f, 1f)
                 val centerAngle = sweepStart + (modulatedValue * sweepRange) - 90f
                 val startAngle = centerAngle - (indicatorSpan / 2f)
 

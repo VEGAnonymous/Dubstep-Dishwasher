@@ -1,75 +1,64 @@
 #include <Arduino.h>
 
 #include "Handler.h"
-#include "ESP32/Utilities.h"
+#include "ESP32/BLEHandler.h"
 #include "ESP32/InferenceBuffer.h"
 
 #define RX_PIN 18
 #define TX_PIN 17
 
-// #define DEBUG 0 // In Utilities.h
+/* Testing - Set flags here */
+constexpr bool LOG_DEBUG = false;
+
+/* UART */
+
+Handler<MelFrame, Command> uartHandler(Serial1); // Packet handler (send commands / receive frames)
+InferenceBuffer* inferenceBuffer = nullptr; // Buffer and process incoming mel frames for RT inference 
 
 /* BLE */
-#include <BLEDevice.h>
-#include <BLEUtils.h>
-#include <BLEServer.h>
-#include <BLEScan.h>
-#include <BLEAdvertisedDevice.h>
 
-// UUIDs
-#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
-// #define CHARACTERISTIC_UUID2 "beb54832-36e1-4688-b7f5-ea07361b26a8"
+BLEHandler<Command, Status> bleHandler; // Packet handler (send status / receive commands)
 
-// Variables for managing connection state
+// Connection state
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
-// Pointer to BLE server
 BLEServer *pServer = NULL;
-
 uint32_t advertiseTime = 0;
 
-// Server callbacks (connect and disconnect)
+// Callbacks
 class ServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) {
         deviceConnected = true;
+        bleHandler.setConnected(true);
         Serial.println("Device connected");
 
         // Clear on connect
         Command cmd; memset(&cmd, 0, sizeof(Command));
-        cmd.sync = 0xAA55; cmd.cmd = static_cast<uint8_t>(CommandType::EFFECT_CLEAR);
-        cmd.id1 = 0; cmd.id2 = 0; cmd.value1 = 0.0f; cmd.value2 = 0.0f; cmd.value3 = 0.0f;
-        handler.send(cmd); 
+        cmd.sync = 0xAA55; 
+        cmd.cmd = static_cast<uint8_t>(CommandType::EFFECT_CLEAR);
+        uartHandler.send(cmd); 
     }
 
     void onDisconnect(BLEServer* pServer) {
         deviceConnected = false;
+        bleHandler.setConnected(false);
         Serial.println("Device disconnected");
 
         // Clear on disconnect
         Command cmd; memset(&cmd, 0, sizeof(Command));
-        cmd.sync = 0xAA55; cmd.cmd = static_cast<uint8_t>(CommandType::EFFECT_CLEAR); cmd.id1 = 0; cmd.id2 = 0; 
-        cmd.value1 = 0.0f; cmd.value2 = 0.0f; cmd.value3 = 0.0f;
-        handler.send(cmd);
+        cmd.sync = 0xAA55; 
+        cmd.cmd = static_cast<uint8_t>(CommandType::EFFECT_CLEAR);
+        uartHandler.send(cmd);
     }
 };
 
-class Callbacks: public BLECharacteristicCallbacks {
+class WriteCallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) override {
         std::string value = pCharacteristic->getValue();
-        Serial.printf("Received %d bytes\n", value.length());
-        // Return on invalid writes
-        if (value.length() % sizeof(Command) != 0) return;
-
-        // Sends written bytes
-        processIncomingBytes((const uint8_t*)value.data(), value.length());
+        // Process incoming commands
+        if (value.length() > 0) bleHandler.processIncoming((const uint8_t*)value.data(), value.length());
     }
 };
-
-/* UART */
-
-Handler<MelFrame, Command> handler(Serial1); // Packet handler (send commands / receive frames)
-InferenceBuffer* inferenceBuffer = nullptr; // Buffer and process incoming mel frames for RT inference 
 
 void setup() {
     Serial.begin(115200);
@@ -77,36 +66,37 @@ void setup() {
 
     /* Setup UART handler + inference */
     inferenceBuffer = new InferenceBuffer();
-    handler.setCallback([](const MelFrame& frame) { inferenceBuffer->addFrame(frame); });
+    uartHandler.setCallback([](const MelFrame& frame) { 
+        inferenceBuffer->addFrame(frame); 
+    });
 
     /* BLE setup */
     BLEDevice::init("Dubstep Dishwasher MCU");
     pServer = BLEDevice::createServer();
     pServer->setCallbacks(new ServerCallbacks());
     
-    // Create service and characteristic(s)
-    BLEService *pService = pServer->createService(SERVICE_UUID);
-    BLECharacteristic *pCharacteristic = pService->createCharacteristic(
-                                          CHARACTERISTIC_UUID,
-                                          BLECharacteristic::PROPERTY_WRITE
-                                        );
+    // Create service
+    BLEService *pService = pServer->createService(BLE_SERVICE_UUID);
+    // Setup handler characteristics
+    bleHandler.setup(pService);
+    bleHandler.setWriteCallback(new WriteCallbacks());
 
-    pCharacteristic->setCallbacks(new Callbacks());
+    // Set callback for received commands
+    bleHandler.setReceiveCallback([](const Command& cmd) {
+        if (LOG_DEBUG) Serial.printf("cmd: type=%d id1=%d id2=%d v1=%.2f\n", cmd.cmd, cmd.id1, cmd.id2, cmd.value1);
+        uartHandler.send(const_cast<Command&>(cmd)); // Forward command via UART
+    });
 
     // Start service
     pService->start();
 
-    // Set up advertising
+    // Setup advertising
     BLEAdvertising *pAdvertising = pServer->getAdvertising();
-    pAdvertising->addServiceUUID(SERVICE_UUID);
+    pAdvertising->addServiceUUID(BLE_SERVICE_UUID);
     pAdvertising->setScanResponse(true);
-
-    advertiseTime = 0;
-    pServer->startAdvertising();
-    
     pAdvertising->start();
 
-    delay(2000);
+    advertiseTime = 0;
     Serial.println("SETUP OK");
 }
 
@@ -120,5 +110,5 @@ void loop() {
 
     if (deviceConnected && !oldDeviceConnected) oldDeviceConnected = deviceConnected;
 
-    handler.listen();
+    uartHandler.listen();
 }

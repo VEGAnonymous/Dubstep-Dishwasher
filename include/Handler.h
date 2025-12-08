@@ -16,17 +16,6 @@ struct Command {
     float value3;
 } __attribute__((packed));
 
-struct CommandBLE { // HACK: App should send full Command struct
-    // No sync
-    uint8_t cmd;
-    uint8_t id1;   
-    uint8_t id2;
-    uint8_t checksum;
-    float value1;
-    float value2;
-    float value3;
-} __attribute__((packed));
-
 struct MelFrame {
     uint16_t sync;       // 0xAA55
     uint32_t index;      // Frame counter

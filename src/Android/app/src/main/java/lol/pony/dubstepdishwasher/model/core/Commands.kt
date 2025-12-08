@@ -23,6 +23,7 @@ enum class CommandType(val value: Byte) {
 }
 
 data class Command(
+    val sync: Short = 0xAA55.toShort(),
     val type: CommandType,
     val id1: Int,
     val id2: Int,

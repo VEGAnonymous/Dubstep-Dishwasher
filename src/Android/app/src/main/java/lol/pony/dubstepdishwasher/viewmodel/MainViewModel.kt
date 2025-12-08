@@ -59,6 +59,8 @@ import lol.pony.dubstepdishwasher.model.core.ParamKey
 import lol.pony.dubstepdishwasher.model.core.ParamUnit
 import lol.pony.dubstepdishwasher.model.core.RandomMode
 import lol.pony.dubstepdishwasher.model.core.ResourceUsage
+import lol.pony.dubstepdishwasher.model.core.Status
+import lol.pony.dubstepdishwasher.model.core.StatusType
 import lol.pony.dubstepdishwasher.model.core.UserPresets
 import lol.pony.dubstepdishwasher.model.core.WavetableType
 import lol.pony.dubstepdishwasher.model.core.defaultCurvePresets
@@ -72,6 +74,17 @@ class MainViewModel(
     private val bleManager: BLEManager,
     private val userPresets: UserPresets
     ) : ViewModel() {
+
+    init {
+        viewModelScope.launch {
+            userPresets.userPresetsFlow.collect { saved ->
+                _globalPresets.value = saved.globalPresets
+                _curvePresets.value = saved.curvePresets
+            }
+        }
+
+        bleManager.onStatusReceived = { status -> handleStatus(status) }
+    }
 
     /* DATA STRUCTURES */
 
@@ -192,15 +205,6 @@ class MainViewModel(
                 parallelChains = emptyMap()
             )
         )
-
-    init {
-        viewModelScope.launch {
-            userPresets.userPresetsFlow.collect { saved ->
-                _globalPresets.value = saved.globalPresets
-                _curvePresets.value = saved.curvePresets
-            }
-        }
-    }
 
     fun saveGlobalPreset(name: String, category: String?) : GlobalPreset {
         val data = GlobalPresetData(
@@ -641,17 +645,11 @@ class MainViewModel(
         // Log.d("cmd", "MOD_ASSIGNMENT_SET: effectId=$effectId, paramId=$paramId, amount=${assignment.amount}, polarity=${assignment.polarity.ordinal}")
     }
 
-    /* // Probably unused here - ESP32 should manually send
     fun setMappingInput(modId: String, normalizedInput: Float) {
         val mod = _modulators.value.find { it.id == modId }
-        if (mod is Modulator.Mapping) {
-            mod.inputValue = normalizedInput
-
-            val modIndex = modulatorIdToIndex(modId)
-            controlQueue.enqueue(CommandType.MOD_MAPPING_SET_INPUT, modIndex, 0, normalizedInput)
-        }
+        if (mod is Modulator.Mapping) mod.inputValue = normalizedInput
+        // Log.d("status", "SET_MAPPING_INPUT: $modId, $normalizedInput")
     }
-    */
 
     private fun syncModulation() { // Sync modulation with downstream
         // Send modulator parameters and curves
@@ -809,38 +807,54 @@ class MainViewModel(
     private fun sendCommands(commands: List<Command>) {
         if (commands.isEmpty()) return
 
-        // 16 bytes per Command
-        val buffer = ByteBuffer.allocate(commands.size * 16).order(ByteOrder.LITTLE_ENDIAN)
+        val packetSize = 18
+        val buffer = ByteBuffer.allocate(commands.size * packetSize).order(ByteOrder.LITTLE_ENDIAN)
 
         for (command in commands) {
-//            Log.e("cmd", "Sending command: $command")
-            buffer.put(command.type.value)
-            buffer.put(command.id1.toByte())
-            buffer.put(command.id2.toByte())
+            // Build packet
+            val pkt = ByteBuffer.allocate(packetSize).order(ByteOrder.LITTLE_ENDIAN)
+            pkt.putShort(0xAA55.toShort())
+            pkt.put(command.type.value)
+            pkt.put(command.id1.toByte())
+            pkt.put(command.id2.toByte())
+            pkt.put(0) // Placeholder
+            pkt.putFloat(command.value1)
+            pkt.putFloat(command.value2)
+            pkt.putFloat(command.value3)
+
             // Compute checksum
-            /*
-            val checksum = command.type.value xor
-                    command.id1.toByte() xor
-                    command.id2.toByte() xor
-                    command.value1.toBits().toByte() xor
-                    ((command.value1.toBits() shr 8) and 0xFF).toByte() xor
-                    ((command.value1.toBits() shr 16) and 0xFF).toByte() xor
-                    ((command.value1.toBits() shr 24) and 0xFF).toByte() xor
-                    command.value2.toBits().toByte() xor
-                    ((command.value2.toBits() shr 8) and 0xFF).toByte() xor
-                    ((command.value2.toBits() shr 16) and 0xFF).toByte() xor
-                    ((command.value2.toBits() shr 24) and 0xFF).toByte() xor
-                    command.value3.toBits().toByte() xor
-                    ((command.value3.toBits() shr 8) and 0xFF).toByte() xor
-                    ((command.value3.toBits() shr 16) and 0xFF).toByte() xor
-                    ((command.value3.toBits() shr 24) and 0xFF).toByte()
-            */
-            val checksum = 0.toByte() // TEMP
-            buffer.put(checksum)
-            buffer.putFloat(command.value1)
-            buffer.putFloat(command.value2)
-            buffer.putFloat(command.value3)
+            val arr = pkt.array()
+            var checksum: Byte = 0
+            for (i in arr.indices) {
+                if (i != 5) checksum = (checksum.toInt() xor arr[i].toInt()).toByte()
+            }; arr[5] = checksum
+            buffer.put(arr)
         }
         bleManager.writeCharacteristic(buffer.array())
+    }
+
+    private fun handleStatus(status: Status) {
+        when (status.type) {
+            StatusType.INFERENCE -> {
+                // Update mapping modulators
+                val brightness = status.value1
+                val warmth = status.value2
+                val intensity = status.value3
+                val percussive = status.getPercussive()
+                val speed = status.getSpeed()
+
+                _modulators.value = _modulators.value.map { mod ->
+                    when (mod.id) {
+                        "Bright" -> { setMappingInput(mod.id, brightness); mod }
+                        "Warmth" -> { setMappingInput(mod.id, warmth); mod }
+                        "Intensity" -> { setMappingInput(mod.id, intensity); mod }
+                        "Perc" -> { setMappingInput(mod.id, percussive); mod }
+                        "Speed" -> { setMappingInput(mod.id, speed); mod }
+                        else -> mod
+                    }
+                }
+                // Log.d("Status", "Inference: B=$brightness W=$warmth I=$intensity P=$percussive S=$speed")
+            }
+        }
     }
 } // MainViewModel

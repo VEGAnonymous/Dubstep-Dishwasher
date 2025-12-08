@@ -18,6 +18,9 @@ class InferenceBuffer {
         Inference nn; // NN for inference
 
         void processBuffer();
+
+        void sendInferenceCommands(float* values);
+        void sendInferenceStatus(float* values);
         
     public:
         InferenceBuffer();

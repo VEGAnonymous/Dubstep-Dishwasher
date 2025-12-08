@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.ActivityCompat
 import com.polidea.rxandroidble3.RxBleClient
@@ -14,23 +15,27 @@ import com.polidea.rxandroidble3.scan.ScanResult
 import com.polidea.rxandroidble3.scan.ScanSettings
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.CompositeDisposable
+import lol.pony.dubstepdishwasher.model.core.Status
+import java.util.UUID
 
 class BLEManager(private val context: Context) {
     private val rxBleClient: RxBleClient = RxBleClient.create(context)
-    // composite disposable for managing multiple disposables
+    // Composite disposable for managing multiple disposables
     private val compositeDisposable = CompositeDisposable()
     private var connection: RxBleConnection? = null
 
+    // Scanning
     val scannedDevices = mutableStateOf(listOf<ScanResult>())
     val connectedDevice = mutableStateOf<RxBleDevice?>(null)
     val connectionState = mutableStateOf<RxBleConnection.RxBleConnectionState?>(null)
-    // val characteristics = mutableStateOf<List<BluetoothGattCharacteristic>>(emptyList())
-    // val characteristicsData = mutableStateOf<Map<UUID, String>>(emptyMap())
-    private var isReadable = false
     val characteristic = mutableStateOf<BluetoothGattCharacteristic?>(null)
     val characteristicData = mutableStateOf<String?>(null)
-
+    private var isReadable = false
     val isScanning = mutableStateOf(false)
+
+    // Status
+    var onStatusReceived: ((Status) -> Unit)? = null
+    private val notifyCharacteristicUUID = UUID.fromString("beb5483f-36e1-4688-b7f5-ea07361b26a8")
 
     val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         arrayOf(
@@ -94,6 +99,19 @@ class BLEManager(private val context: Context) {
         isScanning.value = false
     }
 
+    fun setupNotifications() {
+        connection?.setupNotification(notifyCharacteristicUUID)
+            ?.flatMap { it }
+            ?.subscribe({ bytes ->
+                // Parse status packet
+                val status = Status.fromBytes(bytes)
+                if (status != null) onStatusReceived?.invoke(status)
+            }, { throwable ->
+                Log.e("BLE", "Notification error: ${throwable.message}")
+            })
+            ?.let { compositeDisposable.add(it) }
+    }
+
     /**
      * Connects to specified [RxBleDevice]
      * and updates connection status.
@@ -104,13 +122,15 @@ class BLEManager(private val context: Context) {
         connectedDevice.value = device
         device.establishConnection(false)
             .flatMapSingle { rxBleConnection ->
-                rxBleConnection.requestMtu(408).map { rxBleConnection }
+                rxBleConnection.requestMtu(512).map { rxBleConnection }
             }
             .subscribe({ rxBleConnection ->
                 connection = rxBleConnection
                 connectionState.value = RxBleConnection.RxBleConnectionState.CONNECTED
-                // scan for characteristics
+                // Discover characteristics
                 discoverCharacteristics()
+                // Setup notifications for status updates
+                setupNotifications()
             }, {
                 connectionState.value = RxBleConnection.RxBleConnectionState.DISCONNECTED
             }).let { compositeDisposable.add(it) }

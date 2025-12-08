@@ -32,7 +32,7 @@ class ControlQueue(
     fun enqueue(cmd: CommandType, id1: Int, id2: Int, value1: Float,
                 value2: Float = 0f, value3: Float = 0f) {
 
-        val command = Command(cmd, id1, id2, value1, value2, value3)
+        val command = Command(0xAA55.toShort(), cmd, id1, id2, value1, value2, value3)
         if (isStateCommand(cmd)) {
             val key = CommandKey(cmd, id1, id2)
             synchronized(stateCommands) { stateCommands[key] = command } // Overwrite old value

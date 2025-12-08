@@ -1,9 +1,13 @@
 package lol.pony.dubstepdishwasher.ui.components.subcomponents
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -23,6 +27,7 @@ fun CurveDisplay(
     points: List<CurvePoint>,
     modifier: Modifier = Modifier,
     currentPosition: Float? = null, // 0-1, null to hide
+    smoothAlpha: Float = 1f, // How much to smooth input changes
     showPoints: Boolean = true,
     fillGradient: Boolean = false,
     lineColor: Color = MaterialTheme.colorScheme.secondary,
@@ -34,6 +39,16 @@ fun CurveDisplay(
     gridX: Int = 8, // -1 to disable
     gridY: Int = 8
 ) {
+    // Position smoothing
+    val smoothedPosition by animateFloatAsState(
+        targetValue = currentPosition ?: 0f,
+        animationSpec = tween(
+            durationMillis = (200 * (1f - smoothAlpha)).toInt(),
+            easing = LinearEasing
+        ),
+        label = "curveSmoothing"
+    )
+
     Canvas(modifier = modifier.background(backgroundColor)) {
         if (points.size < 2) return@Canvas
 
@@ -150,8 +165,9 @@ fun CurveDisplay(
         }
 
         // Draw position indicator
-        currentPosition?.let { pos ->
+        currentPosition?.let {
             // Evaluate curve at current position
+            val pos = smoothedPosition
             val curve = EditableCurve(points, loop = true)
             val yVal = curve.evaluate(pos)
 
