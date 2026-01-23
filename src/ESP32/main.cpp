@@ -1,11 +1,10 @@
 #include <Arduino.h>
 
 #include "Handler.h"
+#include "ESP32/Defines.h"
+#include "ESP32/Utilities.h"
 #include "ESP32/BLEHandler.h"
 #include "ESP32/InferenceBuffer.h"
-
-#define RX_PIN 18
-#define TX_PIN 17
 
 /* Testing - Set flags here */
 constexpr bool LOG_DEBUG = false;
@@ -33,10 +32,7 @@ class ServerCallbacks: public BLEServerCallbacks {
         Serial.println("Device connected");
 
         // Clear on connect
-        Command cmd; memset(&cmd, 0, sizeof(Command));
-        cmd.sync = 0xAA55; 
-        cmd.cmd = static_cast<uint8_t>(CommandType::EFFECT_CLEAR);
-        uartHandler.send(cmd); 
+        sendCommand(&uartHandler, CommandType::EFFECT_CLEAR);
     }
 
     void onDisconnect(BLEServer* pServer) {
@@ -45,10 +41,7 @@ class ServerCallbacks: public BLEServerCallbacks {
         Serial.println("Device disconnected");
 
         // Clear on disconnect
-        Command cmd; memset(&cmd, 0, sizeof(Command));
-        cmd.sync = 0xAA55; 
-        cmd.cmd = static_cast<uint8_t>(CommandType::EFFECT_CLEAR);
-        uartHandler.send(cmd);
+        sendCommand(&uartHandler, CommandType::EFFECT_CLEAR);
     }
 };
 
@@ -59,6 +52,10 @@ class WriteCallbacks: public BLECharacteristicCallbacks {
         if (value.length() > 0) bleHandler.processIncoming((const uint8_t*)value.data(), value.length());
     }
 };
+
+/* Expression pedal */
+uint32_t exprTime = 0;
+float exprValue = 0.0f;
 
 void setup() {
     Serial.begin(115200);
@@ -101,14 +98,24 @@ void setup() {
 }
 
 void loop() {
-    if ((!deviceConnected && oldDeviceConnected) && (millis() - advertiseTime >= 1000)) {
+    // BLE advertising
+    if ((!deviceConnected && oldDeviceConnected) && (millis() - advertiseTime >= BLE_ADVERTISE_TIME)) {
         advertiseTime = millis();
         pServer->startAdvertising(); // Restart advertising
         Serial.println("Started advertising");
         oldDeviceConnected = deviceConnected;
+    } if (deviceConnected && !oldDeviceConnected) oldDeviceConnected = deviceConnected;
+
+    // Expression pedal read
+    if (millis() - exprTime >= EXPR_READ_TIME) {
+        exprTime = millis();
+        exprValue = (float)analogRead(EXPR_PIN) / 1000.0f;
+        if (exprValue < 0.1f) return;
+        exprValue = scale(std::clamp(exprValue, EXPR_MIN, EXPR_MAX), EXPR_MIN, EXPR_MAX, 0.0f, 1.0f);
+        sendCommand(&uartHandler, CommandType::MOD_MAPPING_SET_INPUT, EXPR_MOD_ID, 0, exprValue);
+        sendStatus(&bleHandler, StatusType::EXPRESSION, EXPR_MOD_ID, 0, exprValue);
     }
 
-    if (deviceConnected && !oldDeviceConnected) oldDeviceConnected = deviceConnected;
-
+    // UART receive
     uartHandler.listen();
 }

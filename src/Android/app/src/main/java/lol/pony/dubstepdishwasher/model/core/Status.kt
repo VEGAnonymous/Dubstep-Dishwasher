@@ -3,7 +3,8 @@ package lol.pony.dubstepdishwasher.model.core
 import android.util.Log
 
 enum class StatusType(val value: Byte) {
-    INFERENCE(0)
+    INFERENCE(0),
+    STATUS(1)
 }
 
 data class Status(
@@ -53,7 +54,7 @@ data class Status(
         }
     }
 
-    // Hacky helpers to extract packed values for INFERENCE
+    // Hack to extract packed values for INFERENCE
     fun getPercussive(): Float = ((flags.toInt() shr 8) and 0xFF) / 255.0f
     fun getSpeed(): Float = (flags.toInt() and 0xFF) / 255.0f
 }

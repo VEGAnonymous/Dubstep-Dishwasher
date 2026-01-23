@@ -855,6 +855,11 @@ class MainViewModel(
                 }
                 // Log.d("Status", "Inference: B=$brightness W=$warmth I=$intensity P=$percussive S=$speed")
             }
+            StatusType.STATUS -> {
+                val value = status.value2
+                setMappingInput("Expr", status.value1)
+                Log.d("Status", "Expression: $value")
+            }
         }
     }
 } // MainViewModel

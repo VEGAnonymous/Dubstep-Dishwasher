@@ -37,6 +37,8 @@ Modulator::Modulator(ModulatorID id, ModulatorType type) : id(id), type(type), m
             break; 
         case ModulatorType::MAPPING:
             mappingCurve = std::make_unique<Curve>(0.621f, false);
+            mappingCurve->clearCurve();
+            mappingCurve->setCurvePoint(1.0f, 1.0f, 0.0f); // Init to ramp
             mappingInput = 0.0f; targetMappingInput = 0.0f;
             break;
     }
@@ -141,7 +143,7 @@ float Modulator::compute(float dt) { // Compute current output value
 
                 // Evaluate curve at mapping input
                 mappingCurve->setPhase(mappingInput);
-                output = std::clamp(mappingCurve->next(), 0.0f, 1.0f);
+                output = std::clamp(mappingCurve->evaluate(), 0.0f, 1.0f);
             } break;
         }
     } return output;

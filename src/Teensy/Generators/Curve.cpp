@@ -55,7 +55,7 @@ float Curve::evaluateCurve(float x) const {
     return lerp(p0.y, p1.y, curved);
 }
 
-/* PRIVATE */
+/* PUBLIC */
 
 Curve::Curve(float freq, bool loop) : freq(freq), phase(0.0f), loop(loop) {
     // Default Tri UP
@@ -97,6 +97,8 @@ void Curve::clearCurve() {
 }
 
 const std::vector<CurvePoint>& Curve::getCurve() const { return points; }
+
+float Curve::evaluate() { return evaluateCurve(phase); }
 
 float Curve::next() {
     float val = evaluateCurve(phase);

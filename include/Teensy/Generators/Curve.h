@@ -25,6 +25,7 @@ class Curve : public Generator {
         void clearCurve();
         const std::vector<CurvePoint>& getCurve() const;
         
+        float evaluate();
         float next() override;
 
         void printCurve() const;

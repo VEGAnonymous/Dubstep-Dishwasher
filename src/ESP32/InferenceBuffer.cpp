@@ -1,3 +1,4 @@
+#include "ESP32/Utilities.h"
 #include "ESP32/InferenceBuffer.h"
 #include "Handler.h"
 #include "ESP32/BLEHandler.h"
@@ -68,16 +69,9 @@ void InferenceBuffer::sendInferenceCommands(float* values) {
         
         // Serial.printf("%s: %.2f ", qualities[i], value, modId);
 
-        // Build command
-        cmd.cmd = static_cast<uint8_t>(CommandType::MOD_MAPPING_SET_INPUT); 
-        cmd.id1 = modId; 
-        cmd.value1 = value; 
-        cmd.id2 = 0; 
-        cmd.value2 = 0.0f; 
-        cmd.value3 = 0.0f;
-
         // Send via UART
-        uartHandler.send(cmd);
+        sendCommand(&uartHandler, CommandType::MOD_MAPPING_SET_INPUT, modId, 0, value);
+
         /* Serial.printf("Sent cmd: cmd=%d id1=%d id2=%d v1=%.3f v2=%.3f v3=%.3f chk=0x%02X\n",
              cmd.cmd, cmd.id1, cmd.id2, cmd.value1, cmd.value2, cmd.value3, cmd.checksum); */
     }
@@ -85,24 +79,12 @@ void InferenceBuffer::sendInferenceCommands(float* values) {
 }
 
 void InferenceBuffer::sendInferenceStatus(float* values) {
-    Status status;
-    memset(&status, 0, sizeof(Status));
-    
-    status.sync = 0x55AA;
-    status.type = static_cast<uint8_t>(StatusType::INFERENCE);
-    status.id = 0;
-    
-    status.value1 = values[0];
-    status.value2 = values[1];
-    status.value3 = values[2];
-
     // HACK: Pack percussive and speed into flags as normalized uint8_t
     uint8_t percussive = static_cast<uint8_t>(values[3] * 255.0f);
     uint8_t speed = static_cast<uint8_t>(values[4] * 255.0f);
-    status.flags = (percussive << 8) | speed;
-    
+
     // Send via BLE
-    bleHandler.send(status);
+    sendStatus(&bleHandler, StatusType::INFERENCE, 0, (percussive << 8) | speed, values[0], values[1], values[2]);
 }
 
 /* PUBLIC */

@@ -14,16 +14,19 @@
 
 /* Testing - Set flags here */
 constexpr bool USB_IO = false,
-               SND_SPECT = true,
-               LOG_RSE = false,
+               SND_SPECT = false,
+               LOG_RSE = true,
                LOG_CMD = true;
 
-AudioInputUSB usbIn; 
-AudioOutputUSB usbOut;
+// AudioInputUSB usbIn; 
+// AudioOutputUSB usbOut;
 
 uint32_t logTime = 0;
 
 /* IO */
+
+AudioControlSGTL5000 codec;
+
 AudioInputI2S adcIn; // ADC input
 AudioOutputI2S dacOut; // DAC output
 
@@ -190,14 +193,29 @@ void setup() {
 
     pinMode(LED_BUILTIN, OUTPUT);
 
+    while (!Serial && millis() < 4000) {}
+
+        /* Teensy Audio setup */
+    AudioNoInterrupts();
+    AudioMemory(60);
+    AudioProcessorUsageMaxReset();
+    AudioMemoryUsageMaxReset();
+
+    /* SGTL5000 setup */
+    codec.enable();
+    codec.inputSelect(AUDIO_INPUT_LINEIN);
+    codec.unmuteLineout();
+    codec.lineInLevel(5);
+    codec.lineOutLevel(29);
+    codec.dacVolume(1.0);
+    codec.micGain(0);
+
     /* Setup handler */
     handler.setCallback([](const Command& cmd) {
     if (LOG_CMD) Serial.printf("cmd: %d | id1: %d | id2: %d | value1: %.3f | value2: %.3f | value3: %.3f | checksum: 0x%02X\n", 
-                                cmd.cmd, cmd.id1, cmd.id2, cmd.value1, cmd.value2, cmd.value3, cmd.checksum);
+                                 cmd.cmd, cmd.id1, cmd.id2, cmd.value1, cmd.value2, cmd.value3, cmd.checksum);
         processCommand(cmd, *chain, *stream->getModEngine());
     });
-
-    while (!Serial && millis() < 4000) {}
 
     if (CrashReport) {
         Serial.print("--- CRASH REPORT ---");
@@ -211,20 +229,14 @@ void setup() {
     if (SND_SPECT) logMelStream = std::make_unique<LogMelStream>();
 
     if (USB_IO) {
-        patch1 = std::make_unique<AudioConnection>(usbIn, 0, *stream, 0);
-        patch2 = std::make_unique<AudioConnection>(*stream, 0, usbOut, 0);
-        if (SND_SPECT) patch3 = std::make_unique<AudioConnection>(usbIn, 0, *logMelStream, 0);
+        // patch1 = std::make_unique<AudioConnection>(usbIn, 0, *stream, 0);
+        // patch2 = std::make_unique<AudioConnection>(*stream, 0, usbOut, 0);
+        // if (SND_SPECT) patch3 = std::make_unique<AudioConnection>(usbIn, 0, *logMelStream, 0);
     } else {
         patch1 = std::make_unique<AudioConnection>(adcIn, 0, *stream, 0);
         patch2 = std::make_unique<AudioConnection>(*stream, 0, dacOut, 0);
         if (SND_SPECT) patch3 = std::make_unique<AudioConnection>(adcIn, 0, *logMelStream, 0);
     }
-    
-    /* Teensy Audio setup */
-    AudioNoInterrupts();
-    AudioMemory(24);
-    AudioProcessorUsageMaxReset();
-    AudioMemoryUsageMaxReset();
 
     delay(2000);
     Serial.println("SETUP OK");
