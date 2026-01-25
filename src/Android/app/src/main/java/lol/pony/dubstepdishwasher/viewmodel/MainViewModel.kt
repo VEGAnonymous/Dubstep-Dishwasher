@@ -3,6 +3,9 @@ package lol.pony.dubstepdishwasher.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -13,9 +16,12 @@ import kotlinx.coroutines.launch
 import lol.pony.dubstepdishwasher.model.BLEManager
 import lol.pony.dubstepdishwasher.model.ControlQueue
 import lol.pony.dubstepdishwasher.model.EffectChain
+import lol.pony.dubstepdishwasher.model.core.AWAIT_TIMEOUT
 import lol.pony.dubstepdishwasher.model.core.BiquadType
 import lol.pony.dubstepdishwasher.model.core.CONTROL_RATE
 import lol.pony.dubstepdishwasher.model.core.Command
+import lol.pony.dubstepdishwasher.model.core.PendingCommand
+import lol.pony.dubstepdishwasher.model.core.CommandPriority
 import lol.pony.dubstepdishwasher.model.core.CommandType.EFFECT_ADD
 import lol.pony.dubstepdishwasher.model.core.CommandType.EFFECT_BYPASS
 import lol.pony.dubstepdishwasher.model.core.CommandType.EFFECT_CLEAR
@@ -40,10 +46,13 @@ import lol.pony.dubstepdishwasher.model.core.EnvelopeType
 import lol.pony.dubstepdishwasher.model.core.FFTSize
 import lol.pony.dubstepdishwasher.model.core.GlobalPreset
 import lol.pony.dubstepdishwasher.model.core.GlobalPresetData
+import lol.pony.dubstepdishwasher.model.core.HEARTBEAT_TIMEOUT
 import lol.pony.dubstepdishwasher.model.core.LFOMode
 import lol.pony.dubstepdishwasher.model.core.LFO_UPDATE_RATE
 import lol.pony.dubstepdishwasher.model.core.MAX_COMPUTE_USAGE
 import lol.pony.dubstepdishwasher.model.core.MAX_MEMORY_USAGE
+import lol.pony.dubstepdishwasher.model.core.MAX_ACK_RETRIES
+import lol.pony.dubstepdishwasher.model.core.MAX_AWAIT_RETRIES
 import lol.pony.dubstepdishwasher.model.core.ModAssignment
 import lol.pony.dubstepdishwasher.model.core.ModEngine
 import lol.pony.dubstepdishwasher.model.core.ModPolarity
@@ -61,12 +70,15 @@ import lol.pony.dubstepdishwasher.model.core.RandomMode
 import lol.pony.dubstepdishwasher.model.core.ResourceUsage
 import lol.pony.dubstepdishwasher.model.core.Status
 import lol.pony.dubstepdishwasher.model.core.StatusType
+import lol.pony.dubstepdishwasher.model.core.SyncState
 import lol.pony.dubstepdishwasher.model.core.UserPresets
 import lol.pony.dubstepdishwasher.model.core.WavetableType
 import lol.pony.dubstepdishwasher.model.core.defaultCurvePresets
 import lol.pony.dubstepdishwasher.model.core.defaultGlobalPresets
+import lol.pony.dubstepdishwasher.model.core.getCommandPriority
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.ConcurrentHashMap
 
 // import kotlin.experimental.xor
 
@@ -163,7 +175,15 @@ class MainViewModel(
     private val _curvePresets = MutableStateFlow(defaultCurvePresets())
     val curvePresets: StateFlow<List<CurvePreset>> = _curvePresets
 
-    /* GLOBAL PRESETS */
+    /* GLOBAL STATE / PRESETS */
+
+    private val _syncState = MutableStateFlow(SyncState.SYNCED)
+    val syncState: StateFlow<SyncState> = _syncState
+
+    private val _syncMessage = MutableStateFlow("Syncing...")
+    val syncMessage: StateFlow<String> = _syncMessage
+
+    private var loadJob: Job? = null
 
     val currentGlobalState: StateFlow<GlobalPresetData> =
         combine(
@@ -221,12 +241,11 @@ class MainViewModel(
         return preset
     }
 
-    fun loadGlobalPreset(name: String) {
-        val preset = _globalPresets.value.find { it.name == name } ?: return
-        val data = preset.data
-
+    suspend fun loadGlobalPreset(data: GlobalPresetData) {
         clearChain()
         controlQueue.flushNow()
+        awaitPending()
+
         rebuildEffects(data.effects)
         rebuildParallelChains(data.parallelChains)
         rebuildModulators(data.modulators)
@@ -234,6 +253,28 @@ class MainViewModel(
         _editorStates.value = data.editorStates.mapValues { it.value.copy() }
 
         syncModulation()
+        controlQueue.flushNow()
+        awaitPending()
+    }
+
+    fun loadGlobalPreset(name: String) {
+        loadJob?.cancel()
+
+        loadJob = viewModelScope.launch {
+            _syncMessage.value = "Loading: $name"
+            _syncState.value = SyncState.RESYNC // Trigger overlay
+
+            val preset = _globalPresets.value.find { it.name == name } ?: return@launch
+            try {
+                loadGlobalPreset(preset.data)
+                _syncState.value = SyncState.SYNCED // Temp reset
+            } catch (e: CancellationException) {
+                pendingCommands.clear()
+                throw e // Rethrow to cancel coroutine
+            }
+
+            _syncState.value = SyncState.SYNCED
+        }
     }
 
     fun deleteGlobalPreset(name: String) {
@@ -296,11 +337,13 @@ class MainViewModel(
         }
     }
 
-    private fun rebuildEffects(list: List<EffectSnapshot>) {
+    private suspend fun rebuildEffects(list: List<EffectSnapshot>) {
         list.forEach { snap ->
             addEffect(snap.effectType)
             controlQueue.flushNow()
-            val newEffect = _effects.value.last()
+            awaitPending()
+
+            val newEffect = _effects.value.lastOrNull() ?: return@forEach
             snap.parameters.forEachIndexed { paramId, param ->
                 setParam(newEffect.effectId, paramId, param.getValueAny())
                 controlQueue.flushNow()
@@ -308,6 +351,7 @@ class MainViewModel(
             if (snap.isBypassed) {
                 toggleBypass(newEffect.effectId)
                 controlQueue.flushNow()
+                awaitPending()
             }
         }
     }
@@ -325,12 +369,46 @@ class MainViewModel(
         }
     }
 
-    private fun rebuildParallelChains(snapshots: Map<Int, ParallelChainSnapshot>) {
+    private fun syncModulation() { // Sync modulation with downstream
+        // Send modulator parameters and curves
+        _modulators.value.forEachIndexed { index, mod ->
+            // Parameters
+            mod.parameters.forEachIndexed { paramId, param ->
+                when (val value = param.getValueAny()) {
+                    is Float -> controlQueue.enqueue(MOD_SET_PARAMETER, index, paramId, value)
+                    is LFOMode -> controlQueue.enqueue(MOD_SET_PARAMETER, index, paramId, value.ordinal.toFloat())
+                    is RandomMode -> controlQueue.enqueue(MOD_SET_PARAMETER, index, paramId, value.ordinal.toFloat())
+                }
+            }
+            // Curves
+            controlQueue.enqueue(MOD_CLEAR_CURVE, index, 0, 0f)
+            mod.curve.forEachIndexed { pointIndex, point ->
+                controlQueue.enqueue(MOD_SET_CURVE_POINT, index, pointIndex, point.x, point.y, point.curve)
+            }
+        }
+
+        // Send assignments
+        _modAssignments.value.forEach { assignment ->
+            val modIndex = modulatorIdToIndex(assignment.modId)
+            controlQueue.enqueue(MOD_ASSIGNMENT_ADD,
+                modIndex,
+                assignment.target.effectId,
+                assignment.target.paramId.toFloat(),
+                assignment.amount,
+                assignment.polarity.ordinal.toFloat()
+            )
+        }
+        // Log.d("cmd", "SYNC MODULATION")
+    }
+
+    private suspend fun rebuildParallelChains(snapshots: Map<Int, ParallelChainSnapshot>) {
         snapshots.forEach { (parallelId, snapshot) ->
             // Rebuild chain A
             snapshot.chainA.forEach { effectSnap ->
                 parallelAddEffect(parallelId, ParallelChain.A, effectSnap.effectType)
                 controlQueue.flushNow()
+                awaitPending()
+
                 val effects = _parallelChains.value[parallelId]?.chainAEffects ?: return@forEach
                 val newEffect = effects.lastOrNull() ?: return@forEach
 
@@ -342,6 +420,7 @@ class MainViewModel(
                 if (effectSnap.isBypassed) {
                     parallelBypassEffect(parallelId, ParallelChain.A, newEffect.effectId)
                     controlQueue.flushNow()
+                    awaitPending()
                 }
             }
 
@@ -349,6 +428,8 @@ class MainViewModel(
             snapshot.chainB.forEach { effectSnap ->
                 parallelAddEffect(parallelId, ParallelChain.B, effectSnap.effectType)
                 controlQueue.flushNow()
+                awaitPending()
+
                 val effects = _parallelChains.value[parallelId]?.chainBEffects ?: return@forEach
                 val newEffect = effects.lastOrNull() ?: return@forEach
 
@@ -360,8 +441,63 @@ class MainViewModel(
                 if (effectSnap.isBypassed) {
                     parallelBypassEffect(parallelId, ParallelChain.B, newEffect.effectId)
                     controlQueue.flushNow()
+                    awaitPending()
                 }
             }
+        }
+    }
+
+    private suspend fun awaitPending() { // Wait for pending commands to be ACKed
+        var retryCount = 0
+        while (pendingCommands.isNotEmpty() && retryCount < MAX_AWAIT_RETRIES) {
+            delay(AWAIT_TIMEOUT)
+            retryCount++
+            if (retryCount % 4 == 0) Log.d("SYNC", "Waiting for ${pendingCommands.size} pending commands...")
+        }
+        if (pendingCommands.isNotEmpty()) {
+            Log.w("SYNC", "Timeout waiting for pending commands, clearing...")
+            pendingCommands.clear()
+        }
+    }
+
+    private suspend fun awaitConnection() {
+        var retryCount = 0
+        while (System.currentTimeMillis() - heartbeatTime > HEARTBEAT_TIMEOUT) { // Only if heartbeat timed out
+            if (retryCount >= MAX_AWAIT_RETRIES) {
+                Log.e("SYNC", "Potential full disconnect")
+                _syncMessage.value = "Disconnected - waiting for connection..."
+                delay(1000)
+                retryCount = 0
+                continue
+            }
+            _syncMessage.value = "Reconnecting... (${retryCount + 1}/$MAX_AWAIT_RETRIES)"
+            delay(500)
+            retryCount++
+        }
+    }
+
+    private fun resync() {
+        viewModelScope.launch {
+            // Snapshot current state
+            val snapshot = GlobalPresetData(
+                effects = snapshotEffects(),
+                modulators = snapshotModulators(),
+                assignments = _modAssignments.value.map { it.copy() },
+                editorStates = _editorStates.value.mapValues { it.value.copy() },
+                parallelChains = snapshotParallelChains(_parallelChains.value)
+            )
+
+            Log.d("SYNC", "Starting sync")
+            _syncMessage.value = "Syncing..."
+            awaitConnection()
+
+            // Temp snapshot
+            _syncMessage.value = "Rebuilding state..."
+            loadGlobalPreset(snapshot)
+
+            delay(200)
+            Log.d("SYNC", "Sync complete")
+            _syncState.value = SyncState.SYNCED
         }
     }
 
@@ -400,7 +536,8 @@ class MainViewModel(
         scope = viewModelScope,
         rate = CONTROL_RATE,
         onFlush = { commands -> sendCommands(commands) },
-        onUpdate = { }
+        onUpdate = { },
+        onRetry = { command -> handleRetry(command) }
     )
 
     @Suppress("unused")
@@ -408,7 +545,8 @@ class MainViewModel(
         scope = viewModelScope,
         rate = LFO_UPDATE_RATE,
         onFlush = { },
-        onUpdate = { update() }
+        onUpdate = { update() },
+        onRetry = { }
     )
 
     private fun update() {
@@ -429,6 +567,26 @@ class MainViewModel(
             }
         }
         _currentModValues.value = modValues
+    }
+
+    private fun handleRetry(cmd: Command) {
+        val pending = pendingCommands[cmd.seq] ?: return // Only retry if still pending
+
+        if (pending.retryCount >= MAX_ACK_RETRIES) {
+            // Fucking give up
+            Log.e("ACK", "Command seq ${cmd.seq} failed after $MAX_ACK_RETRIES attempts")
+            pendingCommands.remove(cmd.seq)
+
+            if (_syncState.value == SyncState.SYNCED) { // Trigger full resync
+                _syncState.value = SyncState.RESYNC
+                resync()
+            }
+            return
+        }
+
+        pending.retryCount++
+        Log.w("ACK", "Retrying seq ${cmd.seq}, attempt ${pending.retryCount}")
+        controlQueue.enqueue(cmd.type, cmd.id1, cmd.id2,cmd.value1, cmd.value2, cmd.value3, cmd.seq) // Keep seq
     }
 
     /* COMMANDS */
@@ -487,7 +645,6 @@ class MainViewModel(
         chain.setParam(effectId, paramId, value)
         _effects.value = chain.getAll()
 
-        // Casting to float for value
         val sendValue = when (value) {
             is Float -> value
             is Int -> value.toFloat()
@@ -497,7 +654,7 @@ class MainViewModel(
             is EnvelopeType, is ModulationEffectMode, is DistortionMode, is BiquadType, is ParallelMode, is WavetableType, is ParamUnit
                 -> value.ordinal.toFloat()
 
-            else -> throw IllegalArgumentException("Unsupported value type")
+            else -> return
         }
 
         controlQueue.enqueue(EFFECT_SET_PARAMETER, effectId, paramId, sendValue)
@@ -651,48 +808,6 @@ class MainViewModel(
         // Log.d("status", "SET_MAPPING_INPUT: $modId, $normalizedInput")
     }
 
-    private fun syncModulation() { // Sync modulation with downstream
-        // Send modulator parameters and curves
-        _modulators.value.forEachIndexed { index, mod ->
-            // Parameters
-            mod.parameters.forEachIndexed { paramId, param ->
-                when (val value = param.getValueAny()) {
-                    is Float -> {
-                        controlQueue.enqueue(MOD_SET_PARAMETER, index, paramId, value)
-                        controlQueue.flushNow() }
-                    is LFOMode -> {
-                        controlQueue.enqueue(MOD_SET_PARAMETER, index, paramId, value.ordinal.toFloat())
-                        controlQueue.flushNow()
-                    }
-                    is RandomMode -> {
-                        controlQueue.enqueue(MOD_SET_PARAMETER, index, paramId, value.ordinal.toFloat())
-                        controlQueue.flushNow()
-                    }
-                }
-            }
-            // Curves
-            controlQueue.enqueue(MOD_CLEAR_CURVE, index, 0, 0f)
-            mod.curve.forEachIndexed { pointIndex, point ->
-                controlQueue.enqueue(MOD_SET_CURVE_POINT, index, pointIndex, point.x, point.y, point.curve)
-                controlQueue.flushNow()
-            }
-        }
-
-        // Send assignments
-        _modAssignments.value.forEach { assignment ->
-            val modIndex = modulatorIdToIndex(assignment.modId)
-            controlQueue.enqueue(MOD_ASSIGNMENT_ADD,
-                modIndex,
-                assignment.target.effectId,
-                assignment.target.paramId.toFloat(),
-                assignment.amount,
-                assignment.polarity.ordinal.toFloat()
-            )
-            controlQueue.flushNow()
-        }
-        // Log.d("cmd", "SYNC MODULATION")
-    }
-
     // PARALLEL
 
     private fun encodeChainParam(chain: ParallelChain, paramId: Int): Int {
@@ -800,27 +915,35 @@ class MainViewModel(
 
     /* BLE */
 
-    /**
-     * Sends a list of commands to the BLE device in a single buffer.
-     * @param commands The list of commands to send
-     */
+    private var heartbeatTime = 0L
+    private var commandSequence: Byte = 0
+    private val pendingCommands = ConcurrentHashMap<Byte, PendingCommand>()
+
     private fun sendCommands(commands: List<Command>) {
         if (commands.isEmpty()) return
 
-        val packetSize = 18
+        val packetSize = 19
         val buffer = ByteBuffer.allocate(commands.size * packetSize).order(ByteOrder.LITTLE_ENDIAN)
 
         for (command in commands) {
+            // Sequence number for structural commands
+            val seq = if (getCommandPriority(command.type) == CommandPriority.PRIORITY_STRUCTURE) {
+                commandSequence++
+                pendingCommands[commandSequence] = PendingCommand(command)
+                commandSequence
+            } else 0.toByte()
+
             // Build packet
             val pkt = ByteBuffer.allocate(packetSize).order(ByteOrder.LITTLE_ENDIAN)
             pkt.putShort(0xAA55.toShort())
             pkt.put(command.type.value)
             pkt.put(command.id1.toByte())
             pkt.put(command.id2.toByte())
-            pkt.put(0) // Placeholder
+            pkt.put(0) // Checksum placeholder
             pkt.putFloat(command.value1)
             pkt.putFloat(command.value2)
             pkt.putFloat(command.value3)
+            pkt.put(seq)
 
             // Compute checksum
             val arr = pkt.array()
@@ -835,6 +958,8 @@ class MainViewModel(
 
     private fun handleStatus(status: Status) {
         when (status.type) {
+            StatusType.HEARTBEAT -> { heartbeatTime = System.currentTimeMillis() }
+            StatusType.ACK -> { pendingCommands.remove(status.id) }
             StatusType.INFERENCE -> {
                 // Update mapping modulators
                 val brightness = status.value1
@@ -855,11 +980,28 @@ class MainViewModel(
                 }
                 // Log.d("Status", "Inference: B=$brightness W=$warmth I=$intensity P=$percussive S=$speed")
             }
-            StatusType.STATUS -> {
-                val value = status.value2
-                setMappingInput("Expr", status.value1)
-                Log.d("Status", "Expression: $value")
+            StatusType.EXPR -> { setMappingInput("Expr", status.value1) }
+        }
+    }
+
+    // Monitor connection
+    init {
+        viewModelScope.launch {
+            while (bleManager.connectedDevice.value != null) {
+                delay(HEARTBEAT_TIMEOUT)
+                if (System.currentTimeMillis() - heartbeatTime > HEARTBEAT_TIMEOUT) {
+                    if (_syncState.value == SyncState.SYNCED) {
+                        _syncState.value = SyncState.RESYNC
+                        resync()
+                    }
+                }
             }
         }
+    }
+
+    fun disconnect() { // Manual disconnect
+        bleManager.disconnect()
+        _syncState.value = SyncState.SYNCED
+        pendingCommands.clear()
     }
 } // MainViewModel

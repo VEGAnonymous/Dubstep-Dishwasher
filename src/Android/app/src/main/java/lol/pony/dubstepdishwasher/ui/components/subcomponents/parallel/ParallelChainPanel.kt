@@ -55,7 +55,7 @@ import lol.pony.dubstepdishwasher.ui.components.subcomponents.EqualizerParameter
 import lol.pony.dubstepdishwasher.ui.components.subcomponents.GateParameterList
 import lol.pony.dubstepdishwasher.ui.controls.DDSwitch
 
-const val MAX_PARALLEL_EFFECTS = 5
+val MAX_PARALLEL_EFFECTS : Int? = null // Arbitrary limit, deprecated
 
 @Composable
 fun ParallelChainPanel(
@@ -96,7 +96,7 @@ fun ParallelChainPanel(
             Box {
                 IconButton(
                     onClick = { expanded = !expanded },
-                    enabled = count < MAX_PARALLEL_EFFECTS
+                    enabled = MAX_PARALLEL_EFFECTS?.let { count < it } ?: true
                 ) {
                     Icon(Icons.Filled.Add, contentDescription = "Add FX")
                 }
@@ -246,7 +246,7 @@ private fun SlotEditor(
 
                     IconButton(
                         onClick = { onReorder(index + 1) },
-                        enabled = (index < (MAX_PARALLEL_EFFECTS - 1)) && (index != effects.size - 1),
+                        enabled = (MAX_PARALLEL_EFFECTS?.let { index < it - 1 } ?: true) && (index != effects.size - 1),
                         modifier = Modifier.width(30.dp).padding(horizontal = 4.dp)
                     ) { Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Move Down") }
 

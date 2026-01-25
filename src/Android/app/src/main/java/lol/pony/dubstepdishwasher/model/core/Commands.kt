@@ -22,6 +22,11 @@ enum class CommandType(val value: Byte) {
     PARALLEL_CHAIN_COMMAND(13)
 }
 
+enum class CommandPriority {
+    PRIORITY_STRUCTURE,
+    PRIORITY_STATE
+}
+
 data class Command(
     val sync: Short = 0xAA55.toShort(),
     val type: CommandType,
@@ -29,17 +34,24 @@ data class Command(
     val id2: Int,
     val value1: Float,
     val value2: Float = 0f,
-    val value3: Float = 0f
+    val value3: Float = 0f,
+    val seq: Byte = 0
+)
+
+data class PendingCommand(
+    val command: Command,
+    var retryCount: Int = 0
 )
 
 data class CommandKey(val type: CommandType, val id1: Int, val id2: Int)
 
-fun isStateCommand(cmd: CommandType): Boolean {
+fun getCommandPriority(cmd: CommandType): CommandPriority {
     return when (cmd) {
-        CommandType.EFFECT_SET_PARAMETER,
-        CommandType.MOD_SET_PARAMETER,
-        CommandType.MOD_ASSIGNMENT_SET,
-        CommandType.MOD_MAPPING_SET_INPUT -> true
-        else -> false
+        CommandType.EFFECT_ADD,
+        CommandType.EFFECT_REMOVE,
+        CommandType.EFFECT_REORDER,
+        CommandType.EFFECT_CLEAR,
+        CommandType.PARALLEL_CHAIN_COMMAND -> CommandPriority.PRIORITY_STRUCTURE
+        else -> CommandPriority.PRIORITY_STATE
     }
 }

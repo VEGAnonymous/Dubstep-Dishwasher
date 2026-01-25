@@ -10,6 +10,13 @@ const val MAX_MEMORY_USAGE  = 450   // 450 kB
 const val CONTROL_RATE = 20 // Hz
 const val LFO_UPDATE_RATE = 100 // Hz
 
+const val MAX_ACK_RETRIES = 3
+const val ACK_TIMEOUT = 1000L // 1s
+const val HEARTBEAT_TIMEOUT = 5000L // 3s
+
+const val MAX_AWAIT_RETRIES = 10
+const val AWAIT_TIMEOUT = 500L
+
 /* ENUMS */
 
 data class ResourceUsage(

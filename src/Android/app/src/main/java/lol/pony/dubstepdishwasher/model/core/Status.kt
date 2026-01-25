@@ -3,8 +3,10 @@ package lol.pony.dubstepdishwasher.model.core
 import android.util.Log
 
 enum class StatusType(val value: Byte) {
-    INFERENCE(0),
-    STATUS(1)
+    HEARTBEAT(0),
+    ACK(1),
+    INFERENCE(2),
+    EXPR(3)
 }
 
 data class Status(

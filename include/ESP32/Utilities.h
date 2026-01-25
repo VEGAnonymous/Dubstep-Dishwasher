@@ -2,7 +2,11 @@
 
 #include <algorithm>
 #include <cmath>
-#include <ESP32/BLEHandler.h>
+
+#include "ESP32/Defines.h"
+#include "ESP32/BLEHandler.h"
+
+// Generic
 
 inline float lerp(float a, float b, float t) { return a + (t * (b - a)); } // Linearly interpolate scalars
 
@@ -11,6 +15,18 @@ inline float scale(float value, float inLow, float inHigh, float outLow, float o
     if (exponent != 1.0f) t = powf(t, exponent); // Apply exponential
     return lerp(outLow, outHigh, t);
 }
+
+// Handler
+
+inline bool deduplicate(uint8_t* sequenceBuf, uint8_t& seqIndex, uint8_t seq) {
+    if (seq == 0) return false; // Non-critical, always process
+
+    for (uint8_t i = 0; i < SEQ_WINDOW_SIZE; i++) if (sequenceBuf[i] == seq) return true; // Duplicate
+
+    sequenceBuf[seqIndex] = seq; // Record new sequence number
+    seqIndex = (seqIndex + 1) % SEQ_WINDOW_SIZE;
+    return false;
+} 
 
 inline void sendCommand(Handler<MelFrame, Command>* uartHandler, CommandType type, 
     uint8_t id1 = 0, uint8_t id2 = 0, float value1 = 0.0f, float value2 = 0.0f, float value3 = 0.0f) {
@@ -27,7 +43,7 @@ inline void sendStatus(BLEHandler<Command, Status>* bleHandler, StatusType type,
     
     status.sync = 0x55AA;
     status.type = static_cast<uint8_t>(type);
-    status.id = 0; status.flags = flags; status.value1 = value1; status.value2 = value2; status.value3 = value3;
+    status.id = id; status.flags = flags; status.value1 = value1; status.value2 = value2; status.value3 = value3;
     
     // Send via BLE
     bleHandler->send(status);

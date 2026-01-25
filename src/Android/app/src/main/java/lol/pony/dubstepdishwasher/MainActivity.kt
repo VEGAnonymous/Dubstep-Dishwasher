@@ -89,7 +89,7 @@ fun App(
             TopBar(
                 viewModel = mainViewModel,
                 device = if (SKIP_BLE) null else connectedDevice,
-                onDisconnect = { bleManager.disconnect() }
+                onDisconnect = { mainViewModel.disconnect() }
             )
             HorizontalDivider()
             MainPanel(mainViewModel)

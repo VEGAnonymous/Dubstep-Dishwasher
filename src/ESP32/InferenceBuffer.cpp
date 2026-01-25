@@ -1,6 +1,5 @@
 #include "ESP32/Utilities.h"
 #include "ESP32/InferenceBuffer.h"
-#include "Handler.h"
 #include "ESP32/BLEHandler.h"
 
 extern Handler<MelFrame, Command> uartHandler;

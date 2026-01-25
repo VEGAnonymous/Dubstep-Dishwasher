@@ -34,6 +34,7 @@ import lol.pony.dubstepdishwasher.ui.components.EffectList
 import lol.pony.dubstepdishwasher.ui.components.ModulatorControls
 import lol.pony.dubstepdishwasher.ui.components.ModulatorTabs
 import lol.pony.dubstepdishwasher.ui.components.ParameterColumn
+import lol.pony.dubstepdishwasher.ui.components.SyncOverlay
 import lol.pony.dubstepdishwasher.ui.components.subcomponents.CurveEditor
 import lol.pony.dubstepdishwasher.ui.components.subcomponents.parallel.ParallelEditor
 import lol.pony.dubstepdishwasher.viewmodel.MainViewModel
@@ -43,6 +44,8 @@ enum class LeftColumnMode { FX, MOD }
 @Composable
 fun MainPanel(mainViewModel: MainViewModel) {
     val resourceError = mainViewModel.resourceError.collectAsState().value
+    val syncState by mainViewModel.syncState.collectAsState()
+    val syncMessage by mainViewModel.syncMessage.collectAsState()
 
     val effects by mainViewModel.effects.collectAsState()
     val modulators by mainViewModel.modulators.collectAsState()
@@ -205,6 +208,12 @@ fun MainPanel(mainViewModel: MainViewModel) {
                 onParallelSetParam = { id, chain, effectId, paramId, value -> mainViewModel.parallelSetParam(id, chain, effectId, paramId, value) }
             )
         }
+
+        SyncOverlay(
+            syncState = syncState,
+            syncMessage = syncMessage,
+            onDisconnect = { mainViewModel.disconnect() }
+        )
     } // Box
 } // MainPanel
 

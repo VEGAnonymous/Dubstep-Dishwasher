@@ -22,7 +22,11 @@ BLEHandler<Command, Status> bleHandler; // Packet handler (send status / receive
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
 BLEServer *pServer = NULL;
-uint32_t advertiseTime = 0;
+uint32_t advertiseTime = 0,
+         heartbeatTime = 0;
+
+uint8_t sequenceBuf[SEQ_WINDOW_SIZE] = {0};
+uint8_t seqIndex = 0;
 
 // Callbacks
 class ServerCallbacks: public BLEServerCallbacks {
@@ -68,7 +72,7 @@ void setup() {
     });
 
     /* BLE setup */
-    BLEDevice::init("Dubstep Dishwasher MCU");
+    BLEDevice::init("Dubstep Dishwasher");
     pServer = BLEDevice::createServer();
     pServer->setCallbacks(new ServerCallbacks());
     
@@ -81,6 +85,13 @@ void setup() {
     // Set callback for received commands
     bleHandler.setReceiveCallback([](const Command& cmd) {
         if (LOG_DEBUG) Serial.printf("cmd: type=%d id1=%d id2=%d v1=%.2f\n", cmd.cmd, cmd.id1, cmd.id2, cmd.value1);
+        
+        if (getCommandPriority(static_cast<CommandType>(cmd.cmd)) == CommandPriority::PRIORITY_STRUCTURE) {
+            bool isDuplicate = deduplicate(sequenceBuf, seqIndex, cmd.seq);
+            sendStatus(&bleHandler, StatusType::ACK, cmd.seq, 0, 0.0f); // ACK
+            if (isDuplicate) return; // Do not forward
+        }
+
         uartHandler.send(const_cast<Command&>(cmd)); // Forward command via UART
     });
 
@@ -99,15 +110,21 @@ void setup() {
 
 void loop() {
     // BLE advertising
-    if ((!deviceConnected && oldDeviceConnected) && (millis() - advertiseTime >= BLE_ADVERTISE_TIME)) {
+    if ((!deviceConnected && oldDeviceConnected) && (millis() - advertiseTime >= ADVERTISE_INTERVAL)) {
         advertiseTime = millis();
         pServer->startAdvertising(); // Restart advertising
         Serial.println("Started advertising");
         oldDeviceConnected = deviceConnected;
     } if (deviceConnected && !oldDeviceConnected) oldDeviceConnected = deviceConnected;
 
+    // Send heartbeat
+    if (millis() - heartbeatTime >= HEARTBEAT_INTERVAL && deviceConnected) {
+        heartbeatTime = millis();
+        sendStatus(&bleHandler, StatusType::HEARTBEAT, 0, 0, 0.0f);
+    }
+
     // Expression pedal read
-    if (millis() - exprTime >= EXPR_READ_TIME) {
+    if (millis() - exprTime >= EXPR_READ_INTERVAL) {
         exprTime = millis();
         exprValue = (float)analogRead(EXPR_PIN) / 1000.0f;
         if (exprValue < 0.1f) return;

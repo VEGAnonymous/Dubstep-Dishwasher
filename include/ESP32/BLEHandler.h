@@ -19,6 +19,8 @@ struct Status {
 } __attribute__((packed));
 
 enum class StatusType : uint8_t {
+    HEARTBEAT,
+    ACK,
     INFERENCE,
     EXPRESSION,
     // Expandable with other statuses

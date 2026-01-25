@@ -1,9 +1,33 @@
 #pragma once
 
 #include <Arduino.h>
-#include <Teensy/Defines.h>
+#include "Teensy/Defines.h"
 
 /* DATA */
+
+enum class CommandPriority : uint8_t {
+    PRIORITY_STRUCTURE,
+    PRIORITY_STATE
+};
+
+enum class CommandType : uint8_t { 
+    EFFECT_ADD, 
+    EFFECT_REMOVE, 
+    EFFECT_REORDER, 
+    EFFECT_SET_PARAMETER, 
+    EFFECT_BYPASS, 
+    EFFECT_CLEAR,
+
+    MOD_SET_PARAMETER,
+    MOD_CLEAR_CURVE,
+    MOD_SET_CURVE_POINT,
+    MOD_ASSIGNMENT_ADD,
+    MOD_ASSIGNMENT_REMOVE,
+    MOD_ASSIGNMENT_SET,
+    MOD_MAPPING_SET_INPUT,
+
+    PARALLEL_CHAIN_COMMAND
+};
 
 struct Command {
     uint16_t sync;    // 0xAA55
@@ -14,6 +38,7 @@ struct Command {
     float value1;
     float value2;
     float value3;
+    uint8_t seq;      // Sequence number
 } __attribute__((packed));
 
 struct MelFrame {
@@ -25,6 +50,17 @@ struct MelFrame {
 } __attribute__((packed));
 
 /* FUNCTIONS */
+
+inline CommandPriority getCommandPriority(CommandType type) { 
+    switch (type) {
+        case CommandType::EFFECT_ADD:
+        case CommandType::EFFECT_REMOVE:
+        case CommandType::EFFECT_REORDER:
+        case CommandType::EFFECT_CLEAR:
+        case CommandType::PARALLEL_CHAIN_COMMAND: return CommandPriority::PRIORITY_STRUCTURE;
+        default: return CommandPriority::PRIORITY_STATE;
+    }
+}
 
 template <typename PacketType>
 inline uint8_t computeChecksum(const PacketType& pkt) {

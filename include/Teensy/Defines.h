@@ -28,25 +28,6 @@ struct fft_cpx { float r; float i; };
 
 /* ENUMS */
 
-enum class CommandType : uint8_t { 
-    EFFECT_ADD, 
-    EFFECT_REMOVE, 
-    EFFECT_REORDER, 
-    EFFECT_SET_PARAMETER, 
-    EFFECT_BYPASS, 
-    EFFECT_CLEAR,
-
-    MOD_SET_PARAMETER,
-    MOD_CLEAR_CURVE,
-    MOD_SET_CURVE_POINT,
-    MOD_ASSIGNMENT_ADD,
-    MOD_ASSIGNMENT_REMOVE,
-    MOD_ASSIGNMENT_SET,
-    MOD_MAPPING_SET_INPUT,
-
-    PARALLEL_CHAIN_COMMAND
-};
-
 // Effects
 enum class EffectName : uint8_t {
     CHORUS,
