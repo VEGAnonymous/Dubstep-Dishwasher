@@ -12,7 +12,8 @@ constexpr uint32_t ADVERTISE_INTERVAL = 1000, // ms
 
 constexpr uint8_t SEQ_WINDOW_SIZE = 32;
 
-constexpr float EXPR_MIN = 0.5f, // V
-                EXPR_MAX = 3.0f;
+constexpr float EXPR_MIN = 0.50f, // V
+                EXPR_MAX = 1.65f,
+                EXPR_TOL = 0.05f;
 
 #define EXPR_MOD_ID 11

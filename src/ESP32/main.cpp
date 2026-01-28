@@ -128,7 +128,7 @@ void loop() {
         exprTime = millis();
         exprValue = (float)analogRead(EXPR_PIN) / 1000.0f;
         if (exprValue < 0.1f) return;
-        exprValue = scale(std::clamp(exprValue, EXPR_MIN, EXPR_MAX), EXPR_MIN, EXPR_MAX, 0.0f, 1.0f);
+        exprValue = scale(std::clamp(exprValue, EXPR_MIN + EXPR_TOL, EXPR_MAX - EXPR_TOL), EXPR_MIN + EXPR_TOL, EXPR_MAX - EXPR_TOL, 0.0f, 1.0f);
         sendCommand(&uartHandler, CommandType::MOD_MAPPING_SET_INPUT, EXPR_MOD_ID, 0, exprValue);
         sendStatus(&bleHandler, StatusType::EXPRESSION, EXPR_MOD_ID, 0, exprValue);
     }
