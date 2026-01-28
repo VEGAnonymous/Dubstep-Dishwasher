@@ -17,6 +17,8 @@ const val HEARTBEAT_TIMEOUT = 5000L // 3s
 const val MAX_AWAIT_RETRIES = 10
 const val AWAIT_TIMEOUT = 500L
 
+const val MAX_RESYNC_RETRIES = 3
+
 /* ENUMS */
 
 data class ResourceUsage(
@@ -103,3 +105,7 @@ enum class FFTSize(override val uiName: String, val value: Float) : UIEnum {
     SIZE_512("512", 512f),
     SIZE_1024("1024", 1024f)
 }
+
+/* EXCEPTIONS */
+
+class ConnectionLostException(message: String) : Exception(message)

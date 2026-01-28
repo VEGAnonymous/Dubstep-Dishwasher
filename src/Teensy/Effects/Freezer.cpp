@@ -99,8 +99,8 @@ float Freezer::getParam(ParamID param) const {
 
 void Freezer::process(const float* in, float* out, size_t n) {
     const size_t bufN = bufSize,
-                    fftN = stft ? stft->getFFTSize() : 0,
-                    hopN = stft ? stft->getHopSize() : 0;
+                 fftN = stft ? stft->getFFTSize() : 0,
+                 hopN = stft ? stft->getHopSize() : 0;
 
     // Compute loop boundaries
     float loopStartSamples = loopStart * (float)bufN;

@@ -8,18 +8,13 @@ class Delay : public Effect {
         enum Params : ParamID { MIX, DELAY_TIME, FEEDBACK };
 
         static constexpr float maxDelayTime = 500.0f; // ms
-        float mix, delayTime, feedback;
-        DelayLine delayLine;
-
-        float currentDelaySamples;
-        float targetDelaySamples;
-
-        bool isCrossfading = false;
-        int fadeCounter = 0;
         static constexpr int fadeLength = 32;
 
+        float mix, delayTime, delaySamples, feedback;
+        DelayLine delayLine;
+
         float oldDelaySamples;
-        float newDelaySamples;
+        int fadeCounter = 0; bool isCrossfading = false;
 
     public:
         Delay(float mix = 0.3f, float delayTime = 200.0f, float feedback = 0.4f);

@@ -244,9 +244,6 @@ void setup() {
 }
 
 void loop() {
-
-    handler.listen();
-
     // Send log-mel frames
     if (SND_SPECT && logMelStream && logMelStream->isFrameReady()) {
         MelFrame frame = logMelStream->getFrame();
@@ -262,4 +259,7 @@ void loop() {
         if (LOG_RSE) Serial.printf("CPU: %f, CPU MAX: %f, Memory: %f, Memory MAX: %f\n", // Log resource usage
             AudioProcessorUsage(), AudioProcessorUsageMax(), AudioMemoryUsage(), AudioMemoryUsageMax()); 
     }
+
+    // UART receive
+    handler.listen();
 }

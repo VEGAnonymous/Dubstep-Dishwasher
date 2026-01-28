@@ -30,6 +30,17 @@ Converts linear amplitude to decibel (dB) values.
 
 ---
 
+### `msSamples`
+**Description:**  
+Converts time in milliseconds to samples according to `SAMPLE_RATE` (typically 44100 Hz).
+
+**Parameters:**
+- **`ms`** — Time in ms `[-∞, ∞]`
+
+**Returns:** Number of samples (float)
+
+---
+
 ### `uniform`
 **Description:**  
 Generates a uniformly distributed random float.

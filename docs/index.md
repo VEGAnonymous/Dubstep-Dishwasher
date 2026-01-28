@@ -14,8 +14,6 @@ This document serves as an index to the API reference for the **Dubstep Dishwash
 
 - Additionally, see:
     - `Defines.h` for enum definitions and constants
-    - `LUTs.h` for lookup tables
+    - `LUTs.h` for lookup tables, including wavetables and filter kernels
 
 ---
-
-*Written by LYRAnonymous.*

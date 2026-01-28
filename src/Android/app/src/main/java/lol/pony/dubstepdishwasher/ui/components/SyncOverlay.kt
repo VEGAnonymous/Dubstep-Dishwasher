@@ -20,7 +20,7 @@ fun SyncOverlay(
     syncMessage: String,
     onDisconnect: () -> Unit
 ) {
-    if (syncState != SyncState.RESYNC) return
+    if (syncState == SyncState.SYNCED) return
 
     Box(
         modifier = Modifier
@@ -53,11 +53,11 @@ fun SyncOverlay(
                     overflow = TextOverflow.Ellipsis
                 )
 
-                if (syncMessage.contains("Disconnected", ignoreCase = true)) { // Allow manual disconnect
+                if (syncMessage.contains("Awaiting", ignoreCase = true)) { // Allow manual disconnect
                     Button(
                         onClick = onDisconnect,
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                    ) { Text("Disconnect") }
+                    ) { Text("Exit") }
                 }
             }
         }

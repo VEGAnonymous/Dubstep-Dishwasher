@@ -57,11 +57,11 @@ struct CurvePoint {
 }
 ```
 
-**`Constructor:**
-- **`freq`** — Initial frequency in Hz.
-- **`loop`** — Whether to loop. Should be set to `true` in most cases with the exception of mapping `Modulator` instances. `true / false`
+**Constructor:**
+- **`freq`** — Initial frequency in Hz
+- **`loop`** — Whether to loop `true / false`
 
-**`Methods:**
+**Methods:**
 
 All the usual `freq` / `phase` setters and getters, plus:
 
@@ -70,7 +70,7 @@ All the usual `freq` / `phase` setters and getters, plus:
 - **`points`** — Vector of `CurvePoint` instances
 
 **`setCurvePoint(index, x, y, curve)`**
-- Set the curve structure in point by point.
+- Set the curve structure point by point.
 - **`index`** — Index of the new point
 - **`x`** — x value of the new point; will automatically sort if out of order `[0.0, 1.0]` 
 - **`y`** — y value of the new point `[0.0, 1.0]` 

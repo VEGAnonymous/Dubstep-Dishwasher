@@ -118,17 +118,12 @@ void AudioChain::reorderEffect(EffectID id, size_t pos) {
     auto it = fxMap.find(id);
     if (it == fxMap.end()) return;
 
-    Serial.printf("Reordering effect %d to position %d", id, pos);
-
     size_t oldPos = it->second;
-    Serial.println(oldPos);
     if (pos > effects.size()) pos = effects.size();
 
-    // Extract the effect from the vector
+    // Extract the effect from the vector and reinsert at new index
     auto effectPtr = std::move(effects[oldPos]);
     effects.erase(effects.begin() + oldPos);
-
-    // Insert at new position
     effects.insert(effects.begin() + pos, std::move(effectPtr));
 
     // Reindex everything
@@ -148,12 +143,12 @@ void AudioChain::processChain(const float* input, float* output, size_t n = BUFF
     int lastActive = -1;
     for (size_t i = 0; i < effects.size(); ++i) {
         if (!effects[i]->isBypassed()) lastActive = i; }
-    if (lastActive == -1) { memcpy(output, input, n * sizeof(float)); return; } // All bypass, just pass output
+    if (lastActive == -1) { memcpy(output, input, n * sizeof(float)); return; } // All bypass, just pass input through
 
     const float* in_ptr = input;
     float* out_ptr = nullptr;
     float stageBuf[BUFFER_SIZE];
-    for (size_t i = 0; i < effects.size(); ++i) { // Run that shit
+    for (size_t i = 0; i < effects.size(); ++i) { // Process effects serially
         if (effects[i]->isBypassed()) continue;
 
         out_ptr = (i == (size_t)lastActive) ? output : stageBuf;

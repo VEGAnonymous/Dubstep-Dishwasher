@@ -90,7 +90,7 @@ void Scrubby::process(const float* in, float* out, size_t n) {
         inBuf[writePos] = in[i];
         
         float wetSig = 0.0f;
-        if (isSeeking) { // Currently seeking
+        if (isSeeking) {
             if (seekProgress <= currentSeekDur) { 
                 wetSig = lerp(inBuf, readPos, bufSize);
 

@@ -94,41 +94,9 @@ patch2 = std::make_unique<AudioConnection>(*stream, 0, dacOut, 0);
 Teensy Audio Library wrapper that computes a running log-mel spectrogram of the upstream using `Log_Mel`. Extends `AudioStream` from Teensy Audio Library.
 
 **Notes:**
-- *For this class to be practically useful, a callback function must be set*
 - Converts int16 input to float32 for processing
 - Processes one block of `AUDIO_BLOCK_SAMPLES` per `update()` call
 - Calls to `update()` automatically handled by Teensy Audio Library
-
-**Example Usage:**
-
-```
-/* IO */
-AudioInputI2S adcIn; // ADC input
-
-/* DSP */
-std::unique_ptr<LogMelStream> logMelStream; // Log-mel stream
-std::unique_ptr<AudioConnection> patch1; // Connection
-
-...
-
-void setup() {
-
-logMelStream = std::make_unique<LogMelStream>();
-// Set callback - send frames over UART via Handler when ready
-logMelStream->setMelCallback([&](const float* melEnergies, size_t numMels) {
-    MelFrame frame{};
-    frame.index = frameCounter++;
-    frame.numMels = numMels;
-    memcpy(frame.mel, melEnergies, numMels * sizeof(float));
-    handler.send(frame);
-});
-
-patch1 = std::make_unique<AudioConnection>(adcIn, 0, *logMelStream, 0);
-
-...
-
-}
-```
 
 ----
 
@@ -162,13 +130,17 @@ struct ModAssignment {
 ```
 
 **`removeAssignment(modId, effectId, paramId)`**
-- Removes a modulation assignment.
+- Removes a modulation assignment. Restores the base value if the removed assignment was the only one remaining on the given effect parameter.
 - **`modId`** — Numeric `ModulatorID` id of the `Modulator`
 - **`effectId`** — Numeric `EffectID` id of the `Effect`
 - **`paramId`** — Numeric `ParamID` id of the effect parameter
 
+**`removeEffect(effectId)`**
+- Removes all stored assignments and base values for an effect.
+- **`effectId`** — Numeric `EffectID` id of the `Effect`
+
 **`setAssignment(modId, effectId, paramId, amount, polarity)`**
-- Sets the amount and/or polarity for a modulation assignment.
+- Sets the amount and/or polarity for a modulation assignment. If the assignment does not exist, one is created via `addAssignment`.
 - **`modId`** — Numeric `ModulatorID` id of the `Modulator`
 - **`effectId`** — Numeric `EffectID` id of the `Effect`
 - **`paramId`** — Numeric `ParamID` id of the effect parameter
@@ -178,7 +150,7 @@ struct ModAssignment {
     - Bipolar ranges `[-0.5, 0.5]` from the normalized base value
 
 **`clearAssignments()`**
-- Clears all modulation assignments
+- Clears all modulation assignments and resets modulation output.
 
 **`setBaseValue(effectId, paramId, normalized)`**
 - Sets the base value (i.e., normalized value) for an `Effect` parameter that modulation assignments to deviate from. This should be called alongside calls to `setParam()` in `AudioChain`.

@@ -115,7 +115,6 @@ ParameterMap createParameterRegistry() {
     // Parallel
     registry[EffectName::PARALLEL] = {
         {0, {ParamUnit::PERCENT, 0.0f, 1.0f, 1.0f, 1.0f}} // MIX
-        // TBD
     };
 
     // Phaser

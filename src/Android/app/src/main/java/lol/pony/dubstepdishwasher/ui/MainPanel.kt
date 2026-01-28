@@ -38,6 +38,7 @@ import lol.pony.dubstepdishwasher.ui.components.SyncOverlay
 import lol.pony.dubstepdishwasher.ui.components.subcomponents.CurveEditor
 import lol.pony.dubstepdishwasher.ui.components.subcomponents.parallel.ParallelEditor
 import lol.pony.dubstepdishwasher.viewmodel.MainViewModel
+import lol.pony.dubstepdishwasher.viewmodel.MainViewModel.*
 
 enum class LeftColumnMode { FX, MOD }
 

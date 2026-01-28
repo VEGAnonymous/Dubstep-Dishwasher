@@ -50,6 +50,7 @@ import lol.pony.dubstepdishwasher.model.core.MAX_MEMORY_USAGE
 import lol.pony.dubstepdishwasher.ui.components.PresetManager
 import lol.pony.dubstepdishwasher.ui.components.ResourceMeter
 import lol.pony.dubstepdishwasher.viewmodel.MainViewModel
+import lol.pony.dubstepdishwasher.viewmodel.MainViewModel.*
 
 @Composable
 fun TopBar (
