@@ -17,7 +17,7 @@ See available documentation [here](docs/index.md).
 
 ## Build
 
-KiCad project files can be found under [Releases](github.com/VEGAnonymous/Dubstep-Dishwasher/releases), which includes:
+KiCad project files can be found under [Releases](https://www.github.com/VEGAnonymous/Dubstep-Dishwasher/releases), which includes:
 
 - Bill of Materials .csv
 - Circuit schematic
