@@ -30,7 +30,7 @@ KiCad project files can be found under [Releases](https://www.github.com/VEGAnon
   <img src="https://u.pone.rs/ewnjdmxg.PNG" />
 </p>
 
-The PCB measures 85 x 86.3 mm and is designed to fit within a standard Hammond 1590BB enclosure. The PCB design may be and should be adjusted to suit component availability, sizing, and other demands (or for potential improvements). For example, ESP32 module devboard can be swapped out for a devboard if preferred.
+The PCB measures 85 x 86.3 mm and is designed to fit within a standard Hammond 1590BB enclosure. The PCB design may be and should be adjusted to suit component availability, sizing, and other demands (or for potential improvements). For example, the ESP32 devboard can be swapped out for a module if preferred.
 
 Other necessary components not mentioned in the BOM include:
 - [Teensy Audio Shield](https://www.pjrc.com/store/teensy3_audio.html) — soldered directly to the Teensy 4.1. The LINE nets on the PCB should be connected directly to its LINE IN L and LINE OUT L pins accordingly.
