@@ -43,3 +43,7 @@ Standard pedal components (jacks, switches, etc., indicated by JST-XH connector 
 It is recommended to build and upload the firmware for the Teensy 4.1 and ESP32 using [PlatformIO](https://platformio.org/). Open the repository root as a PlatformIO project; the provided configuration file [platformio.ini](platformio.ini) should suffice.
 
 The app .apk is also included with each release. If building manually, it is recommended to use [Android Studio](https://developer.android.com/studio). Open `src/Android/` as a Gradle project. Requires Android 10+ (API 29) for BLE compatibility.
+
+An example work-in-progress build is shown below:
+
+![WIP Build](https://github.com/user-attachments/assets/aa53ea21-6d31-4bf7-961f-b282787d4c66 "WIP Build")
